@@ -6,7 +6,9 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 
 // System pages
 import LandingPage from "./pages/LandingPage";
+import AdmLanding from "./pages/AdmLanding";
 import ActionManager from "./pages/ActionManager";
+import Dashboard from "./pages/Dashboard";
 import RolePortal from "./pages/RolePortal";
 import DataHub from "./pages/DataHub";
 import NotFound from "./pages/NotFound";
@@ -32,7 +34,9 @@ function Router() {
       {/* Internal system */}
       <Route path="/" component={WebsiteHome} />
       <Route path="/system" component={LandingPage} />
+      <Route path="/adm" component={AdmLanding} />
       <Route path="/action-manager" component={ActionManager} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route path="/portal/:role" component={RolePortal} />
       <Route path="/data" component={DataHub} />
       <Route path="/404" component={NotFound} />

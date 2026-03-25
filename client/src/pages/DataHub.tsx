@@ -18,7 +18,8 @@ const RISK_COLORS: Record<string, string> = { High:"#fee2e2", Medium:"#fef9c3", 
 const RISK_TEXT: Record<string, string> = { High:"#991b1b", Medium:"#92400e", Low:"#166534" };
 const OUTCOME_COLORS: Record<string, string> = {
   "WIP":"#3b82f6","BWRO Draft":"#f59e0b","BWRO Final":"#d97706",
-  "SWO":"#ef4444","RO Draft":"#8b5cf6","RO Final":"#7c3aed","Closed":"#22c55e"
+  "Prohibition Order Draft":"#8b5cf6","Prohibition Order Final":"#7c3aed",
+  "SWO":"#ef4444","Closed":"#22c55e"
 };
 
 function getMonths(count = 6): { label: string; short: string; year: number; month: number }[] {
@@ -620,11 +621,142 @@ function GraphicsAnalytics({ projects, onBack }: { projects: Project[]; onBack: 
           </div>
         )}
 
-        {(tab === "trends" || tab === "status") && (
-          <div style={{ textAlign:"center", padding:"60px 20px" }}>
-            <div style={{ fontSize:48, marginBottom:16 }}>{tab === "trends" ? "📈" : "📋"}</div>
-            <h3 style={{ fontWeight:700, fontSize:18, color:"#1a1a2e", marginBottom:8 }}>{tab === "trends" ? "Defect Trends" : "Status Reports"}</h3>
-            <p style={{ fontSize:14, color:"#6b7280" }}>Detailed {tab === "trends" ? "defect trend analysis" : "status reporting"} will be populated with live data.</p>
+        {tab === "trends" && (
+          <div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginBottom:20 }}>
+              <div style={{ background:"#fff", borderRadius:8, border:"1px solid #e5e7eb", padding:"20px" }}>
+                <h3 style={{ fontWeight:700, fontSize:14, color:"#1a1a2e", marginBottom:16 }}>Monthly Project Activity (2025)</h3>
+                <div style={{ height:260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={[
+                      { month:"Jan", "Proactive Insp":3, "From FORM":1, CLIENT:0 },
+                      { month:"Feb", "Proactive Insp":2, "From FORM":3, CLIENT:1 },
+                      { month:"Mar", "Proactive Insp":1, "From FORM":1, CLIENT:1 },
+                      { month:"Apr", "Proactive Insp":2, "From FORM":2, CLIENT:0 },
+                      { month:"May", "Proactive Insp":1, "From FORM":1, CLIENT:1 },
+                      { month:"Jun", "Proactive Insp":0, "From FORM":2, CLIENT:1 },
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0ede8" />
+                      <XAxis dataKey="month" tick={{ fontSize:11 }} />
+                      <YAxis tick={{ fontSize:11 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="Proactive Insp" fill="#1e3a5f" />
+                      <Bar dataKey="From FORM" fill="#A68A64" />
+                      <Bar dataKey="CLIENT" fill="#22c55e" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <div style={{ background:"#fff", borderRadius:8, border:"1px solid #e5e7eb", padding:"20px" }}>
+                <h3 style={{ fontWeight:700, fontSize:14, color:"#1a1a2e", marginBottom:16 }}>Risk Category Trend (2025)</h3>
+                <div style={{ height:260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={[
+                      { month:"Jan", High:2, Medium:2, Low:1 },
+                      { month:"Feb", High:3, Medium:2, Low:2 },
+                      { month:"Mar", High:2, Medium:3, Low:1 },
+                      { month:"Apr", High:1, Medium:3, Low:2 },
+                      { month:"May", High:2, Medium:2, Low:1 },
+                      { month:"Jun", High:1, Medium:2, Low:1 },
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0ede8" />
+                      <XAxis dataKey="month" tick={{ fontSize:11 }} />
+                      <YAxis tick={{ fontSize:11 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="High" stroke="#ef4444" strokeWidth={2} dot={{ r:4 }} />
+                      <Line type="monotone" dataKey="Medium" stroke="#f59e0b" strokeWidth={2} dot={{ r:4 }} />
+                      <Line type="monotone" dataKey="Low" stroke="#22c55e" strokeWidth={2} dot={{ r:4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+            <div style={{ background:"#fff", borderRadius:8, border:"1px solid #e5e7eb", padding:"20px" }}>
+              <h3 style={{ fontWeight:700, fontSize:14, color:"#1a1a2e", marginBottom:16 }}>Inspector Workload Distribution</h3>
+              <div style={{ height:220 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart layout="vertical" data={
+                    Object.entries(
+                      projects.flatMap(p => p.inspectors).reduce((acc: Record<string, number>, i) => { acc[i] = (acc[i] || 0) + 1; return acc; }, {})
+                    ).sort((a,b) => b[1]-a[1]).slice(0,8).map(([name, count]) => ({ name, count }))
+                  }>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0ede8" />
+                    <XAxis type="number" tick={{ fontSize:11 }} />
+                    <YAxis dataKey="name" type="category" tick={{ fontSize:11 }} width={130} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#1a1a2e" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
+        {tab === "status" && (
+          <div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:20 }}>
+              {[
+                { label:"Total Projects", value: projects.length, color:"#1a1a2e", icon:"📁" },
+                { label:"Active (WIP)", value: projects.filter(p => p.projectOutcome === "WIP").length, color:"#3b82f6", icon:"🔄" },
+                { label:"High Risk", value: projects.filter(p => p.riskCategory === "High").length, color:"#ef4444", icon:"⚠️" },
+                { label:"Closed", value: projects.filter(p => p.projectOutcome === "Closed").length, color:"#22c55e", icon:"✅" },
+              ].map(s => (
+                <div key={s.label} style={{ background:s.color, borderRadius:8, padding:"20px", color:"#fff", textAlign:"center" }}>
+                  <div style={{ fontSize:28, marginBottom:4 }}>{s.icon}</div>
+                  <div style={{ fontSize:32, fontWeight:800 }}>{s.value}</div>
+                  <div style={{ fontSize:12, opacity:0.85 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+              <div style={{ background:"#fff", borderRadius:8, border:"1px solid #e5e7eb", padding:"20px" }}>
+                <h3 style={{ fontWeight:700, fontSize:14, color:"#1a1a2e", marginBottom:16 }}>Project Outcomes Breakdown</h3>
+                <div style={{ height:260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={Object.entries(
+                          projects.reduce((acc: Record<string, number>, p) => { acc[p.projectOutcome] = (acc[p.projectOutcome] || 0) + 1; return acc; }, {})
+                        ).map(([name, value]) => ({ name, value, color: OUTCOME_COLORS[name] || "#6b7280" }))}
+                        dataKey="value" cx="50%" cy="50%" outerRadius={100}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {Object.entries(
+                          projects.reduce((acc: Record<string, number>, p) => { acc[p.projectOutcome] = (acc[p.projectOutcome] || 0) + 1; return acc; }, {})
+                        ).map(([name], i) => <Cell key={i} fill={OUTCOME_COLORS[name] || "#6b7280"} />)}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <div style={{ background:"#fff", borderRadius:8, border:"1px solid #e5e7eb", padding:"20px" }}>
+                <h3 style={{ fontWeight:700, fontSize:14, color:"#1a1a2e", marginBottom:16 }}>Projects by Tab</h3>
+                <div style={{ height:260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={[
+                      { tab:"Proactive", count: projects.filter(p => p.tab === "Proactive Insp").length, fill:"#1e3a5f" },
+                      { tab:"From FORM", count: projects.filter(p => p.tab === "From FORM").length, fill:"#A68A64" },
+                      { tab:"CLIENT", count: projects.filter(p => p.tab === "CLIENT").length, fill:"#22c55e" },
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0ede8" />
+                      <XAxis dataKey="tab" tick={{ fontSize:12 }} />
+                      <YAxis tick={{ fontSize:12 }} />
+                      <Tooltip />
+                      <Bar dataKey="count">
+                        {[
+                          { tab:"Proactive", fill:"#1e3a5f" },
+                          { tab:"OC Insp.", fill:"#A68A64" },
+                          { tab:"CLIENT", fill:"#22c55e" },
+                          
+                        ].map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
