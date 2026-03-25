@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(unzip -l \"C:/Users/raque/Downloads/369-alliance-cms-export.zip\")",
+      "Bash(unzip -o \"C:/Users/raque/Downloads/369-alliance-cms-export.zip\" -d .)",
+      "Bash(mv 369-alliance-system/* 369-alliance-system/.* .)",
+      "Bash(rm -rf 369-alliance-system)"
+    ]
+  }
+}
