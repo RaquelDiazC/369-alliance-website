@@ -80,14 +80,12 @@ export function WebsiteNav({ onOpenPopup }: WebsiteNavProps) {
             style={{ background: "linear-gradient(135deg,#7A6342,#A68A64)" }}>
             Get a Quote
           </button>
-          <a
-            href="https://alliance369-vykdiath.manus.space/"
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href="/system"
             className="px-5 py-2 rounded-full text-sm font-semibold transition-all hover:opacity-90 hover:shadow-lg cursor-pointer inline-block"
             style={{ background: "linear-gradient(135deg,rgba(255,255,255,0.95),rgba(220,220,230,0.85))", color: "#1a1a2e", textDecoration: "none" }}>
             Client System
-          </a>
+          </Link>
         </div>
 
         {/* Mobile menu button */}
@@ -114,15 +112,13 @@ export function WebsiteNav({ onOpenPopup }: WebsiteNavProps) {
               style={{ background: "linear-gradient(135deg,#7A6342,#A68A64)" }}>
               Get a Quote
             </button>
-            <a
-              href="https://alliance369-vykdiath.manus.space/"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/system"
               onClick={() => setMenuOpen(false)}
               className="w-full py-2.5 rounded-full text-sm font-semibold text-center cursor-pointer block"
               style={{ background: "linear-gradient(135deg,rgba(255,255,255,0.95),rgba(220,220,230,0.85))", color: "#1a1a2e", textDecoration: "none" }}>
               Client System
-            </a>
+            </Link>
           </div>
         </div>
       )}
