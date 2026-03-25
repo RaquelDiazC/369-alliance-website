@@ -1,5 +1,5 @@
-# 369 Alliance Construction Management System
-### Export Package — Ready for New Task Initialisation
+# 369 Alliance PTY LTD — Marketing Website
+### Export Package — Final Revision 1 | `alliance369-vykdiath.manus.space`
 
 ---
 
@@ -13,8 +13,6 @@
 | Component Library | shadcn/ui (Radix UI primitives) | latest |
 | Routing | Wouter | 3.x |
 | Animation | Framer Motion | 12.x |
-| Charts | Recharts | 2.x |
-| Forms | React Hook Form + Zod | 7.x / 4.x |
 | Icons | Lucide React | 0.453 |
 | Toasts | Sonner | 2.x |
 | Language | TypeScript | 5.6 |
@@ -22,11 +20,18 @@
 | Server (placeholder) | Express (static-only, not used in prod) | 4.x |
 
 **Brand Design System:**
-- Primary colour: Navy `#1a1a2e`
-- Accent colour: Gold `#A68A64`
-- Heading font: Montserrat (Google Fonts)
-- Body font: IBM Plex Sans (Google Fonts)
-- Theme: Dark (navy background, gold accents, white text)
+
+| Token | Value |
+|---|---|
+| Primary background | Navy `#1a1a2e` |
+| Accent / gold | `#A68A64` / `#C4A46B` |
+| Heading font | Montserrat (Google Fonts) |
+| Body font | IBM Plex Sans (Google Fonts) |
+| Theme | Dark (navy background, gold accents, white text) |
+| Logo symbol | CDN: `logo_symbol_square_cd006bc9.png` (square-cropped, 280×280px) |
+| Nav logo symbol | CDN: `nav_symbol_back_of_card.png` |
+
+All external images are hosted on CDN — no local image files are included in the project.
 
 ---
 
@@ -34,13 +39,13 @@
 
 ### Prerequisites
 - Node.js 18+ installed
-- pnpm installed (`npm install -g pnpm`)
+- pnpm installed: `npm install -g pnpm`
 
 ### Steps
 
 ```bash
 # 1. Extract the zip and enter the project directory
-unzip 369-alliance-system-export.zip
+unzip 369-alliance-website-export.zip
 cd 369-alliance-system
 
 # 2. Install dependencies
@@ -73,52 +78,49 @@ pnpm check
 ```
 369-alliance-system/
 ├── client/
-│   ├── index.html                  ← HTML entry point (Google Fonts loaded here)
-│   ├── public/                     ← Static assets (favicon, robots.txt)
+│   ├── index.html                        ← HTML entry (Google Fonts CDN links here)
+│   ├── public/                           ← favicon, robots.txt only
 │   └── src/
-│       ├── App.tsx                 ← Root router and layout
-│       ├── main.tsx                ← React entry point
-│       ├── index.css               ← Global theme, CSS variables, Tailwind config
-│       ├── const.ts                ← App-wide constants
+│       ├── App.tsx                       ← Root router — website routes + system routes
+│       ├── main.tsx                      ← React entry point
+│       ├── index.css                     ← Global theme, CSS variables, Tailwind config
+│       ├── const.ts                      ← App-wide constants
 │       ├── pages/
-│       │   ├── LandingPage.tsx     ← Home / portal selector
-│       │   ├── RolePortal.tsx      ← Role-specific portal view
-│       │   ├── ActionManager.tsx   ← Action/task management dashboard
-│       │   ├── DataHub.tsx         ← Data hub / reporting view
-│       │   ├── Home.tsx            ← Legacy home (template base)
-│       │   └── NotFound.tsx        ← 404 page
+│       │   └── website/
+│       │       ├── WebsiteHome.tsx       ← Homepage — hero, pillars, CTA
+│       │       ├── WebsiteAbout.tsx      ← About page — team, values, story
+│       │       ├── WebsiteServices.tsx   ← Services overview page
+│       │       ├── WebsiteRolePage.tsx   ← Dynamic role-specific service page
+│       │       └── WebsiteContact.tsx    ← Contact page
 │       ├── components/
-│       │   ├── ProjectModal.tsx    ← Create/edit project modal
-│       │   ├── ViewModal.tsx       ← View project/item detail modal
-│       │   ├── ReportScreen.tsx    ← Reports screen component
-│       │   ├── OrderScreen.tsx     ← Orders/requests screen component
-│       │   ├── HistoryScreen.tsx   ← Audit history screen component
-│       │   ├── ToolsScreen.tsx     ← Tools/resources screen component
-│       │   ├── BookInspectionModal.tsx ← Book inspection workflow modal
-│       │   └── ui/                 ← Full shadcn/ui component library
+│       │   └── website/
+│       │       ├── WebsiteNav.tsx        ← Top navigation bar
+│       │       ├── WebsiteFooter.tsx     ← Footer (placeholders for ABN/address/phone)
+│       │       ├── ContactPopups.tsx     ← Get a Quote + Support modals
+│       │       └── ui/                  ← Full shadcn/ui component library
 │       ├── contexts/
-│       │   └── ThemeContext.tsx    ← Theme provider context
+│       │   └── ThemeContext.tsx          ← Theme provider
 │       ├── hooks/
-│       │   ├── useComposition.ts   ← Composition input hook
-│       │   ├── useMobile.tsx       ← Mobile breakpoint hook
-│       │   └── usePersistFn.ts     ← Stable function reference hook
+│       │   ├── useComposition.ts
+│       │   ├── useMobile.tsx
+│       │   └── usePersistFn.ts
 │       └── lib/
-│           ├── data.ts             ← All mock data and data structures
-│           └── utils.ts            ← Tailwind class merge utility
+│           ├── data.ts                   ← Service data, role content, pillar data
+│           └── utils.ts                  ← Tailwind class merge utility
 ├── server/
-│   └── index.ts                    ← Express placeholder (static-only project)
+│   └── index.ts                          ← Express placeholder (not used in prod)
 ├── shared/
-│   └── const.ts                    ← Shared constants (server + client)
+│   └── const.ts                          ← Shared constants
 ├── patches/
-│   └── wouter@3.7.1.patch          ← Wouter router patch
-├── ideas.md                        ← Original design brainstorm notes
-├── pdf_notes.md                    ← Project brief and PDF reference notes
+│   └── wouter@3.7.1.patch
+├── ideas.md                              ← Design brainstorm notes
+├── pdf_notes.md                          ← Project brief and reference notes
 ├── package.json
 ├── pnpm-lock.yaml
 ├── tsconfig.json
 ├── tsconfig.node.json
 ├── vite.config.ts
-└── components.json                 ← shadcn/ui configuration
+└── components.json                       ← shadcn/ui config
 ```
 
 ---
@@ -127,35 +129,64 @@ pnpm check
 
 | Page / Feature | Route | Status |
 |---|---|---|
-| Landing Page — Portal Selector | `/` | Complete |
-| Role Portal — Developers | `/portal/developers` | Complete |
-| Role Portal — Builders | `/portal/builders` | Complete |
-| Role Portal — Private Certifiers (PCA) | `/portal/pca` | Complete |
-| Role Portal — Design Practitioners | `/portal/design-practitioners` | Complete |
-| Role Portal — Strata Managers | `/portal/strata` | Complete |
-| Role Portal — Building Managers | `/portal/building-manager` | Complete |
-| Role Portal — Owners | `/portal/owners` | Complete |
-| Action Manager Dashboard | `/action-manager` | Complete |
-| Data Hub | `/data-hub` | Complete |
-| Project Modal (create/edit) | Modal overlay | Complete |
-| View Modal (detail view) | Modal overlay | Complete |
-| Report Screen | Embedded component | Complete |
-| Order Screen | Embedded component | Complete |
-| History Screen | Embedded component | Complete |
-| Tools Screen | Embedded component | Complete |
-| Book Inspection Modal | Modal overlay | Complete |
-| ADM → (Admin) navigation button | Nav header | Complete |
+| Homepage — Hero, Who We Serve panel, Six Pillars, CTA | `/website` | Complete |
+| Services Overview | `/website/services` | Complete |
+| RAB Act Services | `/website/services/rab-act` | Complete |
+| DBP Act Services | `/website/services/dbp-act` | Complete |
+| Planning Portal Services | `/website/services/planning-portal` | Complete |
+| Project Intervene Services | `/website/services/project-intervene` | Complete |
+| Strata Solutions Services | `/website/services/strata-solutions` | Complete |
+| CAS Complaints Services | `/website/services/cas-complaints` | Complete |
+| Role page — Developer | `/website/role/developer` | Complete |
+| Role page — Builder | `/website/role/builder` | Complete |
+| Role page — Private Certifier (PCA) | `/website/role/pca` | Complete |
+| Role page — Design Practitioner | `/website/role/design-practitioner` | Complete |
+| Role page — Building Practitioner | `/website/role/building-practitioner` | Complete |
+| Role page — Strata Manager | `/website/role/strata-manager` | Complete |
+| Role page — Building Manager | `/website/role/building-manager` | Complete |
+| Role page — Owners | `/website/role/owners` | Complete |
+| About Page | `/website/about` | Complete |
+| Contact Page | `/website/contact` | Complete |
+| Get a Quote modal | Overlay (nav CTA) | Complete |
+| Top navigation bar | All pages | Complete |
+| Footer | All pages | Complete (ABN/address/phone = placeholders) |
+| "Client System" button | Nav header | Links to `/` (system portal) |
+
+---
+
+## Pending Items (for Revision 2)
+
+The following items are placeholders awaiting real data:
+
+| Item | Location | Notes |
+|---|---|---|
+| ABN | `WebsiteFooter.tsx` | Replace `ABN XX XXX XXX XXX` |
+| Registered address | `WebsiteFooter.tsx` | Replace placeholder address |
+| Phone number | `WebsiteFooter.tsx` | Replace placeholder phone |
+| Email | `WebsiteFooter.tsx` | Currently `info@369alliance.com.au` — confirm |
+
+---
+
+## CDN Assets Used
+
+All images are served from the Manus CDN. These URLs are embedded directly in the source code:
+
+| Asset | Usage |
+|---|---|
+| `logo_symbol_square_cd006bc9.png` | Hero card logo symbol (192px) |
+| `nav_symbol_back_of_card.png` | Navigation bar logo |
+| Hero background | Dark city skyline (Unsplash CDN) |
 
 ---
 
 ## Notes for New Task
 
-- This is a **static frontend** project (no live database or backend). All data is sourced from `client/src/lib/data.ts` as mock/seed data. To add persistence, upgrade to a full-stack project with a database.
-- The `server/index.ts` is a placeholder only and is not used in the deployed static build.
-- All external images are referenced via CDN URLs (no local image files in the project).
-- The `vite-plugin-manus-runtime` dev dependency is a Manus-specific plugin and can be removed if deploying outside the Manus platform.
+- This is a **static frontend** project. No database or live backend is used.
+- The `server/index.ts` is a placeholder only and is not deployed.
+- The `vite-plugin-manus-runtime` dev dependency is Manus-specific and can be removed if deploying outside the Manus platform.
 - Google Fonts (Montserrat + IBM Plex Sans) are loaded via `<link>` tags in `client/index.html`.
+- The footer contact details (ABN, address, phone) are placeholders — update `WebsiteFooter.tsx` when details are available.
 
 ---
 
-*Exported from Manus project: 369-alliance-system | Checkpoint: de1bbc92 | Date: March 2026*
+*Exported from Manus project: 369-alliance-system | Checkpoint: 88a05658 (Final Revision 1) | Published: alliance369-vykdiath.manus.space | Date: March 2026*
