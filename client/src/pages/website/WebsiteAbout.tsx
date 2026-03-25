@@ -6,6 +6,7 @@ import { useState } from "react";
 import { WebsiteNav } from "@/components/website/WebsiteNav";
 import { WebsiteFooter } from "@/components/website/WebsiteFooter";
 import { ContactPopup, RoleCTABar, type PopupType } from "@/components/website/ContactPopups";
+import { SignInPopup } from "@/components/website/SignInPopup";
 
 const HERO_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310419663029262029/VyKdiatHMkCvCRqZzXD7NF/hero-main-8FrNvVRfi5P2dzSUj8J2RD.webp";
 const TEAM_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310419663029262029/VyKdiatHMkCvCRqZzXD7NF/about-team-guSb9WZNFw6o2LtKYrppWf.webp";
@@ -38,10 +39,11 @@ const milestones = [
 
 export default function WebsiteAbout() {
   const [popup, setPopup] = useState<PopupType>(null);
+  const [signIn, setSignIn] = useState(false);
 
   return (
     <div className="min-h-screen" style={{ background: "#f8f7f5" }}>
-      <WebsiteNav onOpenPopup={setPopup} />
+      <WebsiteNav onOpenPopup={setPopup} onOpenSignIn={() => setSignIn(true)} />
 
       {/* Hero */}
       <section className="relative pt-16 overflow-hidden" style={{ minHeight: "380px" }}>
@@ -168,6 +170,7 @@ export default function WebsiteAbout() {
 
       <WebsiteFooter onOpenPopup={setPopup} />
       <ContactPopup type={popup} onClose={() => setPopup(null)} />
+      <SignInPopup open={signIn} onClose={() => setSignIn(false)} />
     </div>
   );
 }

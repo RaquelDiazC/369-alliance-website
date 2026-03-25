@@ -19,6 +19,7 @@ import {
   BUILDING_CLASSES,
   PRACTITIONER_TYPES,
 } from "@/components/website/ContactPopups";
+import { SignInPopup } from "@/components/website/SignInPopup";
 
 const HERO_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310419663029262029/VyKdiatHMkCvCRqZzXD7NF/hero-strata-9GMjb3kgydVmf8Q3WY4E6C.webp";
 
@@ -31,6 +32,7 @@ interface DesignPractitioner {
 
 export default function WebsiteContact() {
   const [popup, setPopup] = useState<PopupType>(null);
+  const [signIn, setSignIn] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   // Form state — mirrors QuoteForm in ContactPopups
@@ -63,7 +65,7 @@ export default function WebsiteContact() {
 
   return (
     <div className="min-h-screen" style={{ background: "#f8f7f5" }}>
-      <WebsiteNav onOpenPopup={setPopup} />
+      <WebsiteNav onOpenPopup={setPopup} onOpenSignIn={() => setSignIn(true)} />
 
       {/* Hero */}
       <section className="relative pt-16 overflow-hidden" style={{ minHeight: "320px" }}>
@@ -475,6 +477,7 @@ export default function WebsiteContact() {
 
       <WebsiteFooter onOpenPopup={setPopup} />
       <ContactPopup type={popup} onClose={() => setPopup(null)} />
+      <SignInPopup open={signIn} onClose={() => setSignIn(false)} />
     </div>
   );
 }

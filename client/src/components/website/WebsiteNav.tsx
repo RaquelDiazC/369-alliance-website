@@ -10,9 +10,10 @@ import { type PopupType } from "./ContactPopups";
 
 interface WebsiteNavProps {
   onOpenPopup: (t: PopupType) => void;
+  onOpenSignIn?: () => void;
 }
 
-export function WebsiteNav({ onOpenPopup }: WebsiteNavProps) {
+export function WebsiteNav({ onOpenPopup, onOpenSignIn }: WebsiteNavProps) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [location] = useLocation();
@@ -80,12 +81,12 @@ export function WebsiteNav({ onOpenPopup }: WebsiteNavProps) {
             style={{ background: "linear-gradient(135deg,#7A6342,#A68A64)" }}>
             Get a Quote
           </button>
-          <Link
-            href="/system"
-            className="px-5 py-2 rounded-full text-sm font-semibold transition-all hover:opacity-90 hover:shadow-lg cursor-pointer inline-block"
-            style={{ background: "linear-gradient(135deg,rgba(255,255,255,0.95),rgba(220,220,230,0.85))", color: "#1a1a2e", textDecoration: "none" }}>
+          <button
+            onClick={() => onOpenSignIn?.()}
+            className="px-5 py-2 rounded-full text-sm font-semibold transition-all hover:opacity-90 hover:shadow-lg cursor-pointer"
+            style={{ background: "linear-gradient(135deg,rgba(255,255,255,0.95),rgba(220,220,230,0.85))", color: "#1a1a2e" }}>
             Client System
-          </Link>
+          </button>
         </div>
 
         {/* Mobile menu button */}
@@ -112,13 +113,12 @@ export function WebsiteNav({ onOpenPopup }: WebsiteNavProps) {
               style={{ background: "linear-gradient(135deg,#7A6342,#A68A64)" }}>
               Get a Quote
             </button>
-            <Link
-              href="/system"
-              onClick={() => setMenuOpen(false)}
-              className="w-full py-2.5 rounded-full text-sm font-semibold text-center cursor-pointer block"
-              style={{ background: "linear-gradient(135deg,rgba(255,255,255,0.95),rgba(220,220,230,0.85))", color: "#1a1a2e", textDecoration: "none" }}>
+            <button
+              onClick={() => { onOpenSignIn?.(); setMenuOpen(false); }}
+              className="w-full py-2.5 rounded-full text-sm font-semibold text-center cursor-pointer"
+              style={{ background: "linear-gradient(135deg,rgba(255,255,255,0.95),rgba(220,220,230,0.85))", color: "#1a1a2e" }}>
               Client System
-            </Link>
+            </button>
           </div>
         </div>
       )}

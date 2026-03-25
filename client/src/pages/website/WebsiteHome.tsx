@@ -10,6 +10,7 @@ import { Shield, FileCheck, Globe, Users, Building2, AlertCircle, ChevronRight }
 import { WebsiteNav } from "@/components/website/WebsiteNav";
 import { WebsiteFooter } from "@/components/website/WebsiteFooter";
 import { ContactPopup, type PopupType } from "@/components/website/ContactPopups";
+import { SignInPopup } from "@/components/website/SignInPopup";
 
 const HERO_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310419663029262029/VyKdiatHMkCvCRqZzXD7NF/hero-main-8FrNvVRfi5P2dzSUj8J2RD.webp";
 const COMPLIANCE_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310419663029262029/VyKdiatHMkCvCRqZzXD7NF/hero-compliance-BCrZQQPCPPiibs8a2DQjbZ.webp";
@@ -80,10 +81,11 @@ const values = [
 
 export default function WebsiteHome() {
   const [popup, setPopup] = useState<PopupType>(null);
+  const [signIn, setSignIn] = useState(false);
 
   return (
     <div className="min-h-screen" style={{ background: "#f8f7f5" }}>
-      <WebsiteNav onOpenPopup={setPopup} />
+      <WebsiteNav onOpenPopup={setPopup} onOpenSignIn={() => setSignIn(true)} />
 
       {/* ── Hero: Split layout ─────────────────────────────────────────────── */}
       <section className="relative min-h-screen flex items-stretch overflow-hidden">
@@ -388,6 +390,7 @@ export default function WebsiteHome() {
 
       <WebsiteFooter onOpenPopup={setPopup} />
       <ContactPopup type={popup} onClose={() => setPopup(null)} />
+      <SignInPopup open={signIn} onClose={() => setSignIn(false)} />
     </div>
   );
 }

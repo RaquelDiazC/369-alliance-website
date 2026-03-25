@@ -10,6 +10,7 @@ import { ArrowLeft, CheckCircle2, ChevronRight } from "lucide-react";
 import { WebsiteNav } from "@/components/website/WebsiteNav";
 import { WebsiteFooter } from "@/components/website/WebsiteFooter";
 import { ContactPopup, RoleCTABar, type PopupType } from "@/components/website/ContactPopups";
+import { SignInPopup } from "@/components/website/SignInPopup";
 
 const HERO_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310419663029262029/VyKdiatHMkCvCRqZzXD7NF/hero-compliance-BCrZQQPCPPiibs8a2DQjbZ.webp";
 const STRATA_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310419663029262029/VyKdiatHMkCvCRqZzXD7NF/hero-strata-9GMjb3kgydVmf8Q3WY4E6C.webp";
@@ -255,12 +256,13 @@ export default function WebsiteRolePage() {
   const params = useParams<{ role: string }>();
   const role = params.role || "developer";
   const [popup, setPopup] = useState<PopupType>(null);
+  const [signIn, setSignIn] = useState(false);
 
   const data = roleData[role] || roleData.developer;
 
   return (
     <div className="min-h-screen" style={{ background: "#f8f7f5" }}>
-      <WebsiteNav onOpenPopup={setPopup} />
+      <WebsiteNav onOpenPopup={setPopup} onOpenSignIn={() => setSignIn(true)} />
 
       {/* Hero */}
       <section className="relative pt-16 overflow-hidden" style={{ minHeight: "480px" }}>
@@ -409,6 +411,7 @@ export default function WebsiteRolePage() {
 
       <WebsiteFooter onOpenPopup={setPopup} />
       <ContactPopup type={popup} onClose={() => setPopup(null)} />
+      <SignInPopup open={signIn} onClose={() => setSignIn(false)} />
     </div>
   );
 }
