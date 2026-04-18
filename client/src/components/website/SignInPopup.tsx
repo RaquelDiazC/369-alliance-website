@@ -19,8 +19,8 @@ const inputCls =
 export function SignInPopup({ open, onClose }: SignInPopupProps) {
   const [, navigate] = useLocation();
   const [view, setView] = useState<"signin" | "forgot" | "reset-sent">("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("demo@369alliance.com");
+  const [password, setPassword] = useState("demo");
   const [resetEmail, setResetEmail] = useState("");
 
   if (!open) return null;
@@ -81,9 +81,9 @@ export function SignInPopup({ open, onClose }: SignInPopupProps) {
                   Email <span style={{ color: "#A68A64" }}>*</span>
                 </label>
                 <input
-                  type="email"
+                  type="text"
                   className={inputCls}
-                  placeholder="you@company.com"
+                  placeholder="Email or username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoFocus

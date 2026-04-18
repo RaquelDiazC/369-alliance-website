@@ -4,9 +4,22 @@
  * Design: Dark Navy + Bronze Accents (consistent with system theme)
  */
 import { useLocation } from "wouter";
+import { getProjects } from "@/lib/data";
+import { Logo369 } from "@/components/Logo369";
+
+function getSavedAuditCount(): number {
+  try {
+    const idx = JSON.parse(localStorage.getItem("dbp_369_index") || "[]");
+    return Array.isArray(idx) ? idx.length : 0;
+  } catch { return 0; }
+}
 
 export default function AdmLanding() {
   const [, navigate] = useLocation();
+  const projects = getProjects();
+  const activeProjects = projects.filter(p => p.projectOutcome === "WIP").length;
+  const totalProjects = projects.length;
+  const savedAudits = getSavedAuditCount();
 
   const cards = [
     {
@@ -27,11 +40,67 @@ export default function AdmLanding() {
         </svg>
       ),
       title: "Action Management",
-      desc: "Manage all inspection projects across Proactive Insp, From FORM, and CLIENT tabs. Add, edit, filter, book inspections, and track progress.",
+      desc: `${activeProjects} active · ${totalProjects} total projects. Manage Proactive Insp, From FORM, and CLIENT tabs. Add, edit, filter, book inspections, and track progress.`,
       cta: "Open →",
       path: "/action-manager",
       accent: "linear-gradient(135deg,#7A6342,#A68A64)",
       border: "#A68A64",
+      external: false,
+    },
+    {
+      key: "iauditor",
+      icon: (
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="56" height="56" rx="14" fill="url(#ia-grad)" />
+          {/* clipboard */}
+          <rect x="15" y="14" width="26" height="30" rx="3" fill="#fff" fillOpacity="0.15" />
+          <rect x="15" y="14" width="26" height="30" rx="3" stroke="#fff" strokeOpacity="0.7" strokeWidth="2" />
+          {/* clip top */}
+          <rect x="21" y="11" width="14" height="7" rx="3.5" fill="#fff" fillOpacity="0.9" />
+          {/* check lines */}
+          <polyline points="20,25 23,28 30,21" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <rect x="20" y="33" width="16" height="2.5" rx="1.25" fill="#fff" fillOpacity="0.6" />
+          <rect x="20" y="38" width="11" height="2.5" rx="1.25" fill="#fff" fillOpacity="0.4" />
+          <defs>
+            <linearGradient id="ia-grad" x1="0" y1="0" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#2d7a4f" />
+              <stop offset="1" stopColor="#3da068" />
+            </linearGradient>
+          </defs>
+        </svg>
+      ),
+      title: "iAuditor for RAB Act",
+      desc: "Conduct site inspections and compliance audits under the Residential Apartment Buildings Act using SafetyCulture iAuditor.",
+      cta: "Open iAuditor →",
+      path: "/iauditor",
+      accent: "linear-gradient(135deg,#2d7a4f,#3da068)",
+      border: "#3da068",
+      external: false,
+    },
+    {
+      key: "dbp",
+      icon: (
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="56" height="56" rx="14" fill="url(#dbp-grad)" />
+          {/* shield */}
+          <path d="M28 13 L40 18 L40 30 C40 37 28 44 28 44 C28 44 16 37 16 30 L16 18 Z" fill="#fff" fillOpacity="0.15" stroke="#fff" strokeOpacity="0.8" strokeWidth="2" />
+          {/* tick */}
+          <polyline points="22,29 26,33 34,24" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <defs>
+            <linearGradient id="dbp-grad" x1="0" y1="0" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#7A4A2E" />
+              <stop offset="1" stopColor="#C07040" />
+            </linearGradient>
+          </defs>
+        </svg>
+      ),
+      title: "Auditor for DBP Act",
+      desc: `${savedAudits > 0 ? `${savedAudits} saved audit${savedAudits !== 1 ? "s" : ""}. ` : ""}Run structured compliance audits under the Design and Building Practitioners Act. Record breaches, practitioners, and generate reports.`,
+      cta: "Open Auditor →",
+      path: "/dbp-auditor",
+      accent: "linear-gradient(135deg,#7A4A2E,#C07040)",
+      border: "#C07040",
+      external: false,
     },
     {
       key: "dashboard",
@@ -58,6 +127,7 @@ export default function AdmLanding() {
       path: "/dashboard",
       accent: "linear-gradient(135deg,#1e3a5f,#2d6a8f)",
       border: "#2d6a8f",
+      external: false,
     },
   ];
 
@@ -66,13 +136,7 @@ export default function AdmLanding() {
       {/* Header */}
       <header style={{ background: "#1a1a2e", height: 64, display: "flex", alignItems: "center", padding: "0 32px", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{
-            width: 40, height: 40,
-            background: "linear-gradient(135deg,#7A6342,#A68A64)",
-            borderRadius: 10,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontWeight: 800, fontSize: 16, color: "#fff"
-          }}>369</div>
+          <Logo369 size={40} variant="dark" />
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, color: "#fff", letterSpacing: "0.02em" }}>369 Alliance</div>
             <div style={{ fontSize: 11, color: "#A68A64", letterSpacing: "0.06em", textTransform: "uppercase" }}>Administration</div>
@@ -100,9 +164,9 @@ export default function AdmLanding() {
       <main style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "60px 24px" }}>
         <div style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: 32,
-          maxWidth: 760,
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 28,
+          maxWidth: 900,
           width: "100%",
         }}>
           {cards.map(card => (

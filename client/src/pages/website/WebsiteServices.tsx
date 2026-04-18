@@ -1,10 +1,11 @@
 /**
- * 369 Alliance – Services Page (All 6 Pillars)
+ * 369 Alliance – Services Page
+ * Editorial accordion layout with pillar details
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
-import { Shield, FileCheck, Globe, AlertCircle, Building2, Users, ChevronRight, ArrowRight } from "lucide-react";
+import { Shield, FileCheck, Globe, AlertCircle, Building2, Users, ArrowRight, ChevronDown } from "lucide-react";
 import { WebsiteNav } from "@/components/website/WebsiteNav";
 import { WebsiteFooter } from "@/components/website/WebsiteFooter";
 import { ContactPopup, type PopupType } from "@/components/website/ContactPopups";
@@ -12,17 +13,33 @@ import { SignInPopup } from "@/components/website/SignInPopup";
 
 const HERO_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310419663029262029/VyKdiatHMkCvCRqZzXD7NF/hero-compliance-BCrZQQPCPPiibs8a2DQjbZ.webp";
 
+function useReveal() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { el.classList.add("visible"); obs.unobserve(el); } },
+      { threshold: 0.12 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return ref;
+}
+
+function Reveal({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  const ref = useReveal();
+  return <div ref={ref} className={`reveal ${className}`}>{children}</div>;
+}
+
 const pillars = [
   {
-    icon: Shield,
-    number: "01",
-    title: "RAB Act Expertise",
-    subtitle: "Residential Apartment Buildings Act 2020",
+    icon: Shield, number: "01", title: "RAB Act Expertise", subtitle: "Residential Apartment Buildings Act 2020",
     href: "/website/services/rab-act",
-    color: "#1a1a2e",
-    overview: "The Residential Apartment Buildings (Compliance and Enforcement Powers) Act 2020 (RAB Act) gives the NSW Building Commissioner broad powers to inspect, audit, and issue Work Direction Notices for serious and potential serious defects in residential apartment buildings. 369 Alliance provides comprehensive RAB Act compliance services.",
+    overview: "The RAB Act gives the NSW Building Commissioner broad powers to inspect, audit, and issue Work Direction Notices for serious defects in residential apartment buildings. 369 Alliance provides comprehensive RAB Act compliance services.",
     keyServices: [
-      "Pre-OC compliance audits covering waterproofing, fire safety, structure, cladding, and building services",
+      "Pre-OC compliance audits — waterproofing, fire safety, structure, cladding, building services",
       "Post-OC defect identification and rectification coordination",
       "Work Direction Notice (WDN) management and response",
       "Stop-work order management and compliance pathways",
@@ -32,13 +49,9 @@ const pillars = [
     who: ["Developers", "Builders", "Private Certifiers", "Building Practitioners"],
   },
   {
-    icon: FileCheck,
-    number: "02",
-    title: "DBP Act Expertise",
-    subtitle: "Design and Building Practitioners Act 2020",
+    icon: FileCheck, number: "02", title: "DBP Act Expertise", subtitle: "Design and Building Practitioners Act 2020",
     href: "/website/services/dbp-act",
-    color: "#1e2a3a",
-    overview: "The Design and Building Practitioners Act 2020 (DBP Act) mandates that registered practitioners declare that their designs and buildings comply with the Building Code of Australia. 369 Alliance provides specialist consultancy to help practitioners meet their obligations and manage liability.",
+    overview: "The DBP Act mandates that registered practitioners declare compliance with the Building Code of Australia. 369 Alliance provides specialist consultancy to help practitioners meet obligations and manage liability.",
     keyServices: [
       "Design declaration audits and compliance verification",
       "Compliance pathway development for complex projects",
@@ -50,13 +63,9 @@ const pillars = [
     who: ["Design Practitioners", "Building Practitioners", "Developers", "Builders"],
   },
   {
-    icon: Globe,
-    number: "03",
-    title: "Planning Portal Solutions",
-    subtitle: "NSW Planning Portal Management",
+    icon: Globe, number: "03", title: "Planning Portal Solutions", subtitle: "NSW Planning Portal Management",
     href: "/website/services/planning-portal",
-    color: "#1a2e2a",
-    overview: "The NSW Planning Portal is the mandatory platform for all development applications, construction certificates, and occupation certificates. Errors in portal submissions cause costly delays. 369 Alliance provides end-to-end portal management to keep your project on track.",
+    overview: "The NSW Planning Portal is the mandatory platform for all development applications, construction certificates, and occupation certificates. Errors cause costly delays. We provide end-to-end portal management.",
     keyServices: [
       "Development Application (DA) preparation and lodgement",
       "Construction Certificate (CC) submission management",
@@ -68,31 +77,23 @@ const pillars = [
     who: ["Developers", "Builders", "Private Certifiers", "Building Practitioners"],
   },
   {
-    icon: AlertCircle,
-    number: "04",
-    title: "Project Intervene",
-    subtitle: "Independent Superintendent Services",
+    icon: AlertCircle, number: "04", title: "Project Intervene", subtitle: "Independent Superintendent Services",
     href: "/website/services/project-intervene",
-    color: "#2a1a1a",
-    overview: "Project Intervene is the NSW Building Commissioner's program for escalated compliance matters in residential apartment buildings. 369 Alliance serves as independent superintendents, coordinating defect investigation, rectification strategy, and stakeholder management.",
+    overview: "Project Intervene is the Building Commissioner's program for escalated compliance matters. 369 Alliance serves as independent superintendents — coordinating investigation, rectification, and stakeholder management.",
     keyServices: [
       "Independent superintendent appointment and management",
       "Defect investigation and evidence gathering",
       "Rectification strategy development and coordination",
-      "Stakeholder management (developers, builders, owners)",
+      "Stakeholder management across all parties",
       "Progress monitoring and compliance reporting",
       "Liaison with the NSW Building Commission",
     ],
     who: ["Developers", "Builders", "Owners Corporations", "Strata Managers"],
   },
   {
-    icon: Building2,
-    number: "05",
-    title: "Strata Solutions",
-    subtitle: "Strata Compliance & Remedial Works",
+    icon: Building2, number: "05", title: "Strata Solutions", subtitle: "Strata Compliance & Remedial Works",
     href: "/website/services/strata",
-    color: "#1a1e2e",
-    overview: "NSW has over 85,000 strata schemes, and compliance obligations for strata buildings are growing. From mandatory SBBIS assessments to remedial works coordination and CAS complaint management, 369 Alliance is the preferred compliance partner for strata portfolios.",
+    overview: "NSW has over 85,000 strata schemes with growing compliance obligations. From SBBIS assessments to remedial works — 369 Alliance is the preferred compliance partner for strata portfolios.",
     keyServices: [
       "Strata Building Bond and Inspections Scheme (SBBIS) assessments",
       "Defect identification and investigation in strata buildings",
@@ -104,13 +105,9 @@ const pillars = [
     who: ["Strata Managers", "Building Managers", "Owners Corporations", "Property Owners"],
   },
   {
-    icon: Users,
-    number: "06",
-    title: "CAS Complaints",
-    subtitle: "Complaint Investigation & Resolution",
+    icon: Users, number: "06", title: "CAS Complaints", subtitle: "Complaint Investigation & Resolution",
     href: "/website/services/cas",
-    color: "#1e1a2e",
-    overview: "The NSW Building Commission investigates complaints about building work and building practitioners through the Complaints and Assessment Service (CAS). 369 Alliance provides expert investigation, evidence gathering, and report preparation for CAS matters.",
+    overview: "The Building Commission investigates complaints about building work through the Complaints and Assessment Service (CAS). We provide expert investigation, evidence gathering, and report preparation.",
     keyServices: [
       "Building defect investigation and evidence gathering",
       "Compliance assessment against BCA and Australian Standards",
@@ -129,130 +126,131 @@ export default function WebsiteServices() {
   const [active, setActive] = useState<number | null>(null);
 
   return (
-    <div className="min-h-screen" style={{ background: "#f8f7f5" }}>
+    <div className="min-h-screen" style={{ background: "#f8f7f4" }}>
       <WebsiteNav onOpenPopup={setPopup} onOpenSignIn={() => setSignIn(true)} />
 
       {/* Hero */}
-      <section className="relative pt-16 overflow-hidden" style={{ minHeight: "380px" }}>
+      <section className="relative pt-16 overflow-hidden" style={{ minHeight: "400px" }}>
         <div className="absolute inset-0">
-          <img src={HERO_IMG} alt="Services" className="w-full h-full object-cover" />
-          <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(26,26,46,0.95) 0%, rgba(26,26,46,0.8) 60%, rgba(26,26,46,0.65) 100%)" }} />
+          <img src={HERO_IMG} alt="" className="w-full h-full object-cover" style={{ filter: "brightness(0.35)" }} />
+          <div className="absolute inset-0" style={{ background: "linear-gradient(160deg, rgba(15,15,30,0.9) 0%, rgba(15,15,30,0.7) 100%)" }} />
         </div>
-        <div className="relative z-10 max-w-7xl mx-auto px-6 py-20">
-          <div className="inline-block px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-5"
-            style={{ background: "rgba(166,138,100,0.2)", border: "1px solid rgba(166,138,100,0.4)", color: "#A68A64" }}>
-            Our Services
+        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-10 py-24">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-px w-10" style={{ background: "#A68A64" }} />
+            <span className="text-[11px] font-semibold tracking-[0.2em] uppercase" style={{ color: "#A68A64" }}>Our Services</span>
           </div>
-          <h1 className="text-5xl font-bold text-white mb-5" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Six Pillars of Compliance Excellence
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-5 leading-tight"
+            style={{ fontFamily: "'Playfair Display', serif" }}>
+            Six Pillars of<br />Compliance Excellence
           </h1>
-          <p className="text-lg max-w-2xl" style={{ color: "rgba(255,255,255,0.7)" }}>
-            369 Alliance is the only NSW consultancy offering all six compliance pillars under one roof — eliminating the need to manage multiple consultants across your project lifecycle.
+          <p className="text-[15px] max-w-lg" style={{ color: "rgba(255,255,255,0.55)" }}>
+            The only NSW consultancy offering all six compliance pillars under one roof.
           </p>
         </div>
+        <div className="absolute bottom-0 left-0 right-0 h-20"
+          style={{ background: "linear-gradient(to top, #f8f7f4, transparent)" }} />
       </section>
 
-      {/* Pillars */}
+      {/* Pillar accordion */}
       <section className="py-20">
-        <div className="max-w-7xl mx-auto px-6 space-y-8">
+        <div className="max-w-4xl mx-auto px-6 lg:px-10 space-y-4">
           {pillars.map((p, i) => {
             const Icon = p.icon;
             const isOpen = active === i;
             return (
-              <div key={p.number}
-                className="bg-white rounded-2xl border overflow-hidden transition-all duration-300 hover:shadow-lg"
-                style={{ borderColor: isOpen ? "#A68A64" : "#e5e7eb" }}>
-                {/* Header row */}
-                <button
-                  className="w-full flex items-center gap-6 p-7 text-left"
-                  onClick={() => setActive(isOpen ? null : i)}>
-                  <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: "linear-gradient(135deg,#1a1a2e,#252545)" }}>
-                    <Icon size={24} style={{ color: "#A68A64" }} />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-1">
-                      <span className="text-xs font-bold" style={{ color: "#A68A64", fontFamily: "'IBM Plex Mono', monospace" }}>
-                        PILLAR {p.number}
-                      </span>
+              <Reveal key={p.number}>
+                <div className="bg-white border overflow-hidden transition-all duration-300"
+                  style={{ borderColor: isOpen ? "rgba(166,138,100,0.4)" : "#eae8e3", borderRadius: "6px" }}>
+                  <button
+                    className="w-full flex items-center gap-5 p-6 text-left group"
+                    onClick={() => setActive(isOpen ? null : i)}>
+                    <div className="w-12 h-12 flex items-center justify-center flex-shrink-0"
+                      style={{ background: "#1a1a2e", borderRadius: "8px" }}>
+                      <Icon size={20} style={{ color: "#A68A64" }} />
                     </div>
-                    <h2 className="text-xl font-bold" style={{ color: "#1a1a2e", fontFamily: "'Playfair Display', serif" }}>{p.title}</h2>
-                    <p className="text-sm" style={{ color: "#6b7280" }}>{p.subtitle}</p>
-                  </div>
-                  <ChevronRight size={20} className="flex-shrink-0 transition-transform"
-                    style={{ color: "#A68A64", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }} />
-                </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-0.5">
+                        <span className="text-[10px] font-bold tracking-wider" style={{ color: "#A68A64", fontFamily: "'IBM Plex Mono', monospace" }}>
+                          PILLAR {p.number}
+                        </span>
+                      </div>
+                      <h2 className="text-lg font-bold truncate" style={{ color: "#1a1a2e", fontFamily: "'Playfair Display', serif" }}>
+                        {p.title}
+                      </h2>
+                    </div>
+                    <ChevronDown size={18} className="flex-shrink-0 transition-transform duration-300"
+                      style={{ color: "#A68A64", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+                  </button>
 
-                {/* Expanded content */}
-                {isOpen && (
-                  <div className="px-7 pb-7 border-t" style={{ borderColor: "#f0ede8" }}>
-                    <div className="pt-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                      <div className="lg:col-span-2">
-                        <p className="text-sm leading-relaxed mb-6" style={{ color: "#374151" }}>{p.overview}</p>
-                        <h4 className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: "#7A6342" }}>Key Services</h4>
-                        <ul className="space-y-2.5">
-                          {p.keyServices.map((s, j) => (
-                            <li key={j} className="flex items-start gap-3">
-                              <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ background: "#A68A64" }} />
-                              <span className="text-sm" style={{ color: "#374151" }}>{s}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: "#7A6342" }}>Who This Serves</h4>
-                        <div className="flex flex-wrap gap-2 mb-6">
-                          {p.who.map(w => (
-                            <span key={w} className="px-3 py-1.5 rounded-full text-xs font-medium"
-                              style={{ background: "rgba(26,26,46,0.07)", color: "#1a1a2e" }}>
-                              {w}
-                            </span>
-                          ))}
+                  <div className="overflow-hidden transition-all duration-500"
+                    style={{ maxHeight: isOpen ? "600px" : "0", opacity: isOpen ? 1 : 0 }}>
+                    <div className="px-6 pb-7 pt-2" style={{ borderTop: "1px solid #f0ede8" }}>
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-5">
+                        <div className="lg:col-span-2">
+                          <p className="text-[14px] leading-relaxed mb-6" style={{ color: "#374151" }}>{p.overview}</p>
+                          <h4 className="text-[10px] font-bold tracking-[0.14em] uppercase mb-4" style={{ color: "#7A6342" }}>Key Services</h4>
+                          <ul className="space-y-2.5">
+                            {p.keyServices.map((s, j) => (
+                              <li key={j} className="flex items-start gap-3">
+                                <div className="w-1 h-1 rounded-full mt-2 flex-shrink-0" style={{ background: "#A68A64" }} />
+                                <span className="text-[13px] leading-relaxed" style={{ color: "#4b5563" }}>{s}</span>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
-                        <div className="flex flex-col gap-3">
+                        <div>
+                          <h4 className="text-[10px] font-bold tracking-[0.14em] uppercase mb-4" style={{ color: "#7A6342" }}>Who This Serves</h4>
+                          <div className="flex flex-wrap gap-2 mb-6">
+                            {p.who.map(w => (
+                              <span key={w} className="px-3 py-1.5 text-[11px] font-medium"
+                                style={{ background: "rgba(26,26,46,0.05)", color: "#1a1a2e", borderRadius: "3px" }}>
+                                {w}
+                              </span>
+                            ))}
+                          </div>
                           <button onClick={() => setPopup("quote")}
-                            className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold text-white"
-                            style={{ background: "linear-gradient(135deg,#7A6342,#A68A64)" }}>
-                            Request a Quote <ArrowRight size={14} />
+                            className="group w-full flex items-center justify-center gap-2 py-2.5 text-[13px] font-semibold text-white transition-all duration-200"
+                            style={{ background: "linear-gradient(135deg,#7A6342,#A68A64)", borderRadius: "4px" }}>
+                            Request a Quote <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
                           </button>
-                          <Link href={p.href}>
-                            <div className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium border cursor-pointer hover:bg-gray-50 transition-colors"
-                              style={{ borderColor: "#e5e7eb", color: "#374151" }}>
-                              Learn More <ChevronRight size={14} />
-                            </div>
-                          </Link>
                         </div>
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              </Reveal>
             );
           })}
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-20" style={{ background: "#1a1a2e" }}>
-        <div className="max-w-3xl mx-auto px-6 text-center">
-          <h2 className="text-4xl font-bold text-white mb-5" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Not Sure Which Service You Need?
-          </h2>
-          <p className="text-lg mb-8" style={{ color: "rgba(255,255,255,0.6)" }}>
-            Our team will assess your situation and recommend the right compliance pathway for your project.
-          </p>
-          <div className="flex flex-wrap gap-4 justify-center">
-            <button onClick={() => setPopup("quote")}
-              className="px-8 py-4 rounded-full text-base font-semibold text-white hover:opacity-90 transition-all"
-              style={{ background: "linear-gradient(135deg,#7A6342,#A68A64)" }}>
-              Request a Quote
-            </button>
-            <button onClick={() => setPopup("message")}
-              className="px-8 py-4 rounded-full text-base font-semibold border-2 hover:bg-white/10 transition-all"
-              style={{ borderColor: "rgba(255,255,255,0.4)", color: "#fff" }}>
-              Send a Message
-            </button>
-          </div>
+      <section className="py-24 relative overflow-hidden noise-overlay" style={{ background: "#1a1a2e" }}>
+        <div className="absolute inset-0 opacity-[0.07]"
+          style={{ backgroundImage: "radial-gradient(ellipse at 30% 50%, #A68A64, transparent 55%)" }} />
+        <div className="relative z-10 max-w-2xl mx-auto px-6 text-center">
+          <Reveal>
+            <div className="h-px w-16 mx-auto mb-8" style={{ background: "#A68A64" }} />
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-5" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Not Sure Which Service You Need?
+            </h2>
+            <p className="text-[15px] mb-10" style={{ color: "rgba(255,255,255,0.45)" }}>
+              Our team will assess your situation and recommend the right compliance pathway.
+            </p>
+            <div className="flex flex-wrap gap-3 justify-center">
+              <button onClick={() => setPopup("quote")}
+                className="group flex items-center gap-2 px-7 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:shadow-lg hover:shadow-amber-900/25"
+                style={{ background: "linear-gradient(135deg,#7A6342,#A68A64)", borderRadius: "4px" }}>
+                Request a Quote <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+              <button onClick={() => setPopup("message")}
+                className="px-7 py-3.5 text-sm font-medium border transition-all duration-300 hover:border-white/30"
+                style={{ borderColor: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.6)", borderRadius: "4px" }}>
+                Send a Message
+              </button>
+            </div>
+          </Reveal>
         </div>
       </section>
 

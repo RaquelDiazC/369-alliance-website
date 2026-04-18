@@ -161,6 +161,141 @@
     box-shadow: 0 2px 8px rgba(122,99,66,0.35);
   }
 
+  /* ── Premium Website Styles ─────────────────────────────────── */
+
+  /* Reveal on scroll */
+  .reveal {
+    opacity: 0;
+    transform: translateY(32px);
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .reveal-delay-1 { transition-delay: 0.1s; }
+  .reveal-delay-2 { transition-delay: 0.2s; }
+  .reveal-delay-3 { transition-delay: 0.3s; }
+  .reveal-delay-4 { transition-delay: 0.4s; }
+  .reveal-delay-5 { transition-delay: 0.5s; }
+
+  /* Horizontal rule — architectural accent */
+  .hr-bronze {
+    width: 56px;
+    height: 2px;
+    background: linear-gradient(90deg, #A68A64, #7A6342);
+    border: none;
+    border-radius: 1px;
+  }
+
+  /* Subtle noise overlay for sections */
+  .noise-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.03;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px;
+  }
+
+  /* Diagonal section divider */
+  .section-slant {
+    position: relative;
+  }
+  .section-slant::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: inherit;
+    clip-path: polygon(0 0, 100% 0, 100% 0%, 0 100%);
+    z-index: 1;
+  }
+
+  /* Fancy quote marks for testimonial-style sections */
+  .quote-mark::before {
+    content: '\201C';
+    font-family: 'Playfair Display', serif;
+    font-size: 6rem;
+    line-height: 1;
+    color: rgba(166, 138, 100, 0.12);
+    position: absolute;
+    top: -0.15em;
+    left: -0.05em;
+  }
+
+  /* Animated counter number */
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .count-animate {
+    animation: countUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Smooth image parallax placeholder (JS-driven) */
+  .parallax-img {
+    will-change: transform;
+    transition: transform 0.1s linear;
+  }
+
+  /* Premium link underline animation */
+  .link-underline {
+    position: relative;
+    display: inline-block;
+  }
+  .link-underline::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: #A68A64;
+    transition: width 0.3s ease;
+  }
+  .link-underline:hover::after {
+    width: 100%;
+  }
+
+  /* Staggered card hover */
+  .card-lift {
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .card-lift:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 40px rgba(26,26,46,0.1), 0 8px 16px rgba(26,26,46,0.06);
+  }
+
+  /* Section number — large decorative */
+  .section-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 8rem;
+    font-weight: 700;
+    line-height: 1;
+    color: rgba(26,26,46,0.03);
+    position: absolute;
+    top: -0.15em;
+    right: 0;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  /* Marquee for stats */
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .marquee-track {
+    animation: marquee 30s linear infinite;
+  }
+  .marquee-track:hover {
+    animation-play-state: paused;
+  }
+
   /* Navy header */
   .bg-navy {
     background-color: #1a1a2e;

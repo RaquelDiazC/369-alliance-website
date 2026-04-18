@@ -1,390 +1,453 @@
 /**
  * 369 Alliance – Website Home Page
- * Design: Deep Navy + Bronze + Playfair Display headings
- * Sections: Hero (split: left=logo+text, right=role cards), Stats, 6 Pillars, Why 369, Values, CTA
+ * Editorial, hand-crafted design — asymmetric layouts, architectural lines,
+ * scroll-triggered reveals, and intentional white space.
+ * Brand: Deep Navy #1a1a2e + Bronze #7A6342–#A68A64
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "wouter";
-import { Shield, FileCheck, Globe, Users, Building2, AlertCircle, ChevronRight } from "lucide-react";
+import { Shield, FileCheck, Globe, Users, Building2, AlertCircle, ArrowRight, ArrowUpRight } from "lucide-react";
 import { WebsiteNav } from "@/components/website/WebsiteNav";
 import { WebsiteFooter } from "@/components/website/WebsiteFooter";
 import { ContactPopup, type PopupType } from "@/components/website/ContactPopups";
 import { SignInPopup } from "@/components/website/SignInPopup";
+import { Logo369 } from "@/components/Logo369";
 
 const HERO_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310419663029262029/VyKdiatHMkCvCRqZzXD7NF/hero-main-8FrNvVRfi5P2dzSUj8J2RD.webp";
 const COMPLIANCE_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310419663029262029/VyKdiatHMkCvCRqZzXD7NF/hero-compliance-BCrZQQPCPPiibs8a2DQjbZ.webp";
 const STRATA_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310419663029262029/VyKdiatHMkCvCRqZzXD7NF/hero-strata-9GMjb3kgydVmf8Q3WY4E6C.webp";
 const TEAM_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310419663029262029/VyKdiatHMkCvCRqZzXD7NF/about-team-guSb9WZNFw6o2LtKYrppWf.webp";
 
-// ─── 369 Alliance Logo Symbol SVG ────────────────────────────────────────────────────
-// Built from the official Logo Symbol Reference Guide (7 March 2026).
-//
-// LAYER STRUCTURE (bottom to top):
-//   L1: Construction grid — faint grey (#CCCCCC ~30% opacity) horizontal/vertical lines
-//   L2: Single arc ring — ~305° coverage, gap at 11-12 o'clock (top-left, ~330°–360°/0°)
-//       Gradient: navy #1a1a2e (bottom-left) → gold #A68A64 (top-right)
-//       Stroke weight: ~9% of diameter
-//   L3: Three nodes at 9/3/6 o'clock — gold fill #A68A64, white numbers #FFFFFF
-//       - Node “9” at 9 o'clock (270° from top = LEFT)
-//       - Node “3” at 3 o'clock (30° from top = TOP-RIGHT, 120° from “9”)
-//       - Node “6” at 6 o'clock (150° from top = BOTTOM-RIGHT, 120° from “3”)
-//   L4: Spoke lines — thin grey #AAAAAA lines from center to each node (Y/Mercedes pattern)
-//   L5: Center dot — small grey #AAAAAA filled circle
-//   L6: Optional Fibonacci spiral — very light grey, low opacity
-function Logo369({ size = 130 }: { size?: number }) {
-  // Square crop (280x280) centred on the circle — white margins removed on all sides
-  // Circle sits centred in the image, so it displays centred in the card
+// ─── Scroll reveal hook ──────────────────────────────────────
+function useReveal() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { el.classList.add("visible"); obs.unobserve(el); } },
+      { threshold: 0.15 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return ref;
+}
+
+function Reveal({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  const ref = useReveal();
   return (
-    <img
-      src="https://d2xsxph8kpxj0f.cloudfront.net/310419663029262029/VyKdiatHMkCvCRqZzXD7NF/logo_symbol_square_cd006bc9.png"
-      alt="369 Alliance symbol"
-      width={size}
-      height={size}
-      style={{ objectFit: 'contain', display: 'block' }}
-    />
+    <div ref={ref} className={`reveal ${delay ? `reveal-delay-${delay}` : ""} ${className}`}>
+      {children}
+    </div>
   );
 }
 
+// ─── Data ────────────────────────────────────────────────────
 const pillars = [
-  { icon: Shield, number: "01", title: "RAB Act Expertise", subtitle: "Building Inspections & Audits", desc: "Comprehensive compliance inspections and audits under the Residential Apartment Buildings (Compliance and Enforcement Powers) Act 2020. We conduct pre-OC and post-OC audits covering waterproofing, fire safety, structure, cladding, and building services.", href: "/website/services/rab-act" },
-  { icon: FileCheck, number: "02", title: "DBP Act Expertise", subtitle: "Design & Building Practitioners", desc: "Specialist consultancy under the Design and Building Practitioners Act 2020. We support developers, builders, and practitioners with design declaration audits, compliance pathway development, and practitioner registration requirements.", href: "/website/services/dbp-act" },
-  { icon: Globe, number: "03", title: "Planning Portal Solutions", subtitle: "NSW Planning Portal Management", desc: "End-to-end management of NSW Planning Portal submissions. Our experts handle document preparation, portal lodgement, troubleshooting, and approval tracking — reducing costly errors and project delays.", href: "/website/services/planning-portal" },
-  { icon: AlertCircle, number: "04", title: "Project Intervene", subtitle: "Guidance & Coordination", desc: "Proactive management of matters escalated through the NSW Building Commissioner's Project Intervene program. We provide guidance, coordinate defect investigation, rectification strategy, and stakeholder management.", href: "/website/services/project-intervene" },
-  { icon: Building2, number: "05", title: "Strata Solutions", subtitle: "Strata Compliance & Remedial Works", desc: "Specialised compliance services for NSW's 85,000+ strata schemes. From SBBIS assessments and defect identification to remedial works specification and tender evaluation — we protect strata communities.", href: "/website/services/strata" },
-  { icon: Users, number: "06", title: "CAS Complaints", subtitle: "Complaint Investigation & Resolution", desc: "Expert investigation and resolution of complaints in occupied buildings. We gather evidence, assess compliance against BCA and Australian Standards, and prepare reports for the Building Commission.", href: "/website/services/cas" },
+  { icon: Shield, num: "01", title: "RAB Act Expertise", sub: "Building Inspections & Audits", desc: "Comprehensive compliance inspections and audits under the Residential Apartment Buildings Act 2020 — from pre-OC to post-OC, covering waterproofing, fire safety, structure, and cladding.", href: "/website/services/rab-act" },
+  { icon: FileCheck, num: "02", title: "DBP Act Expertise", sub: "Design & Building Practitioners", desc: "Specialist consultancy under the Design and Building Practitioners Act 2020. Design declaration audits, compliance pathways, and practitioner registration support.", href: "/website/services/dbp-act" },
+  { icon: Globe, num: "03", title: "Planning Portal", sub: "NSW Portal Management", desc: "End-to-end management of NSW Planning Portal submissions — document preparation, lodgement, troubleshooting, and approval tracking.", href: "/website/services/planning-portal" },
+  { icon: AlertCircle, num: "04", title: "Project Intervene", sub: "Guidance & Coordination", desc: "Management of matters escalated through the NSW Building Commissioner's Project Intervene program — investigation, rectification strategy, and stakeholder coordination.", href: "/website/services/project-intervene" },
+  { icon: Building2, num: "05", title: "Strata Solutions", sub: "Compliance & Remedial Works", desc: "Specialised compliance services for NSW's 85,000+ strata schemes — SBBIS assessments, defect identification, remedial works specification, and tender evaluation.", href: "/website/services/strata" },
+  { icon: Users, num: "06", title: "CAS Complaints", sub: "Investigation & Resolution", desc: "Expert investigation and resolution of building complaints — evidence gathering, BCA compliance assessment, and reports for the Building Commission.", href: "/website/services/cas" },
 ];
 
 const audiences = [
-  { role: "Developer", icon: "🏗️", tagline: "Navigate compliance from DA to OC", href: "/website/for/developer" },
-  { role: "Builder", icon: "🔨", tagline: "Protect your licence and your project", href: "/website/for/builder" },
-  { role: "Private Certifier (PCA)", icon: "📋", tagline: "Independent audit support for complex projects", href: "/website/for/pca" },
-  { role: "Design Practitioner", icon: "📐", tagline: "Reduce your DBP Act liability exposure", href: "/website/for/design-practitioner" },
-  { role: "Building Practitioner", icon: "🏛️", tagline: "Comprehensive compliance for practitioners", href: "/website/for/building-practitioner" },
-  { role: "Strata Manager", icon: "🏢", tagline: "Specialist strata compliance expertise", href: "/website/for/strata" },
-  { role: "Building Manager", icon: "🔑", tagline: "Keep your building safe and compliant", href: "/website/for/building-manager" },
-  { role: "Owners", icon: "🏠", tagline: "Protect your most valuable investment", href: "/website/for/owners" },
+  { role: "Developer", tagline: "Navigate compliance from DA to OC", href: "/website/for/developer" },
+  { role: "Builder", tagline: "Protect your licence and your project", href: "/website/for/builder" },
+  { role: "Private Certifier", tagline: "Independent audit support", href: "/website/for/pca" },
+  { role: "Design Practitioner", tagline: "Reduce your DBP Act liability", href: "/website/for/design-practitioner" },
+  { role: "Strata Manager", tagline: "Specialist strata compliance", href: "/website/for/strata" },
+  { role: "Building Manager", tagline: "Keep your building compliant", href: "/website/for/building-manager" },
+  { role: "Owners", tagline: "Protect your investment", href: "/website/for/owners" },
 ];
 
-const stats = [
-  { value: "30+", label: "Years Combined Experience" },
-  { value: "6", label: "Integrated Service Pillars" },
-  { value: "NSW", label: "Building Compliance Specialists" },
-  { value: "100%", label: "Client-Focused Approach" },
-];
-
-const values = [
-  { title: "Technical Expertise", desc: "We are masters of our craft, with a deep and ever-evolving understanding of the NSW regulatory landscape — RAB Act, DBP Act, Planning Portal, and beyond. We provide the most accurate, up-to-date, and practical advice available.", icon: "⚙️" },
-  { title: "Collaborative Support", desc: "We work alongside our clients as partners, not just consultants. We listen to your needs, understand your goals, and work together to find the best solutions — whether you are a developer, builder, strata manager, or owner.", icon: "🤝" },
-  { title: "Approachability", desc: "We are experts, but we are also human. We communicate with clarity, honesty, and respect, fostering a culture of open dialogue and mutual trust. Compliance should not be intimidating — we make it accessible.", icon: "💬" },
-];
-
+// ─── Component ───────────────────────────────────────────────
 export default function WebsiteHome() {
   const [popup, setPopup] = useState<PopupType>(null);
   const [signIn, setSignIn] = useState(false);
 
   return (
-    <div className="min-h-screen" style={{ background: "#f8f7f5" }}>
+    <div className="min-h-screen" style={{ background: "#f8f7f4" }}>
       <WebsiteNav onOpenPopup={setPopup} onOpenSignIn={() => setSignIn(true)} />
 
-      {/* ── Hero: Split layout ─────────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex items-stretch overflow-hidden">
-        {/* Background image full bleed */}
+      {/* ═══ HERO ═══════════════════════════════════════════════════════════ */}
+      <section className="relative min-h-[100vh] flex items-center overflow-hidden">
+        {/* BG image */}
         <div className="absolute inset-0">
-          <img src={HERO_IMG} alt="Sydney skyline" className="w-full h-full object-cover" />
-          <div className="absolute inset-0" style={{ background: "linear-gradient(105deg, rgba(26,26,46,0.97) 0%, rgba(26,26,46,0.88) 45%, rgba(26,26,46,0.70) 70%, rgba(26,26,46,0.55) 100%)" }} />
+          <img src={HERO_IMG} alt="" className="w-full h-full object-cover" style={{ filter: "brightness(0.35)" }} />
+          <div className="absolute inset-0"
+            style={{ background: "linear-gradient(160deg, rgba(10,10,28,0.94) 0%, rgba(10,10,28,0.82) 55%, rgba(10,10,28,0.65) 100%)" }} />
         </div>
 
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 pt-24 pb-12 flex flex-col lg:flex-row items-center gap-10">
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-10 pt-28 pb-20">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
 
-          {/* LEFT: Logo + headline + description */}
-          <div className="flex-1 min-w-0">
-            {/* 369 Logo block — white card background, circle + text inline per brand guidelines */}
-            <div className="mb-7 inline-flex items-center gap-3 rounded-xl"
-              style={{ background: "#ffffff", boxShadow: "0 6px 32px rgba(0,0,0,0.28)", padding: "0 16px 0 0", overflow: "hidden" }}>
-              {/* Circle mark — original PNG at 240px, white margins visible but card clips them */}
-              <Logo369 size={192} />
-              {/* Text block — same vertical centre as circle */}
-              <div className="flex flex-col justify-center">
-                {/* Gold horizontal rule above 369 — matches business card */}
-                <div style={{ width: "60px", height: "2px", background: "linear-gradient(90deg, #C4A46B 0%, #7A6342 100%)", marginBottom: "8px", borderRadius: "1px" }} />
-                {/* 369 + PTY LTD on same line — matches reference */}
-                <div className="flex items-baseline gap-2 leading-none">
-                  <span style={{
-                    color: "#1a1a2e",
-                    fontFamily: "'Montserrat', 'Arial Black', sans-serif",
-                    fontSize: "3.5rem",
-                    fontWeight: 900,
-                    letterSpacing: "-0.02em",
-                    lineHeight: 1,
-                  }}>369</span>
-                  <span style={{
-                    color: "#444",
-                    fontFamily: "'Montserrat', Arial, sans-serif",
-                    fontSize: "1.05rem",
-                    fontWeight: 500,
-                    letterSpacing: "0.10em",
-                    lineHeight: 1,
-                  }}>ALLIANCE PTY LTD</span>
+            {/* ── LEFT: Logo card + headline + CTAs ────────────────── */}
+            <div className="lg:col-span-7">
+
+              {/* Brand logo card — white, matches business card */}
+              <div className="flex items-center gap-6 bg-white rounded-xl shadow-2xl mb-8 overflow-hidden"
+                style={{ padding: "24px 28px", maxWidth: 480 }}>
+                <Logo369 size={150} variant="light" />
+                <div style={{ borderLeft: "1px solid #e5e3de", paddingLeft: 20, flex: 1 }}>
+                  <div className="font-black leading-none tracking-tight"
+                    style={{ fontSize: 52, color: "#1a1a2e", fontFamily: "'Montserrat', sans-serif", lineHeight: 1 }}>
+                    369
+                  </div>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.18em", color: "#1a1a2e", marginTop: 4, textTransform: "uppercase" }}>
+                    Alliance Pty Ltd
+                  </div>
+                  <div style={{ height: 1, background: "#A68A64", margin: "10px 0" }} />
+                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.18em", color: "#A68A64", textTransform: "uppercase", lineHeight: 1.4 }}>
+                    Building Compliance<br />Specialists
+                  </div>
+                  <div style={{ fontSize: 9, fontStyle: "italic", color: "#9ca3af", marginTop: 6, lineHeight: 1.5 }}>
+                    Integrity by Design.<br />Revolutionising Safety
+                  </div>
                 </div>
-                {/* BUILDING COMPLIANCE SPECIALISTS — small caps bronze */}
-                <div style={{
-                  color: "#9B7D52",
-                  fontFamily: "'Montserrat', Arial, sans-serif",
-                  fontSize: "0.62rem",
-                  fontWeight: 700,
-                  letterSpacing: "0.16em",
-                  textTransform: "uppercase",
-                  marginTop: "5px",
-                }}>
-                  Building Compliance Specialists
-                </div>
-                {/* Tagline — italic grey */}
-                <div style={{
-                  color: "#666",
-                  fontFamily: "'Montserrat', Arial, sans-serif",
-                  fontSize: "0.58rem",
-                  fontStyle: "italic",
-                  fontWeight: 400,
-                  marginTop: "3px",
-                }}>
-                  Integrity by Design. Revolutionizing Safety
-                </div>
+              </div>
+
+              {/* Headline */}
+              <h1 className="mb-5 leading-[1.05]" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <span className="block text-[clamp(2.2rem,4.5vw,3.8rem)] font-bold text-white">
+                  Building Compliance
+                </span>
+                <span className="block text-[clamp(2.2rem,4.5vw,3.8rem)] font-bold" style={{ color: "#A68A64" }}>
+                  Specialists.
+                </span>
+              </h1>
+
+              <p className="text-sm leading-relaxed max-w-lg mb-8"
+                style={{ color: "rgba(255,255,255,0.5)" }}>
+                369 Alliance is NSW's only integrated six-pillar building compliance consultancy — your single trusted partner across the entire compliance lifecycle.
+              </p>
+
+              {/* CTAs */}
+              <div className="flex flex-wrap items-center gap-4">
+                <button onClick={() => setPopup("quote")}
+                  className="group flex items-center gap-2 px-7 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:shadow-lg hover:shadow-amber-900/25"
+                  style={{ background: "linear-gradient(135deg,#7A6342,#A68A64)", borderRadius: "4px" }}>
+                  Request a Quote
+                  <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+                <Link href="/website/services">
+                  <span className="group flex items-center gap-2 px-7 py-3.5 text-sm font-medium border cursor-pointer transition-all duration-300 hover:border-white/30"
+                    style={{ color: "rgba(255,255,255,0.65)", borderColor: "rgba(255,255,255,0.15)", borderRadius: "4px" }}>
+                    Our Services
+                    <ArrowUpRight size={14} className="opacity-50 group-hover:opacity-100 transition-opacity" />
+                  </span>
+                </Link>
               </div>
             </div>
 
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-5 leading-tight"
-              style={{ fontFamily: "'Playfair Display', serif" }}>
-              Building Compliance<br />
-              <span style={{ color: "#A68A64" }}>Specialists.</span>
-            </h1>
-
-            <p className="text-base md:text-lg mb-4 font-light" style={{ color: "rgba(255,255,255,0.85)" }}>
-              Integrity by Design. Revolutionising Safety in NSW Construction.
-            </p>
-
-            <p className="text-sm md:text-base leading-relaxed max-w-xl" style={{ color: "rgba(255,255,255,0.60)" }}>
-              369 Alliance is NSW's only integrated six-pillar building compliance consultancy. From RAB Act audits and DBP Act declarations to Planning Portal submissions, Project Intervene coordination, Strata Solutions, and CAS complaints — we are your single trusted partner across the entire compliance lifecycle.
-            </p>
-          </div>
-
-          {/* RIGHT: Who We Serve cards — visible on first load */}
-          <div className="w-full lg:w-80 xl:w-96 flex-shrink-0">
-            <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(166,138,100,0.25)", backdropFilter: "blur(8px)" }}>
-              <div className="px-5 py-4 border-b" style={{ borderColor: "rgba(166,138,100,0.2)" }}>
-                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "#A68A64" }}>Who We Serve</p>
-                <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>Select your role to see how we can help</p>
-              </div>
-              <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+            {/* ── RIGHT: Who We Serve panel ─────────────────────────── */}
+            <div className="lg:col-span-5 lg:pt-2">
+              <div className="rounded-xl overflow-hidden"
+                style={{
+                  background: "rgba(12,12,30,0.72)",
+                  backdropFilter: "blur(14px)",
+                  border: "1px solid rgba(166,138,100,0.2)",
+                }}>
+                {/* Panel header */}
+                <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(166,138,100,0.12)" }}>
+                  <div className="text-[10px] font-bold tracking-[0.2em] uppercase" style={{ color: "#A68A64" }}>
+                    Who We Serve
+                  </div>
+                  <div className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                    Select your role to see how we can help
+                  </div>
+                </div>
+                {/* Role rows */}
                 {audiences.map((a) => (
                   <Link key={a.role} href={a.href}>
-                    <div className="group flex items-center gap-3 px-5 py-3.5 cursor-pointer transition-all hover:bg-white/10">
-                      <span className="text-xl flex-shrink-0">{a.icon}</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-white group-hover:text-amber-300 transition-colors truncate">
+                    <div
+                      className="group flex items-center justify-between cursor-pointer transition-colors duration-150"
+                      style={{ padding: "11px 20px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+                      onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = "rgba(166,138,100,0.07)"}
+                      onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = "transparent"}
+                    >
+                      <div>
+                        <div className="text-[13px] font-semibold text-white group-hover:text-amber-300 transition-colors">
                           {a.role}
-                        </p>
-                        <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.45)" }}>{a.tagline}</p>
+                        </div>
+                        <div className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                          {a.tagline}
+                        </div>
                       </div>
-                      <ChevronRight size={14} className="flex-shrink-0 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" style={{ color: "#A68A64" }} />
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="flex-shrink-0 ml-3 opacity-30 group-hover:opacity-70 transition-opacity">
+                        <path d="M3 7h8M7 3l4 4-4 4" stroke="#A68A64" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
                     </div>
                   </Link>
                 ))}
               </div>
             </div>
+
           </div>
         </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 animate-bounce opacity-40">
-          <span className="text-xs text-white">Scroll</span>
-          <div className="w-px h-6" style={{ background: "rgba(255,255,255,0.3)" }} />
-        </div>
+        {/* Bottom fade */}
+        <div className="absolute bottom-0 left-0 right-0 h-24"
+          style={{ background: "linear-gradient(to top, #f8f7f4, transparent)" }} />
       </section>
 
-      {/* ── Stats bar ────────────────────────────────────────────────────────── */}
-      <section style={{ background: "#1a1a2e", borderTop: "1px solid rgba(166,138,100,0.15)" }}>
-        <div className="max-w-7xl mx-auto px-6 py-10">
-          <div className="grid grid-cols-2 md:grid-cols-4">
-            {stats.map((s, i) => (
-              <div key={s.label} className="text-center px-6 py-4"
-                style={i < stats.length - 1 ? { borderRight: "1px solid rgba(166,138,100,0.18)" } : {}}>
-                <div className="font-bold mb-2 leading-none"
-                  style={{ color: "#A68A64", fontFamily: "'Montserrat', 'Arial Black', sans-serif", fontSize: "2.6rem", fontWeight: 800, letterSpacing: "-0.01em" }}>
-                  {s.value}
-                </div>
-                <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.50)", letterSpacing: "0.14em" }}>
-                  {s.label}
-                </div>
-              </div>
+      {/* ═══ WHO WE SERVE — horizontal scroll strip ═════════════════════════ */}
+      <section className="py-16 overflow-hidden" style={{ background: "#f8f7f4" }}>
+        <div className="max-w-7xl mx-auto px-6 lg:px-10">
+          <Reveal>
+            <div className="flex items-center gap-3 mb-10">
+              <div className="h-px w-10" style={{ background: "#A68A64" }} />
+              <span className="text-[11px] font-semibold tracking-[0.2em] uppercase" style={{ color: "#7A6342" }}>Who We Serve</span>
+            </div>
+          </Reveal>
+          <div className="flex gap-3 overflow-x-auto pb-4 -mx-2 px-2 scrollbar-none" style={{ scrollbarWidth: "none" }}>
+            {audiences.map((a, i) => (
+              <Reveal key={a.role} delay={Math.min(i + 1, 5) as 1|2|3|4|5}>
+                <Link href={a.href}>
+                  <div className="group flex-shrink-0 w-52 p-5 bg-white border cursor-pointer card-lift"
+                    style={{ borderColor: "#e8e6e1", borderRadius: "6px" }}>
+                    <div className="text-sm font-bold mb-1 group-hover:text-amber-800 transition-colors" style={{ color: "#1a1a2e" }}>
+                      {a.role}
+                    </div>
+                    <div className="text-xs leading-relaxed" style={{ color: "#9ca3af" }}>{a.tagline}</div>
+                    <div className="mt-3 h-px w-0 group-hover:w-full transition-all duration-500" style={{ background: "#A68A64" }} />
+                  </div>
+                </Link>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── 6 Pillars ────────────────────────────────────────────────────────── */}
-      <section className="py-24" style={{ background: "#f8f7f5" }}>
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <div className="inline-block px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-4"
-              style={{ background: "rgba(122,99,66,0.1)", color: "#7A6342" }}>
-              Our Services
+      {/* ═══ 6 PILLARS — alternating layout ═════════════════════════════════ */}
+      <section className="py-24 relative" style={{ background: "#fff" }}>
+        <div className="max-w-7xl mx-auto px-6 lg:px-10">
+          <Reveal>
+            <div className="max-w-xl mb-16">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="h-px w-10" style={{ background: "#A68A64" }} />
+                <span className="text-[11px] font-semibold tracking-[0.2em] uppercase" style={{ color: "#7A6342" }}>Our Services</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold leading-tight mb-4"
+                style={{ color: "#1a1a2e", fontFamily: "'Playfair Display', serif" }}>
+                Six Pillars of<br />Compliance Excellence
+              </h2>
+              <p className="text-[15px] leading-relaxed" style={{ color: "#6b7280" }}>
+                The only NSW consultancy offering all six compliance pillars under one roof — eliminating the need to manage multiple consultants.
+              </p>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: "#1a1a2e", fontFamily: "'Playfair Display', serif" }}>
-              Six Pillars of Compliance Excellence
-            </h2>
-            <p className="text-lg max-w-2xl mx-auto" style={{ color: "#6b7280" }}>
-              369 Alliance is the only NSW consultancy offering all six compliance pillars under one roof — eliminating the need to manage multiple consultants across your project lifecycle.
-            </p>
-          </div>
+          </Reveal>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {pillars.map((p) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
+            {pillars.map((p, i) => {
               const Icon = p.icon;
               return (
-                <Link key={p.number} href={p.href}>
-                  <div className="group relative bg-white rounded-2xl p-7 cursor-pointer border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-                    style={{ borderColor: "#e5e7eb" }}>
-                    <div className="text-6xl font-bold mb-4 leading-none select-none"
-                      style={{ color: "rgba(26,26,46,0.06)", fontFamily: "'Playfair Display', serif" }}>
-                      {p.number}
+                <Reveal key={p.num} delay={Math.min((i % 3) + 1, 3) as 1|2|3}>
+                  <Link href={p.href}>
+                    <div className="group relative bg-white border p-7 cursor-pointer card-lift h-full"
+                      style={{ borderColor: "#eae8e3", borderRadius: "6px" }}>
+                      {/* Large number watermark */}
+                      <span className="absolute top-4 right-5 text-6xl font-bold select-none pointer-events-none"
+                        style={{ color: "rgba(26,26,46,0.03)", fontFamily: "'Playfair Display', serif" }}>
+                        {p.num}
+                      </span>
+                      {/* Icon */}
+                      <div className="w-11 h-11 flex items-center justify-center mb-5"
+                        style={{ background: "#1a1a2e", borderRadius: "8px" }}>
+                        <Icon size={20} style={{ color: "#A68A64" }} />
+                      </div>
+                      <h3 className="text-[15px] font-bold mb-1 group-hover:text-amber-800 transition-colors" style={{ color: "#1a1a2e" }}>
+                        {p.title}
+                      </h3>
+                      <p className="text-[11px] font-semibold tracking-wider uppercase mb-3" style={{ color: "#A68A64" }}>
+                        {p.sub}
+                      </p>
+                      <p className="text-[13px] leading-relaxed mb-5" style={{ color: "#6b7280" }}>
+                        {p.desc}
+                      </p>
+                      {/* Animated underline on hover */}
+                      <span className="inline-flex items-center gap-1 text-[13px] font-semibold group-hover:gap-2 transition-all"
+                        style={{ color: "#7A6342" }}>
+                        Learn more <ArrowRight size={13} />
+                      </span>
+                      {/* Bottom accent bar */}
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"
+                        style={{ background: "linear-gradient(90deg,#7A6342,#A68A64)" }} />
                     </div>
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 -mt-10"
-                      style={{ background: "linear-gradient(135deg,#1a1a2e,#252545)" }}>
-                      <Icon size={22} style={{ color: "#A68A64" }} />
-                    </div>
-                    <h3 className="text-lg font-bold mb-1" style={{ color: "#1a1a2e" }}>{p.title}</h3>
-                    <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "#A68A64" }}>{p.subtitle}</p>
-                    <p className="text-sm leading-relaxed" style={{ color: "#6b7280" }}>{p.desc}</p>
-                    <div className="flex items-center gap-1 mt-4 text-sm font-semibold group-hover:gap-2 transition-all"
-                      style={{ color: "#7A6342" }}>
-                      Learn more <ChevronRight size={14} />
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 h-1 rounded-b-2xl opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ background: "linear-gradient(90deg,#7A6342,#A68A64)" }} />
-                  </div>
-                </Link>
+                  </Link>
+                </Reveal>
               );
             })}
           </div>
         </div>
       </section>
 
-      {/* ── Why 369 Alliance ─────────────────────────────────────────────────── */}
-      <section className="py-20 overflow-hidden" style={{ background: "#1a1a2e" }}>
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="relative">
-              <img src={COMPLIANCE_IMG} alt="Building compliance inspector" className="w-full rounded-2xl object-cover"
-                style={{ height: "480px" }} />
-              <div className="absolute -bottom-4 -right-4 w-32 h-32 rounded-2xl overflow-hidden border-4 border-white shadow-xl hidden lg:block">
-                <img src={STRATA_IMG} alt="Modern strata building" className="w-full h-full object-cover" />
-              </div>
+      {/* ═══ WHY 369 — asymmetric image + text ══════════════════════════════ */}
+      <section className="relative py-28 overflow-hidden noise-overlay" style={{ background: "#1a1a2e" }}>
+        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+
+            {/* Image cluster — overlapping, not centered */}
+            <div className="lg:col-span-5 relative">
+              <Reveal>
+                <div className="relative">
+                  <img src={COMPLIANCE_IMG} alt="Building compliance"
+                    className="w-full object-cover shadow-2xl"
+                    style={{ height: "520px", borderRadius: "6px" }} />
+                  {/* Overlapping inset image */}
+                  <div className="absolute -bottom-6 -right-4 w-36 h-36 border-4 shadow-xl hidden lg:block overflow-hidden"
+                    style={{ borderColor: "#1a1a2e", borderRadius: "6px" }}>
+                    <img src={STRATA_IMG} alt="" className="w-full h-full object-cover" />
+                  </div>
+                  {/* Decorative corner */}
+                  <div className="absolute -top-3 -left-3 w-8 h-8 border-t-2 border-l-2 hidden lg:block"
+                    style={{ borderColor: "rgba(166,138,100,0.3)" }} />
+                </div>
+              </Reveal>
             </div>
-            <div className="lg:pl-8">
-              <div className="inline-block px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6"
-                style={{ background: "rgba(166,138,100,0.15)", color: "#A68A64" }}>
-                Why 369 Alliance
-              </div>
-              <h2 className="text-4xl font-bold text-white mb-6 leading-tight"
-                style={{ fontFamily: "'Playfair Display', serif" }}>
-                The Only Integrated<br />Compliance Partner in NSW
-              </h2>
-              <p className="text-base leading-relaxed mb-8" style={{ color: "rgba(255,255,255,0.65)" }}>
-                We offer all six compliance pillars under one roof. Our directors bring over 30 years of combined experience in building surveying, engineering, and compliance — combined with a collaborative, client-first approach that sets us apart from adversarial enforcement-focused competitors.
-              </p>
-              <div className="space-y-4">
+
+            {/* Text */}
+            <div className="lg:col-span-6 lg:col-start-7">
+              <Reveal>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-px w-10" style={{ background: "#A68A64" }} />
+                  <span className="text-[11px] font-semibold tracking-[0.2em] uppercase" style={{ color: "#A68A64" }}>Why 369 Alliance</span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-6"
+                  style={{ fontFamily: "'Playfair Display', serif" }}>
+                  The Only Integrated<br />Compliance Partner in NSW
+                </h2>
+                <p className="text-[15px] leading-relaxed mb-10" style={{ color: "rgba(255,255,255,0.55)" }}>
+                  Our directors bring over 30 years of combined experience in building surveying, engineering, and compliance — combined with a collaborative, client-first approach that sets us apart.
+                </p>
+              </Reveal>
+
+              <div className="space-y-5">
                 {[
                   "First-mover advantage in RAB Act and DBP Act specialist services",
                   "End-to-end Planning Portal management reducing costly submission errors",
                   "Guidance with Project Intervene matters",
                   "Preferred compliance partner for strata portfolios across NSW",
                 ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ background: "linear-gradient(135deg,#7A6342,#A68A64)" }}>
-                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                        <polyline points="2 6 5 9 10 3" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                      </svg>
+                  <Reveal key={i} delay={Math.min(i + 1, 4) as 1|2|3|4}>
+                    <div className="flex items-start gap-4">
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                        style={{ background: "rgba(166,138,100,0.15)", border: "1px solid rgba(166,138,100,0.3)" }}>
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                          <polyline points="2 6 5 9 10 3" stroke="#A68A64" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                      </div>
+                      <p className="text-[14px] leading-relaxed" style={{ color: "rgba(255,255,255,0.6)" }}>{item}</p>
                     </div>
-                    <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>{item}</p>
-                  </div>
+                  </Reveal>
                 ))}
-              </div>
-              {/* No "Work with Us" button — removed per request */}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Core Values ──────────────────────────────────────────────────────── */}
-      <section className="py-24" style={{ background: "#fff" }}>
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <div className="inline-block px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6"
-                style={{ background: "rgba(122,99,66,0.1)", color: "#7A6342" }}>
-                Our Foundation
-              </div>
-              <h2 className="text-4xl font-bold mb-6" style={{ color: "#1a1a2e", fontFamily: "'Playfair Display', serif" }}>
-                Three Core Values That<br />Drive Everything We Do
-              </h2>
-              <p className="text-base leading-relaxed mb-10" style={{ color: "#6b7280" }}>
-                Founded by directors with over 30 years of combined experience, 369 Alliance was built on the belief that building compliance should be a collaborative, transparent, and empowering process — not an adversarial one.
-              </p>
-              <div className="space-y-6">
-                {values.map((v) => (
-                  <div key={v.title} className="flex gap-5">
-                    <div className="text-3xl flex-shrink-0">{v.icon}</div>
-                    <div>
-                      <h4 className="font-bold mb-2" style={{ color: "#1a1a2e" }}>{v.title}</h4>
-                      <p className="text-sm leading-relaxed" style={{ color: "#6b7280" }}>{v.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="relative">
-              <img src={TEAM_IMG} alt="369 Alliance team" className="w-full rounded-2xl object-cover shadow-2xl"
-                style={{ height: "520px" }} />
-              <div className="absolute -bottom-6 -left-6 bg-white rounded-xl p-5 shadow-xl border"
-                style={{ borderColor: "#e5e7eb", maxWidth: "240px" }}>
-                <div className="text-2xl font-bold mb-1" style={{ color: "#1a1a2e", fontFamily: "'Playfair Display', serif" }}>
-                  $120–200M
-                </div>
-                <div className="text-xs font-medium" style={{ color: "#6b7280" }}>
-                  Total addressable market across all six compliance pillars in NSW annually
-                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── CTA Section ──────────────────────────────────────────────────────── */}
-      <section className="py-20 relative overflow-hidden" style={{ background: "#1a1a2e" }}>
-        <div className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: "radial-gradient(circle at 30% 50%, #A68A64 0%, transparent 60%), radial-gradient(circle at 70% 50%, #7A6342 0%, transparent 60%)" }} />
-        <div className="relative z-10 max-w-3xl mx-auto px-6 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6"
-            style={{ fontFamily: "'Playfair Display', serif" }}>
-            Ready to Work with NSW's Leading Compliance Specialists?
-          </h2>
-          <p className="text-lg mb-10" style={{ color: "rgba(255,255,255,0.65)" }}>
-            Whether you are a developer navigating the DBP Act, a strata manager facing SBBIS requirements, or an owner concerned about defects — 369 Alliance is your trusted partner.
-          </p>
-          <div className="flex flex-wrap gap-4 justify-center">
-            <button onClick={() => setPopup("quote")}
-              className="px-8 py-4 rounded-full text-base font-semibold text-white hover:opacity-90 transition-all shadow-lg"
-              style={{ background: "linear-gradient(135deg,#7A6342,#A68A64)" }}>
-              Request a Quote
-            </button>
-            <button onClick={() => setPopup("message")}
-              className="px-8 py-4 rounded-full text-base font-semibold border-2 hover:bg-white/10 transition-all"
-              style={{ borderColor: "rgba(255,255,255,0.4)", color: "#fff" }}>
-              Send a Message
-            </button>
+      {/* ═══ VALUES — editorial cards ════════════════════════════════════════ */}
+      <section className="py-28" style={{ background: "#f8f7f4" }}>
+        <div className="max-w-7xl mx-auto px-6 lg:px-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+
+            {/* Left text */}
+            <div className="lg:col-span-5">
+              <Reveal>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-px w-10" style={{ background: "#A68A64" }} />
+                  <span className="text-[11px] font-semibold tracking-[0.2em] uppercase" style={{ color: "#7A6342" }}>Our Foundation</span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-bold leading-tight mb-6"
+                  style={{ color: "#1a1a2e", fontFamily: "'Playfair Display', serif" }}>
+                  Three Core Values<br />That Drive Everything
+                </h2>
+                <p className="text-[15px] leading-relaxed mb-10" style={{ color: "#6b7280" }}>
+                  Built on the belief that building compliance should be collaborative, transparent, and empowering — never adversarial.
+                </p>
+              </Reveal>
+
+              <div className="space-y-8">
+                {[
+                  { title: "Technical Expertise", desc: "Deep, ever-evolving understanding of the NSW regulatory landscape — RAB Act, DBP Act, Planning Portal, and beyond. The most accurate, practical advice available." },
+                  { title: "Collaborative Support", desc: "We work alongside our clients as partners. We listen, understand your goals, and find the best solutions — whether you're a developer, builder, or owner." },
+                  { title: "Approachability", desc: "Experts who communicate with clarity, honesty, and respect. Compliance should not be intimidating — we make it accessible." },
+                ].map((v, i) => (
+                  <Reveal key={v.title} delay={Math.min(i + 1, 3) as 1|2|3}>
+                    <div className="flex gap-5">
+                      <div className="flex-shrink-0 w-8 text-right">
+                        <span className="text-[11px] font-bold" style={{ color: "#A68A64", fontFamily: "'IBM Plex Mono', monospace" }}>
+                          0{i + 1}
+                        </span>
+                      </div>
+                      <div className="flex-1" style={{ borderLeft: "1px solid #e5e3de", paddingLeft: "20px" }}>
+                        <h4 className="text-sm font-bold mb-2" style={{ color: "#1a1a2e" }}>{v.title}</h4>
+                        <p className="text-[13px] leading-relaxed" style={{ color: "#6b7280" }}>{v.desc}</p>
+                      </div>
+                    </div>
+                  </Reveal>
+                ))}
+              </div>
+            </div>
+
+            {/* Right image */}
+            <div className="lg:col-span-6 lg:col-start-7 relative">
+              <Reveal>
+                <img src={TEAM_IMG} alt="369 Alliance team" className="w-full object-cover shadow-2xl"
+                  style={{ height: "560px", borderRadius: "6px" }} />
+                {/* Market callout — offset */}
+                <div className="absolute -bottom-8 -left-4 bg-white p-5 shadow-xl border hidden lg:block"
+                  style={{ borderColor: "#eae8e3", borderRadius: "6px", maxWidth: "220px" }}>
+                  <div className="text-2xl font-bold mb-1" style={{ color: "#1a1a2e", fontFamily: "'Playfair Display', serif" }}>
+                    $120–200M
+                  </div>
+                  <div className="text-[11px] leading-snug" style={{ color: "#6b7280" }}>
+                    Total addressable market across all six pillars in NSW annually
+                  </div>
+                </div>
+                {/* Decorative corner */}
+                <div className="absolute -bottom-3 -right-3 w-8 h-8 border-b-2 border-r-2 hidden lg:block"
+                  style={{ borderColor: "rgba(166,138,100,0.25)" }} />
+              </Reveal>
+            </div>
           </div>
+        </div>
+      </section>
+
+      {/* ═══ CTA — cinematic band ═══════════════════════════════════════════ */}
+      <section className="relative py-24 overflow-hidden noise-overlay" style={{ background: "#1a1a2e" }}>
+        {/* Radial accents */}
+        <div className="absolute inset-0 opacity-[0.07]"
+          style={{ backgroundImage: "radial-gradient(ellipse at 20% 50%, #A68A64 0%, transparent 50%), radial-gradient(ellipse at 80% 50%, #7A6342 0%, transparent 50%)" }} />
+
+        <div className="relative z-10 max-w-3xl mx-auto px-6 lg:px-10 text-center">
+          <Reveal>
+            <div className="h-px w-16 mx-auto mb-8" style={{ background: "#A68A64" }} />
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-5 leading-tight"
+              style={{ fontFamily: "'Playfair Display', serif" }}>
+              Ready to Work with NSW's<br />Leading Compliance Specialists?
+            </h2>
+            <p className="text-[15px] mb-10 max-w-lg mx-auto" style={{ color: "rgba(255,255,255,0.5)" }}>
+              Whether you're navigating the DBP Act, facing SBBIS requirements, or concerned about defects — we're your trusted partner.
+            </p>
+            <div className="flex flex-wrap gap-3 justify-center">
+              <button onClick={() => setPopup("quote")}
+                className="group flex items-center gap-2 px-7 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:shadow-lg hover:shadow-amber-900/25"
+                style={{ background: "linear-gradient(135deg,#7A6342,#A68A64)", borderRadius: "4px" }}>
+                Request a Quote
+                <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+              <button onClick={() => setPopup("message")}
+                className="px-7 py-3.5 text-sm font-medium border transition-all duration-300 hover:border-white/30"
+                style={{ borderColor: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.6)", borderRadius: "4px" }}>
+                Send a Message
+              </button>
+            </div>
+          </Reveal>
         </div>
       </section>
 
