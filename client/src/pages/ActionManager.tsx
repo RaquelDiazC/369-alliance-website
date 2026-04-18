@@ -359,7 +359,7 @@ export default function ActionManager() {
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>("Proactive Insp");
   const [search, setSearch] = useState("");
-  const [screen, setScreen] = useState<"dashboard"|"report"|"order"|"history"|"tools">("dashboard");
+  const [screen, setScreen] = useState<"dashboard"|"report"|"order"|"history"|"tools"|"map">("dashboard");
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewProject, setViewProject] = useState<Project|null>(null);
   const [editProject, setEditProject] = useState<Project|null>(null);
@@ -498,6 +498,22 @@ export default function ActionManager() {
   if (screen === "report") return <ReportScreen onBack={() => setScreen("dashboard")} projects={projects} onRefresh={refreshProjects} />;
   if (screen === "order") return <OrderScreen onBack={() => setScreen("dashboard")} projects={projects} onRefresh={refreshProjects} />;
   if (screen === "tools") return <ToolsScreen onBack={() => setScreen("dashboard")} projects={projects} />;
+  if (screen === "map") return (
+    <div style={{ height:"100vh", background:"#1a1a2e", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+      <div style={{ background:"#1a1a2e", borderBottom:"1px solid #2a2a4e", padding:"0 20px", height:48, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+          <button onClick={() => setScreen("dashboard")} style={{ background:"transparent", border:"1px solid #A68A64", color:"#A68A64", borderRadius:6, padding:"5px 12px", fontSize:12, fontWeight:600, cursor:"pointer" }}>← Back</button>
+          <div style={{ width:1, height:24, background:"#2a2a4e" }} />
+          <span style={{ fontSize:13, fontWeight:700, color:"#fff" }}>🗺 Construction Site Intelligence Map</span>
+          <span style={{ fontSize:11, color:"#4a9eff", background:"rgba(30,63,168,0.3)", border:"1px solid #1e3a5f", borderRadius:10, padding:"2px 8px" }}>NearMap · Sydney Metro</span>
+        </div>
+        <span style={{ fontSize:11, color:"#A68A64" }}>Proactive Insp · Map View</span>
+      </div>
+      <div style={{ flex:1, overflow:"hidden", minHeight:0 }}>
+        <MapMonitor />
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ minHeight:"100vh", background:"#f5f4f1", display:"flex", flexDirection:"column" }}>
@@ -583,6 +599,7 @@ export default function ActionManager() {
 
         <div style={{ flex:1 }} />
 
+        <button onClick={() => setScreen("map")} style={{ background:"linear-gradient(135deg,#0f3460,#1e5fa8)", color:"#4a9eff", border:"1px solid #1e3a5f", borderRadius:5, padding:"7px 14px", fontSize:12, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}>🗺 MAP</button>
         <button onClick={() => setScreen("report")} style={{ background:"#1e3a5f", color:"#fff", border:"none", borderRadius:5, padding:"7px 14px", fontSize:12, fontWeight:600, cursor:"pointer" }}>Report</button>
         <button onClick={() => setScreen("order")} style={{ background:"#7A6342", color:"#fff", border:"none", borderRadius:5, padding:"7px 14px", fontSize:12, fontWeight:600, cursor:"pointer" }}>ORDER</button>
         <button onClick={() => setScreen("history")} style={{ background:"#2d6a4f", color:"#fff", border:"none", borderRadius:5, padding:"7px 14px", fontSize:12, fontWeight:600, cursor:"pointer" }}>History</button>

@@ -1,0 +1,9 @@
+{
+  "name": "my-agent",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@21st-sdk/agent": "latest",
+    "zod": "^3.23.0"
+  }
+}

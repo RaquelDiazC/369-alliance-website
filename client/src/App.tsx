@@ -12,6 +12,9 @@ import Dashboard from "./pages/Dashboard";
 import RolePortal from "./pages/RolePortal";
 import DataHub from "./pages/DataHub";
 import NotFound from "./pages/NotFound";
+import IauditorPage from "./pages/IauditorPage";
+import DbpAuditor from "./pages/DbpAuditor";
+import DrawingAnalyser from "./pages/DrawingAnalyser";
 
 // Marketing website pages
 import WebsiteHome from "./pages/website/WebsiteHome";
@@ -36,6 +39,9 @@ function Router() {
       <Route path="/system" component={LandingPage} />
       <Route path="/adm" component={AdmLanding} />
       <Route path="/action-manager" component={ActionManager} />
+      <Route path="/iauditor" component={IauditorPage} />
+      <Route path="/dbp-auditor" component={DbpAuditor} />
+      <Route path="/drawing-analyser" component={DrawingAnalyser} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/portal/:role" component={RolePortal} />
       <Route path="/data" component={DataHub} />

@@ -15,6 +15,16 @@ import {
 const NEARMAP_API_KEY = "ZTBiY2MzYzYtOTFlMC00ODdiLWI5MWUtZjMxZGRhZWFhYTZm";
 const NEARMAP_TILE_URL = `https://api.nearmap.com/tiles/v3/Vert/{z}/{x}/{y}.jpg?apikey=${NEARMAP_API_KEY}`;
 
+// ── NearMap AI Construction Layers (official class IDs from NearMap AI Glossary) ─
+const AI_LAYERS = [
+  { id: "building_under_construction", classId: 80,  label: "Building Under Construction", description: "Buildings where construction is actively underway (class 80)", color: "#ef4444", strokeColor: "#dc2626" },
+  { id: "construction_crane",          classId: 79,  label: "Construction Crane",          description: "Fixed cranes on active construction sites (class 79)",            color: "#f59e0b", strokeColor: "#d97706" },
+  { id: "construction_site",           classId: 4,   label: "Construction Site",           description: "Active construction sites at any development phase (class 4)",    color: "#f97316", strokeColor: "#ea580c" },
+  { id: "heavy_machinery",             classId: 207, label: "Heavy Machinery",             description: "Excavators, bulldozers and heavy plant on site (class 207)",      color: "#a855f7", strokeColor: "#7c3aed" },
+] as const;
+type AILayerId = typeof AI_LAYERS[number]["id"];
+interface AILayerState { loading: boolean; error: string | null; count: number; }
+
 // ── Marker icon ───────────────────────────────────────────────────────────────
 function createMarkerIcon(color: string, isSelected: boolean): L.DivIcon {
   return L.divIcon({
@@ -48,6 +58,7 @@ export default function MapMonitor() {
   const leafletMap = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<number, L.Marker>>(new Map());
   const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const aiLayerGroupsRef = useRef<Map<AILayerId, L.LayerGroup>>(new Map());
 
   const [sites, setSites] = useState<ConstructionSite[]>(CONSTRUCTION_SITES);
   const [selectedSite, setSelectedSite] = useState<ConstructionSite | null>(null);
@@ -64,6 +75,13 @@ export default function MapMonitor() {
   const [importLoading, setImportLoading] = useState(false);
   const [showFindResult, setShowFindResult] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // AI Layers
+  const [enabledLayers, setEnabledLayers] = useState<Set<AILayerId>>(new Set());
+  const [layerStates, setLayerStates] = useState<Record<AILayerId, AILayerState>>(
+    Object.fromEntries(AI_LAYERS.map(l => [l.id, { loading: false, error: null, count: 0 }])) as Record<AILayerId, AILayerState>
+  );
+  const [showLayersPanel, setShowLayersPanel] = useState(false);
 
   // Add marker dialog
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -343,39 +361,144 @@ export default function MapMonitor() {
     setTimeout(() => setShowFindResult(null), 3000);
   }
 
+  // ── NearMap AI Layers — live API using official class IDs ────────────────────
+  const enabledLayersRef = useRef<Set<AILayerId>>(new Set());
+
+  async function fetchAndRenderLayer(layer: typeof AI_LAYERS[number], map: L.Map) {
+    const id = layer.id;
+    setLayerStates(prev => ({ ...prev, [id]: { ...prev[id], loading: true, error: null } }));
+
+    // Remove old group for this layer before re-rendering
+    aiLayerGroupsRef.current.get(id)?.remove();
+    aiLayerGroupsRef.current.delete(id);
+
+    try {
+      const b = map.getBounds();
+      // NearMap AI v4 requires polygon as comma-separated x,y pairs (lon,lat)
+      const sw = b.getSouthWest(), ne = b.getNorthEast();
+      // Bounding box as closed polygon: SW → SE → NE → NW → SW
+      const polygon = [
+        `${sw.lng},${sw.lat}`,
+        `${ne.lng},${sw.lat}`,
+        `${ne.lng},${ne.lat}`,
+        `${sw.lng},${ne.lat}`,
+        `${sw.lng},${sw.lat}`,
+      ].join(",");
+      const until = new Date().toISOString().slice(0, 10);
+      const since = `${new Date().getFullYear() - 1}-01-01`;
+      // Query the full construction pack, then filter client-side by numeric classId
+      const params = new URLSearchParams({ packs: "construction", polygon, since, until, apikey: NEARMAP_API_KEY });
+      const url = `https://api.nearmap.com/ai/features/v4/features.json?${params}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        let detail = res.statusText;
+        try { const body = await res.json(); detail = body.message || body.error || body.detail || JSON.stringify(body); } catch { /* ignore */ }
+        throw new Error(`NearMap API ${res.status}: ${detail}`);
+      }
+      const data = await res.json();
+
+      const group = L.layerGroup();
+      let count = 0;
+
+      // Filter to only features matching this layer's numeric classId
+      const features = (data.features ?? []).filter((feat: Record<string, unknown>) => {
+        const props = feat.properties as Record<string, unknown> | null;
+        return props?.classId === layer.classId || props?.class_id === layer.classId;
+      });
+
+      features.forEach((feat: Record<string, unknown>) => {
+        count++;
+        const geom = feat.geometry as { type: string; coordinates: unknown } | undefined;
+        if (!geom) return;
+        if (geom.type === "Polygon" || geom.type === "MultiPolygon") {
+          L.geoJSON(feat as unknown as Parameters<typeof L.geoJSON>[0], {
+            style: { color: layer.strokeColor, fillColor: layer.color, fillOpacity: 0.3, weight: 2 },
+          })
+            .bindPopup(`<b style="font-family:system-ui;font-size:12px;">${layer.label}</b>`)
+            .addTo(group);
+        } else if (geom.type === "Point") {
+          const [lng, lat] = geom.coordinates as [number, number];
+          L.circleMarker([lat, lng], { radius: 8, color: layer.strokeColor, fillColor: layer.color, fillOpacity: 0.85, weight: 2 })
+            .bindPopup(`<b style="font-family:system-ui;font-size:12px;">${layer.label}</b>`)
+            .addTo(group);
+        }
+      });
+
+      group.addTo(map);
+      aiLayerGroupsRef.current.set(id, group);
+      setLayerStates(prev => ({ ...prev, [id]: { loading: false, error: null, count } }));
+    } catch (err) {
+      setLayerStates(prev => ({ ...prev, [id]: { loading: false, error: (err as Error).message, count: 0 } }));
+    }
+  }
+
+  async function toggleLayer(layer: typeof AI_LAYERS[number]) {
+    const map = leafletMap.current;
+    if (!map) return;
+    const id = layer.id;
+
+    if (enabledLayersRef.current.has(id)) {
+      aiLayerGroupsRef.current.get(id)?.remove();
+      aiLayerGroupsRef.current.delete(id);
+      enabledLayersRef.current.delete(id);
+      setEnabledLayers(prev => { const s = new Set(prev); s.delete(id); return s; });
+      setLayerStates(prev => ({ ...prev, [id]: { loading: false, error: null, count: 0 } }));
+      return;
+    }
+
+    enabledLayersRef.current.add(id);
+    setEnabledLayers(prev => { const s = new Set(prev); s.add(id); return s; });
+    await fetchAndRenderLayer(layer, map);
+  }
+
+  // Auto-refresh enabled layers on map move/zoom
+  useEffect(() => {
+    const map = leafletMap.current;
+    if (!map) return;
+    const onMoveEnd = () => {
+      enabledLayersRef.current.forEach(id => {
+        const layer = AI_LAYERS.find(l => l.id === id);
+        if (layer) fetchAndRenderLayer(layer, map);
+      });
+    };
+    map.on("moveend", onMoveEnd);
+    return () => { map.off("moveend", onMoveEnd); };
+  }, []);
+
   // ── List pagination ───────────────────────────────────────────────────────
   const totalPages = Math.ceil(filteredSites.length / LIST_PAGE_SIZE);
   const pagedSites = filteredSites.slice((listPage - 1) * LIST_PAGE_SIZE, listPage * LIST_PAGE_SIZE);
 
   // ── Styles ────────────────────────────────────────────────────────────────
   const s = {
-    root: { display: "flex", flexDirection: "column" as const, height: "100%", minHeight: 0, background: "#060e17", color: "#e2e8f0", fontFamily: "'Montserrat', 'Source Sans 3', sans-serif", overflow: "hidden" },
-    statsBar: { background: "#0a1520", borderBottom: "1px solid #1e3a5f", padding: "8px 16px", display: "flex", gap: 12, alignItems: "center", flexShrink: 0, flexWrap: "wrap" as const },
-    statBox: (color: string) => ({ background: "#0f1923", border: `1px solid ${color}22`, borderRadius: 6, padding: "4px 12px", display: "flex", flexDirection: "column" as const, alignItems: "center", minWidth: 70 }),
+    root: { display: "flex", flexDirection: "column" as const, height: "100%", minHeight: 0, background: "#1a1a2e", color: "#e2e8f0", fontFamily: "'Montserrat', 'Source Sans 3', sans-serif", overflow: "hidden" },
+    statsBar: { background: "#22243a", borderBottom: "1px solid #2a2a4e", padding: "8px 16px", display: "flex", gap: 12, alignItems: "center", flexShrink: 0, flexWrap: "wrap" as const },
+    statBox: (color: string) => ({ background: "#1a1a2e", border: `1px solid ${color}33`, borderRadius: 6, padding: "4px 12px", display: "flex", flexDirection: "column" as const, alignItems: "center", minWidth: 70 }),
     statVal: (color: string) => ({ fontSize: 18, fontWeight: 800, color, lineHeight: 1.2 }),
-    statLbl: { fontSize: 10, color: "#64748b", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.05em" },
-    filterBar: { background: "#0a1520", borderBottom: "1px solid #1e3a5f", padding: "8px 16px", display: "flex", gap: 8, alignItems: "center", flexShrink: 0, flexWrap: "wrap" as const },
-    filterInput: { background: "#0f1923", border: "1px solid #1e3a5f", borderRadius: 4, color: "#e2e8f0", padding: "5px 10px", fontSize: 12, outline: "none", fontFamily: "inherit" },
-    viewBar: { background: "#0a1520", borderBottom: "1px solid #1e3a5f", padding: "0 16px", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 },
+    statLbl: { fontSize: 10, color: "#8b9ab5", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.05em" },
+    filterBar: { background: "#22243a", borderBottom: "1px solid #2a2a4e", padding: "8px 16px", display: "flex", gap: 8, alignItems: "center", flexShrink: 0, flexWrap: "wrap" as const },
+    filterInput: { background: "#1a1a2e", border: "1px solid #2a2a4e", borderRadius: 4, color: "#e2e8f0", padding: "5px 10px", fontSize: 12, outline: "none", fontFamily: "inherit" },
+    viewBar: { background: "#22243a", borderBottom: "1px solid #2a2a4e", padding: "0 16px", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 },
     tabBtn: (active: boolean) => ({ padding: "8px 18px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: active ? "#1e5fa8" : "transparent", color: active ? "#fff" : "#94a3b8", borderBottom: active ? "2px solid #4a9eff" : "2px solid transparent", transition: "all 0.15s" }),
-    actionBtn: { background: "#1e3a5f", color: "#4a9eff", border: "1px solid #1e5fa8", borderRadius: 4, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
+    actionBtn: { background: "#22243a", color: "#4a9eff", border: "1px solid #2a2a4e", borderRadius: 4, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
     syncBtn: { background: "#1e5fa8", color: "#fff", border: "none", borderRadius: 4, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
     mapWrap: { flex: 1, display: "flex", overflow: "hidden" },
-    timeline: { width: 300, background: "#0f1923", borderLeft: "1px solid #1e3a5f", overflowY: "auto" as const, flexShrink: 0, padding: 0 },
-    tlHeader: { background: "#0a1520", borderBottom: "1px solid #1e3a5f", padding: "12px 14px" },
-    tlSection: { padding: "10px 14px", borderBottom: "1px solid #1e3a5f11" },
-    tlLabel: { fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 2 },
+    timeline: { width: 300, background: "#1a1a2e", borderLeft: "1px solid #2a2a4e", overflowY: "auto" as const, flexShrink: 0, padding: 0 },
+    tlHeader: { background: "#22243a", borderBottom: "1px solid #2a2a4e", padding: "12px 14px" },
+    tlSection: { padding: "10px 14px", borderBottom: "1px solid #2a2a4e44" },
+    tlLabel: { fontSize: 10, color: "#8b9ab5", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 2 },
     tlValue: { fontSize: 12, color: "#e2e8f0" },
     portalLink: { color: "#4a9eff", fontSize: 12, textDecoration: "none", display: "block", marginBottom: 2 },
     dotBtn: (color: string, active: boolean) => ({ width: 20, height: 20, borderRadius: "50%", background: color, border: active ? "2px solid #fff" : "2px solid transparent", cursor: "pointer", transition: "transform 0.1s", transform: active ? "scale(1.3)" : "scale(1)" }),
     listWrap: { flex: 1, overflowY: "auto" as const, overflowX: "auto" as const },
     table: { width: "100%", borderCollapse: "collapse" as const, fontSize: 11 },
-    th: { background: "#0a1520", color: "#94a3b8", fontWeight: 700, padding: "8px 10px", textAlign: "left" as const, borderBottom: "1px solid #1e3a5f", whiteSpace: "nowrap" as const, position: "sticky" as const, top: 0, zIndex: 1 },
-    td: { padding: "7px 10px", borderBottom: "1px solid #1e3a5f22", color: "#e2e8f0", whiteSpace: "nowrap" as const },
+    th: { background: "#22243a", color: "#94a3b8", fontWeight: 700, padding: "8px 10px", textAlign: "left" as const, borderBottom: "1px solid #2a2a4e", whiteSpace: "nowrap" as const, position: "sticky" as const, top: 0, zIndex: 1 },
+    td: { padding: "7px 10px", borderBottom: "1px solid #2a2a4e44", color: "#e2e8f0", whiteSpace: "nowrap" as const },
   };
 
   return (
     <div style={s.root}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       {/* Stats Bar */}
       <div style={s.statsBar}>
         {[
@@ -484,8 +607,92 @@ export default function MapMonitor() {
       {/* Main Content */}
       {view === "map" ? (
         <div style={s.mapWrap}>
-          {/* Map */}
-          <div ref={mapRef} style={{ flex: 1, position: "relative" }} />
+          {/* Map + AI Layers overlay */}
+          <div style={{ flex: 1, position: "relative" }}>
+            <div ref={mapRef} style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }} />
+
+            {/* AI Layers Button (top-right) */}
+            <div style={{ position: "absolute", top: 12, right: 12, zIndex: 1001 }}>
+              <button
+                onClick={() => setShowLayersPanel(p => !p)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  background: showLayersPanel || enabledLayers.size > 0 ? "#1e5fa8" : "#22243a",
+                  color: showLayersPanel || enabledLayers.size > 0 ? "#fff" : "#94a3b8",
+                  border: showLayersPanel || enabledLayers.size > 0 ? "1px solid #4a9eff" : "1px solid #2a2a4e",
+                  boxShadow: "0 2px 12px #0008", transition: "all 0.15s",
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
+                </svg>
+                AI Layers
+                {enabledLayers.size > 0 && (
+                  <span style={{ background: "#4a9eff", color: "#fff", borderRadius: "50%", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800 }}>{enabledLayers.size}</span>
+                )}
+              </button>
+
+              {showLayersPanel && (
+                <div style={{ position: "absolute", top: 38, right: 0, width: 300, background: "#1a1a2e", border: "1px solid #2a2a4e", borderRadius: 8, boxShadow: "0 8px 32px #000c", overflow: "hidden" }}>
+                  <div style={{ background: "#22243a", borderBottom: "1px solid #2a2a4e", padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>NearMap AI · Construction Pack</div>
+                      <div style={{ fontSize: 10, color: "#8b9ab5", marginTop: 2 }}>Toggle to highlight sites by construction type</div>
+                    </div>
+                    <button onClick={() => setShowLayersPanel(false)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>
+                  </div>
+                  <div style={{ padding: 8 }}>
+                    {AI_LAYERS.map(layer => {
+                      const isOn = enabledLayers.has(layer.id);
+                      const st = layerStates[layer.id];
+                      return (
+                        <div key={layer.id}>
+                          <button
+                            onClick={() => toggleLayer(layer)}
+                            disabled={st.loading}
+                            style={{
+                              width: "100%", display: "flex", alignItems: "flex-start", gap: 10,
+                              padding: "8px 10px", borderRadius: 6, cursor: st.loading ? "wait" : "pointer",
+                              background: isOn && !st.error ? `${layer.color}18` : "transparent",
+                              border: isOn && !st.error ? `1px solid ${layer.color}55` : st.error && isOn ? "1px solid #ef444455" : "1px solid transparent",
+                              textAlign: "left", transition: "all 0.15s",
+                            }}
+                          >
+                            <div style={{ position: "relative", flexShrink: 0, marginTop: 2 }}>
+                              <div style={{ width: 16, height: 16, borderRadius: 3, border: `2px solid ${isOn && !st.error ? layer.strokeColor : st.error ? "#ef4444" : "#475569"}`, background: isOn && !st.error ? layer.color + "99" : "transparent", opacity: st.loading ? 0.4 : 1, transition: "all 0.15s" }} />
+                              {st.loading && (
+                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <div style={{ width: 12, height: 12, border: `2px solid ${layer.color}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: isOn ? (st.error ? "#f87171" : "#fff") : "#cbd5e1" }}>{layer.label}</span>
+                                {isOn && !st.loading && !st.error && <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 3, background: `${layer.color}33`, color: layer.color, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>ON</span>}
+                                {isOn && !st.loading && !st.error && st.count > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: layer.color, marginLeft: "auto" }}>{st.count} detected</span>}
+                                {isOn && !st.loading && !st.error && st.count === 0 && <span style={{ fontSize: 10, color: "#64748b", marginLeft: "auto" }}>0 in view</span>}
+                              </div>
+                              <div style={{ fontSize: 10, color: "#64748b", marginTop: 2, lineHeight: 1.4 }}>{layer.description}</div>
+                            </div>
+                          </button>
+                          {isOn && st.error && (
+                            <div style={{ margin: "2px 4px 4px", padding: "6px 8px", background: "#ef444420", border: "1px solid #ef444440", borderRadius: 4, fontSize: 10, color: "#fca5a5", display: "flex", gap: 6, alignItems: "flex-start" }}>
+                              <span style={{ flexShrink: 0 }}>⚠</span>{st.error}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ padding: "8px 14px", borderTop: "1px solid #2a2a4e", background: "#22243a" }}>
+                    <p style={{ fontSize: 9, color: "#475569", margin: 0, lineHeight: 1.4 }}>Polygons auto-refresh on pan/zoom. Uses official NearMap AI class IDs (Construction Pack). Requires active NearMap AI subscription.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Timeline Panel */}
           <div style={s.timeline}>
@@ -605,7 +812,7 @@ export default function MapMonitor() {
             </tbody>
           </table>
           {/* Pagination */}
-          <div style={{ padding: "10px 16px", display: "flex", gap: 8, alignItems: "center", borderTop: "1px solid #1e3a5f" }}>
+          <div style={{ padding: "10px 16px", display: "flex", gap: 8, alignItems: "center", borderTop: "1px solid #2a2a4e" }}>
             <button style={s.actionBtn} disabled={listPage === 1} onClick={() => setListPage(p => p - 1)}>← Prev</button>
             <span style={{ fontSize: 12, color: "#94a3b8" }}>Page {listPage} of {totalPages}</span>
             <button style={s.actionBtn} disabled={listPage === totalPages} onClick={() => setListPage(p => p + 1)}>Next →</button>
@@ -615,7 +822,7 @@ export default function MapMonitor() {
 
       {/* Find in Action Manager toast */}
       {showFindResult && (
-        <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#0f1923", border: "1px solid #22c55e", borderRadius: 8, padding: "12px 20px", color: "#22c55e", fontSize: 13, fontWeight: 600, zIndex: 9999, boxShadow: "0 4px 20px #000a" }}>
+        <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1a1a2e", border: "1px solid #22c55e", borderRadius: 8, padding: "12px 20px", color: "#22c55e", fontSize: 13, fontWeight: 600, zIndex: 9999, boxShadow: "0 4px 20px #000a" }}>
           {showFindResult}
           <button style={{ marginLeft: 12, background: "#22c55e", color: "#000", border: "none", borderRadius: 4, padding: "3px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }} onClick={() => { window.location.hash = ""; window.dispatchEvent(new CustomEvent("amSearch", { detail: sessionStorage.getItem("amSearch") })); setShowFindResult(null); }}>Go →</button>
         </div>
@@ -624,7 +831,7 @@ export default function MapMonitor() {
       {/* Import Excel Dialog */}
       {showImportDialog && (
         <div style={{ position: "fixed", inset: 0, background: "#000a", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#0f1923", border: "1px solid #1e3a5f", borderRadius: 8, padding: 24, width: 420 }}>
+          <div style={{ background: "#1a1a2e", border: "1px solid #2a2a4e", borderRadius: 8, padding: 24, width: 420 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 8 }}>Import Sites from Excel</div>
             <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 16, lineHeight: 1.5 }}>
               Upload an Excel file (.xlsx) with columns: <strong style={{ color: "#4a9eff" }}>Address</strong>, Suburb, LGA, Status, Developer, Builder, PCA, Class, Storeys, Portal ID.
@@ -654,7 +861,7 @@ export default function MapMonitor() {
       {/* Add Marker Dialog */}
       {showAddDialog && (
         <div style={{ position: "fixed", inset: 0, background: "#000a", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#0f1923", border: "1px solid #1e3a5f", borderRadius: 8, padding: 24, width: 360 }}>
+          <div style={{ background: "#1a1a2e", border: "1px solid #2a2a4e", borderRadius: 8, padding: 24, width: 360 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 16 }}>Add New Marker</div>
             <div style={{ marginBottom: 10 }}>
               <label style={{ fontSize: 11, color: "#94a3b8", display: "block", marginBottom: 4 }}>Address *</label>
