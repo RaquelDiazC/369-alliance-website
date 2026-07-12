@@ -7,6 +7,18 @@
       "runtimeArgs": ["node_modules/vite/bin/vite.js", "--host"],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "crypto-dashboard",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "C:/Users/raque/.claude/skills/chart-analyst"],
+      "port": 8765
+    },
+    {
+      "name": "crypto-dashboard-test",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8766", "--directory", "C:/Users/raque/.claude/skills/chart-analyst"],
+      "port": 8766
     }
   ]
 }

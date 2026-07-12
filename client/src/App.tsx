@@ -15,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import IauditorPage from "./pages/IauditorPage";
 import DbpAuditor from "./pages/DbpAuditor";
 import DrawingAnalyser from "./pages/DrawingAnalyser";
+import ApartmentDesignGuide from "./pages/ApartmentDesignGuide";
 
 // Marketing website pages
 import WebsiteHome from "./pages/website/WebsiteHome";
@@ -42,6 +43,7 @@ function Router() {
       <Route path="/iauditor" component={IauditorPage} />
       <Route path="/dbp-auditor" component={DbpAuditor} />
       <Route path="/drawing-analyser" component={DrawingAnalyser} />
+      <Route path="/apartment-design-guide" component={ApartmentDesignGuide} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/portal/:role" component={RolePortal} />
       <Route path="/data" component={DataHub} />
