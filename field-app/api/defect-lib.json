@@ -1,0 +1,1812 @@
+{
+ "W1.1": {
+  "id": "W1.1",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Membrane not terminated into a puddle flange draining the external roof or balcony.",
+  "c19": "FP1.4 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1P3 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "W1.2": {
+  "id": "W1.2",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Membrane not terminated into an overflow.",
+  "c19": "FP1.4 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "W1.3": {
+  "id": "W1.3",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Retained water, ponding or inadequate falls on an roof or balcony.",
+  "c19": "FP1.4 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "W1.4": {
+  "id": "W1.4",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Inadequate surface preparation on an external surface/roof.",
+  "c19": "FP1.4 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "W1.5": {
+  "id": "W1.5",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Inadequate termination height of membrane at a doorway (no strip drain in front of door).",
+  "c19": "FP1.4 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "W1.6": {
+  "id": "W1.6",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Inadequate termination height of a membrane up an external wall.",
+  "c19": "FP1.4 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "W1.7": {
+  "id": "W1.7",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Inadequate termination of membrane at a construction or movement joint.",
+  "c19": "FP1.4 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "W1.8": {
+  "id": "W1.8",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Penetration of water (leaks) from an external wall, window or roof.",
+  "c19": "FP1.4",
+  "c22": "F1P2",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "W1.9": {
+  "id": "W1.9",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Inadequate termination of membrane at sliding door.",
+  "c19": "FP1.4 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "W1.10": {
+  "id": "W1.10",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Membrane not terminated 100mm above soil level in planter box.",
+  "c19": "FP1.4 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "W1.11": {
+  "id": "W1.11",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Incorrent fillet size at wall to floor junction (15x15 for liquids and 40x40 for sheet membranes).",
+  "c19": "FP1.4 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "W1.12": {
+  "id": "W1.12",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Incorrect vertical termination detail at vertical elements (posts or pipe risers).",
+  "c19": "FP1.4 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "W1.13": {
+  "id": "W1.13",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Fixings through the waterproof membrane have not been oversealed.",
+  "c19": "FP1.4 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "W1.14": {
+  "id": "W1.14",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Membrane has been applied incorrectly, resulting in delamination and/or pinholing.",
+  "c19": "FP1.4 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "W1.15": {
+  "id": "W1.15",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Mechanical damage of the membrane (scrapes, gouges, etc).",
+  "c19": "FP1.4 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "W1.16": {
+  "id": "W1.16",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Puddle flange for an external membrane not recessed into substrate.",
+  "c19": "FP1.4 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "W1.17": {
+  "id": "W1.17",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Inadequate downward termination of a membrane from a roof or balcony onto an external wall below.",
+  "c19": "FP1.2 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "",
+  "st": "active"
+ },
+ "W1.18": {
+  "id": "W1.18",
+  "rg": "Waterproofing",
+  "sub": "External waterproofing",
+  "d": "Inadequate protection to the top edge of an upward termination of the membrane.",
+  "c19": "FP1.2 · F1.4 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "c22": "F1P2 · F1D5 · AS 4654.1 · AS 4654.2 · AS4654.2-2012",
+  "pw": "",
+  "st": "active"
+ },
+ "W2.1": {
+  "id": "W2.1",
+  "rg": "Waterproofing",
+  "sub": "Internal waterproofing",
+  "d": "Retained water, ponding or inadequate falls in the general bathroom area.",
+  "c19": "FP1.7 · F1.7 · AS 3740 · AS3740-2010",
+  "c22": "F2P2 · F2D4",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "W2.2": {
+  "id": "W2.2",
+  "rg": "Waterproofing",
+  "sub": "Internal waterproofing",
+  "d": "Retained water, ponding or inadequate falls in the shower area.",
+  "c19": "FP1.7 · F1.7 · AS 3740 · AS3740-2010",
+  "c22": "F2P2 · F2D2 · AS 3740 · AS3740-2021 · Specification 26",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "W2.3": {
+  "id": "W2.3",
+  "rg": "Waterproofing",
+  "sub": "Internal waterproofing",
+  "d": "No waterstop angle at a doorway to a wet area.",
+  "c19": "FP1.7 · F1.7 · AS 3740 · AS3740-2010",
+  "c22": "F2P2 · F2D2 · AS 3740 · AS3740-2021 · Specification 26",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "W2.4": {
+  "id": "W2.4",
+  "rg": "Waterproofing",
+  "sub": "Internal waterproofing",
+  "d": "Inadequate termination height of membrane in a shower area.",
+  "c19": "FP1.7 · F1.7 · AS 3740",
+  "c22": "F2P2 · F2D2 · AS 3740 · Specification 26",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "W2.5": {
+  "id": "W2.5",
+  "rg": "Waterproofing",
+  "sub": "Internal waterproofing",
+  "d": "Inadequate termination height of membrane in the general bathroom area.",
+  "c19": "FP1.7 · F1.7 · AS 3740 · AS3740-2010",
+  "c22": "F2P2 · F2D2 · AS 3740 · Specification 26",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "W2.6": {
+  "id": "W2.6",
+  "rg": "Waterproofing",
+  "sub": "Internal waterproofing",
+  "d": "Membrane not terminated into a puddle flange draining an internal wet area.",
+  "c19": "FP1.7 · F1.7 · AS 3740 · AS3740-2010",
+  "c22": "F2P2 · F2D2 · AS 3740 · AS3740-2021 · Specification 26",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "W2.7": {
+  "id": "W2.7",
+  "rg": "Waterproofing",
+  "sub": "Internal waterproofing",
+  "d": "Inadequate surface preparation of a substrate in an internal wet area.",
+  "c19": "FP1.7 · F1.7 · AS 3740 · AS3740-2010",
+  "c22": "F2P2 · F2D2 · AS 3740 · AS3740-2021 · Specification 26",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "W2.8": {
+  "id": "W2.8",
+  "rg": "Waterproofing",
+  "sub": "Internal waterproofing",
+  "d": "Incorrent fillet size at wall to floor junction (12mm for Class 3, 35mm for Class 2, 75mm with backing rod for Class 1).",
+  "c19": "FP1.7 · F1.7 · AS 3740 · AS3740-2010",
+  "c22": "F2P2 · F2D2 · AS 3740 · AS3740-2021 · Specification 26",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "W2.9": {
+  "id": "W2.9",
+  "rg": "Waterproofing",
+  "sub": "Internal waterproofing",
+  "d": "Penetration of water (leaks) behind fittings, linings and into concealed spaces from sanitary compartments, bathrooms or laundries.",
+  "c19": "FP1.7",
+  "c22": "F2P2",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "W2.10": {
+  "id": "W2.10",
+  "rg": "Waterproofing",
+  "sub": "Internal waterproofing",
+  "d": "Puddle flange for an internal membrane is not recessed into substrate.",
+  "c19": "FP1.7 · F1.7 · AS 3740 · AS3740-2010 · AS3740",
+  "c22": "F2P2 · F2D2 · AS 3740 · AS3740-2021 · Specification 26",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "W2.11": {
+  "id": "W2.11",
+  "rg": "Waterproofing",
+  "sub": "",
+  "d": "Shower area - Membrane termination - Baths and Spas ***What's the defect specifically? Can common concerns around bath and spa construction ",
+  "c19": "F1.7",
+  "c22": "F2P2 · F2D2",
+  "pw": "",
+  "st": "draft"
+ },
+ "W2.12": {
+  "id": "W2.12",
+  "rg": "Waterproofing",
+  "sub": "",
+  "d": "Shower area - No waterstop angle at the shower screen. ***This can potentially be combined with defect below (Shower area - inadequate verti",
+  "c19": "FP1.7 · F1.7 · AS 3740 · AS3740-2010",
+  "c22": "F2P2 · F2D2 · AS 3740 · AS3740-2021 · Specification 26",
+  "pw": "",
+  "st": "draft"
+ },
+ "W2.13": {
+  "id": "W2.13",
+  "rg": "Waterproofing",
+  "sub": "",
+  "d": "Shower area - Inadequate vertical waterstop ***This can potentially be combined with defect above(Shower area - No waterstop at the shower s",
+  "c19": "FP1.7 · F1.7 · AS 3740 · AS3740-2010",
+  "c22": "F2P2 · F2D2 · AS 3740 · AS3740-2021 · Specification 26",
+  "pw": "",
+  "st": "draft"
+ },
+ "W2.14": {
+  "id": "W2.14",
+  "rg": "Waterproofing",
+  "sub": "",
+  "d": "Shower area - Inadequate waterproofing installation to a shower area with a preformed shower base ***This is very specific. Can we have just",
+  "c19": "FP1.7 · F1.7",
+  "c22": "F2D2 · Specification 26",
+  "pw": "",
+  "st": "draft"
+ },
+ "W2.15": {
+  "id": "W2.15",
+  "rg": "Waterproofing",
+  "sub": "",
+  "d": "Shower area - Inadequate waterproofing termination on the window near shower. ***This is very specific. Recommend instead to simply have a d",
+  "c19": "",
+  "c22": "",
+  "pw": "",
+  "st": "draft"
+ },
+ "W3.1": {
+  "id": "W3.1",
+  "rg": "Waterproofing",
+  "sub": "",
+  "d": "Defect not in library",
+  "c19": "",
+  "c22": "",
+  "pw": "s34(1)(a)",
+  "st": "catchall"
+ },
+ "W3.2": {
+  "id": "W3.2",
+  "rg": "Waterproofing",
+  "sub": "",
+  "d": "Failure to construct in accordance with the approved plans",
+  "c19": "",
+  "c22": "",
+  "pw": "s34(1)(a)",
+  "st": "catchall"
+ },
+ "W3.3": {
+  "id": "W3.3",
+  "rg": "Waterproofing",
+  "sub": "",
+  "d": "Basement waterproofing - Excavated Basement ***This is project/detail dependent. Easier to defect by citing failure to construct to approved",
+  "c19": "",
+  "c22": "",
+  "pw": "",
+  "st": "draft"
+ },
+ "W3.4": {
+  "id": "W3.4",
+  "rg": "Waterproofing",
+  "sub": "",
+  "d": "Basement waterproofing - Lift Pit ***This is project/detail dependent. Easier to defect by citing failure to construct to approved plans. - ",
+  "c19": "",
+  "c22": "",
+  "pw": "",
+  "st": "draft"
+ },
+ "W3.1_alt": {
+  "id": "W3.1",
+  "rg": "Waterproofing",
+  "sub": "",
+  "d": "Basement waterproofing ***This is project/detail dependent. Easier to defect by citing failure to construct to approved plans. - PJ***",
+  "c19": "",
+  "c22": "",
+  "pw": "",
+  "st": "draft"
+ },
+ "W3.2_alt": {
+  "id": "W3.2",
+  "rg": "Waterproofing",
+  "sub": "",
+  "d": "Basement waterproofing - Perimeter Drainage ***This is project/detail dependent. Easier to defect by citing failure to construct to approved",
+  "c19": "F1.7 · F1.1",
+  "c22": "F2D2 · F1D3 · H2D2 · H2D6",
+  "pw": "",
+  "st": "draft"
+ },
+ "F1.1": {
+  "id": "F1.1",
+  "rg": "Fire Safety",
+  "sub": "Fire resistance and stability",
+  "d": "A building element required to have a FRL (Fire Resistance Level) does not achieve the required FRL.",
+  "c19": "C1.1",
+  "c22": "C1P1 · C1P2 · Specification 5",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F2.1": {
+  "id": "F2.1",
+  "rg": "Fire Safety",
+  "sub": "Compartmentation",
+  "d": "The internal wall seperating two compartments does not extend to the underside of the floor or roof above.",
+  "c19": "C2.7",
+  "c22": "C1P2 · C3D8",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F2.2": {
+  "id": "F2.2",
+  "rg": "Fire Safety",
+  "sub": "Compartmentation",
+  "d": "There are unprotected services penetrations in a wall, floor or ceiling required to have a FRL (Fire Reistance Level).The installation does ",
+  "c19": "C3.12 · C3.15",
+  "c22": "C1P8 · C4D13 · C4D15",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F2.3": {
+  "id": "F2.3",
+  "rg": "Fire Safety",
+  "sub": "Compartmentation",
+  "d": "Construction joints and gaps/spaces between building elements required to be fire resistant is unprotected. The installation does not match ",
+  "c19": "C3.16 · C1.13 · AS1530.4",
+  "c22": "C1P8 · C4D16 · AS 4072.1 · AS 1530.4 · Specification 9",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F2.4": {
+  "id": "F2.4",
+  "rg": "Fire Safety",
+  "sub": "Compartmentation",
+  "d": "Electrical substation or main switchboard which sustains emergency equipment not separated from the rest of the building and construction fa",
+  "c19": "C2.13",
+  "c22": "C1P7 · C3D14",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F2.5": {
+  "id": "F2.5",
+  "rg": "Fire Safety",
+  "sub": "",
+  "d": "Electrical Cupboard, must have smoke detection and fire protection",
+  "c19": "C3.15 · C2.3 · J0.1",
+  "c22": "C3D14 · AS 1670.1 · Specification 20 · Specification 17",
+  "pw": "",
+  "st": "active"
+ },
+ "F3.1": {
+  "id": "F3.1",
+  "rg": "Fire Safety",
+  "sub": "Protection of openings",
+  "d": "A required fire door does not self-close and latch shut.",
+  "c19": "C3.4 · AS 1905.1 · AS 1905.1:2015",
+  "c22": "AS 1905.1 · AS 1905.1:2015 · Specification 12",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F3.2": {
+  "id": "F3.2",
+  "rg": "Fire Safety",
+  "sub": "Protection of openings",
+  "d": "A required fire door has excessive gaps between the leaf, frame and floor.",
+  "c19": "C3.4 · AS 1905.1 · AS 1530.4",
+  "c22": "C1P8 · C4D5 · AS 1905.1 · AS 1530.4 · Specification 12",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F3.3": {
+  "id": "F3.3",
+  "rg": "Fire Safety",
+  "sub": "Protection of openings",
+  "d": "Services with plastic, pex or similar materials are located in close proximity to uninsulated metallic pipes.",
+  "c19": "C3.15 · AS 4072.1 · AS 1530.4",
+  "c22": "C1P8 · Specification 13",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F3.4": {
+  "id": "F3.4",
+  "rg": "Fire Safety",
+  "sub": "Protection of openings",
+  "d": "Fire door frame has not been filled and is hollow.",
+  "c19": "C3.4 · AS 1905.1 · AS 1905.1:2015",
+  "c22": "AS 1905.1 · AS 1905.1:2015 · Specification 12",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F4.1": {
+  "id": "F4.1",
+  "rg": "Fire Safety",
+  "sub": "Access and egress",
+  "d": "Lack of signage or incorrectly placed signage on a required fire door.",
+  "c19": "D2.23",
+  "c22": "D1P2 · D3D28",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F4.2": {
+  "id": "F4.2",
+  "rg": "Fire Safety",
+  "sub": "Access and egress",
+  "d": "There are non-compliant services installed in the fire isolated exit.",
+  "c19": "C3.9 · D2.7",
+  "c22": "C1P2 · C4D10 · D3D8",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F4.3": {
+  "id": "F4.3",
+  "rg": "Fire Safety",
+  "sub": "Access and egress",
+  "d": "There are combustible materials in the fire isolated exit.",
+  "c19": "D2.2 · D2.7",
+  "c22": "D1P5 · D3D3 · D3D8",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F4.4": {
+  "id": "F4.4",
+  "rg": "Fire Safety",
+  "sub": "Access and egress",
+  "d": "There is a step at the threshold to the entry to a fire isolated exit.",
+  "c19": "D2.15 · AS 1428.1",
+  "c22": "D1P2 · D3D16 · AS 1428.1",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F4.5": {
+  "id": "F4.5",
+  "rg": "Fire Safety",
+  "sub": "Access and egress",
+  "d": "There is a roller shutter or tilt up door forming part of a required exit.",
+  "c19": "D2.19",
+  "c22": "D1P4 · D3D24",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F4.6": {
+  "id": "F4.6",
+  "rg": "Fire Safety",
+  "sub": "Access and egress",
+  "d": "A swinging door forming part of an exit encroaches by more than 500mm (at any part of its swing) or by more than 100mm (when fully opened) o",
+  "c19": "D2.20",
+  "c22": "D1P4 · D3D25",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F4.7": {
+  "id": "F4.7",
+  "rg": "Fire Safety",
+  "sub": "Access and egress",
+  "d": "A swinging door does not swing in the direction of egress.",
+  "c19": "D2.20",
+  "c22": "D1P4 · D3D25",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F4.8": {
+  "id": "F4.8",
+  "rg": "Fire Safety",
+  "sub": "Access and egress",
+  "d": "A locking mechanism has been installed on the inside of a fire-isolated exit in a building with an effective height of over 25m.",
+  "c19": "D2.22",
+  "c22": "D1P2 · D3D27",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F4.9": {
+  "id": "F4.9",
+  "rg": "Fire Safety",
+  "sub": "Access and egress",
+  "d": "Inadequate head height in a fire exit (minimum 2m).",
+  "c19": "D1.6",
+  "c22": "D1P4 · D2D7",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F4.10": {
+  "id": "F4.10",
+  "rg": "Fire Safety",
+  "sub": "Access and egress",
+  "d": "Inadequate head height in a doorway that forms the fire exit (head height can be reduced down to 1980mm in a doorway).",
+  "c19": "D1.6",
+  "c22": "D1P4 · D2D7",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F4.11": {
+  "id": "F4.11",
+  "rg": "Fire Safety",
+  "sub": "Access and egress",
+  "d": "Inconsistent risers and goings in a required exit. Allowable riser: 115-190mm. Allowable going: 250-355mm. Adjacent risers and goings must n",
+  "c19": "D2.13",
+  "c22": "D1P2 · D3D14",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F4.12": {
+  "id": "F4.12",
+  "rg": "Fire Safety",
+  "sub": "Access and egress",
+  "d": "Stair tread nosings in a required exit have insufficient contrast luminescence.",
+  "c19": "D3.3 · D3.4 · AS 1428.1 · AS1428.1-2009",
+  "c22": "D1P1 · D4D4 · D4D5 · AS 1428.1 · AS1428.1-2009",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F4.13": {
+  "id": "F4.13",
+  "rg": "Fire Safety",
+  "sub": "Access and egress",
+  "d": "There are gas, fuel services, electrical or communications services installed in a required exit or leading to a required exit without suita",
+  "c19": "D2.7",
+  "c22": "D1P5 · D3D8",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F4.14": {
+  "id": "F4.14",
+  "rg": "Fire Safety",
+  "sub": "Access and egress",
+  "d": "A required exit leading to an open space does not have a ramp or incline with compliant gradients (unless it is a 9c building)",
+  "c19": "D1.10",
+  "c22": "D1P4 · D2D15",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F5.1": {
+  "id": "F5.1",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "Fire hydrant valve outlets are sloping more than 35 degrees below the horizontal.",
+  "c19": "EP1.3 · E1.3 · AS 2419.1 · AS 2419.1-2005",
+  "c22": "E1P3 · E1D2 · AS 2419.1 · AS 2419.1-2021",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F5.2": {
+  "id": "F5.2",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "Fire hydrant does not have the minimum 1m clearance at the front.",
+  "c19": "EP1.3 · E1.3 · AS 2419.1 · AS 2419.1-2005",
+  "c22": "E1P3 · E1D2 · AS 2419.1 · AS 2419.1-2021",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F5.3": {
+  "id": "F5.3",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "The concrete plinth supporting the fire pumpset is less than 150mm high.",
+  "c19": "AS 2941-2013",
+  "c22": "AS 2941-2013",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F5.4": {
+  "id": "F5.4",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "The fire pumpset has insufficient clearance for ongoing inspection and testing (1m around perimeter of the complete pump assembly, and 600m ",
+  "c19": "AS 2941-2013",
+  "c22": "AS 2941-2013",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F5.6": {
+  "id": "F5.6",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "The concrete plinth does not extend past 150mm past the edge of the base plate for the fire pumpset.",
+  "c19": "AS 2941-2013",
+  "c22": "AS 2941-2013",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F5.7": {
+  "id": "F5.7",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "Fire hose reel signage not clearly visible.",
+  "c19": "EP1.1 · E1.4 · AS 2441",
+  "c22": "E1P1 · E1D3 · AS 2441",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "F5.8": {
+  "id": "F5.8",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "The building is under construction and has reached an effective height of 12m and lacking operational fire hydrant and hose reel coverage",
+  "c19": "EP1.5 · E1.9",
+  "c22": "E1P5 · E1D16",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F5.9": {
+  "id": "F5.9",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "An accessible area of the building does not have sprinkler coverage.",
+  "c19": "EP1.4 · E1.5",
+  "c22": "E1P4 · E1D4 · E1D5 · E1D13 · E1D6 · E1D7 · E1D9 · E1D10",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F5.10": {
+  "id": "F5.10",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "Sprinkler discharge is obstructed, reducing the effective coverage of the sprinkler system.",
+  "c19": "AS2118.1",
+  "c22": "AS2118.1",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F5.11": {
+  "id": "F5.11",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "Sprinkler pipes have been supported from an element without sufficient strength (such as a wall lining, duct or non-structural element).",
+  "c19": "EP1.4 · E1.5 · AS 2118.1 · AS2118.1",
+  "c22": "E1P4 · AS 2118.1 · AS 2118.6 · AS 2118.4 · AS2118.1 · Specification 17 · Specification 18",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F5.12": {
+  "id": "F5.12",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "Sprinkler pipes do not have supports at a change of direction (a support must be provided within 1m from an elbow).",
+  "c19": "EP1.4 · E1.5 · AS 2118.1 · AS2118.1",
+  "c22": "E1P4 · AS 2118.1 · AS 2118.6 · AS 2118.4 · AS2118.1 · Specification 17 · Specification 18",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F5.14": {
+  "id": "F5.14",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "Portable fire extinguishers have not been installed in a conspicuous and readily accessible position.",
+  "c19": "AS 2444-2001 · AS2444-2001",
+  "c22": "AS 2444-2001 · AS2444-2001",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "F5.15": {
+  "id": "F5.15",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "The fire hydrant valve does not have sufficient clearance (100mm) around the valve handwheel.",
+  "c19": "EP1.3 · E1.3 · AS 2419.1 · AS 2419.1-2005",
+  "c22": "E1P3 · E1D2 · AS 2419.1 · AS 2419.1-2021",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F5.16": {
+  "id": "F5.16",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "Fire hydrant has insufficient coverage. Internal fire hydrants shall only protect the storey on which they are located, all parts of the flo",
+  "c19": "EP1.3 · E1.3 · AS 2419.1 · AS 2419.1-2005",
+  "c22": "E1P3 · E1D2 · AS 2419.1 · AS 2419.1-2021",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F5.17": {
+  "id": "F5.17",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "An internal fire hydrant has not been provided at each storey in a required fire-isolated exit.",
+  "c19": "EP1.3 · E1.3 · AS 2419.1 · AS 2419.1-2005",
+  "c22": "E1P3 · E1D2 · AS 2419.1 · AS 2419.1-2021",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F5.18": {
+  "id": "F5.18",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "Fire hydrant block plan is missing or inaccurate.",
+  "c19": "EP1.3 · E1.3 · AS 2419.1 · AS2419.1-2005",
+  "c22": "E1P3 · E1D2 · AS 2419.1 · AS2419.1-2021",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "F5.19": {
+  "id": "F5.19",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "No pressure gauge installed at most hydraulically disadvantaged hydrant.",
+  "c19": "EP1.3 · E1.3 · AS 2419.1 · AS2419.1-2005",
+  "c22": "E1P3 · E1D2 · AS 2419.1 · AS2419.1-2021 · AS 1349 · AS 2419.3 · AS 2941",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "F5.20": {
+  "id": "F5.20",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "Non-compliant construction of a fire hydrant cabinet.",
+  "c19": "EP1.3 · E1.3 · AS 2419.1 · AS2419.1-2005 · AS/NZS 1221",
+  "c22": "E1P3 · E1D2 · AS 2419.1 · AS2419.1-2021 · AS 1345",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F5.21": {
+  "id": "F5.21",
+  "rg": "Fire Safety",
+  "sub": "Fire fighting equipment",
+  "d": "In a building without sprinkler protection, the fire hydrant pipe supports do not have a FRL of 60/-/-.",
+  "c19": "EP1.3 · EP1.4 · E1.3 · AS 2419.1 · AS2419.1 · AS 1530.4",
+  "c22": "E1P3 · EP1.4 · E1.3 · AS 2419.1 · AS2419.1",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F6.1": {
+  "id": "F6.1",
+  "rg": "Fire Safety",
+  "sub": "Smoke and hazard management",
+  "d": "Fire and smoke dampers have not been provided with convenient access panels.",
+  "c19": "C6.1 · AS 1682.2 · AS 1682.1",
+  "c22": "C6.1 · AS 1682.2 · AS 1682.1",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "F6.2": {
+  "id": "F6.2",
+  "rg": "Fire Safety",
+  "sub": "Smoke and hazard management",
+  "d": "No smoke detector in a concealed space.",
+  "c19": "EP2.1 · AS 1670.1 · AS1670.1:2015",
+  "c22": "E2P1 · AS 1670.1 · AS1670.1:2018 · Specification 20",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F6.3": {
+  "id": "F6.3",
+  "rg": "Fire Safety",
+  "sub": "Smoke and hazard management",
+  "d": "A car-park fire compartment which has the ability to accomodate more than 40 vehicles is not protected by a sprinkler system",
+  "c19": "EP1.4 · E1.5",
+  "c22": "E1P4 · E1D4 · E1D5 · E1D13 · E1D9 · Specification 17 · Specification 18",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F6.4": {
+  "id": "F6.4",
+  "rg": "Fire Safety",
+  "sub": "Smoke and hazard management",
+  "d": "Unprotected opening in a building element with ductwork, fire dampers with the correct FRL have not been fitted to maintain the required FRL",
+  "c19": "C3.15 · AS 1668.1 · AS1668.1",
+  "c22": "C1P2 · C1P8 · C4D15 · AS 1668.1 · AS1668.1",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F6.5": {
+  "id": "F6.5",
+  "rg": "Fire Safety",
+  "sub": "Smoke and hazard management",
+  "d": "Fire dampers have not been labelled in the correct manner.",
+  "c19": "AS1682.1 · AS 1682.1 · AS 1682.2",
+  "c22": "AS1682.1 · AS 1682.1 · AS 1682.2",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "F7.1": {
+  "id": "F7.1",
+  "rg": "Fire Safety",
+  "sub": "Lift installation",
+  "d": "There is excessive gaps between lift landing door and lift shaft allowing spread of fire and smoke between floors",
+  "c19": "C1.1 · C3.10 · AS 1735.11 · AS1735.11",
+  "c22": "C1P1 · C1P2 · C4D11 · AS 1735.11 · AS1735.11 · Specification 5",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F7.2": {
+  "id": "F7.2",
+  "rg": "Fire Safety",
+  "sub": "Lift installation",
+  "d": "The building has an effective height of more than 25m and has not been provided with at least one emergency lift",
+  "c19": "EP3.2 · E3.4",
+  "c22": "E3P2 · E3D5",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F7.3": {
+  "id": "F7.3",
+  "rg": "Fire Safety",
+  "sub": "Lift installation",
+  "d": "A warning sign against the use of lifts in fire has not been installed",
+  "c19": "EP3.3 · E3.3",
+  "c22": "E3P3 · E3D4",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "F8.1": {
+  "id": "F8.1",
+  "rg": "Fire Safety",
+  "sub": "Exit signage, warning",
+  "d": "There is no view of exit signage or the exit signage is not clearly visible.",
+  "c19": "EP4.2 · E4.5 · E4.6 · E4.8 · E4.2 · AS/NZS 2293.1",
+  "c22": "E4P2 · E4D5 · E4D6 · E4D8 · E4D2 · AS/NZS 2293.1 · Specification 25",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "F8.2": {
+  "id": "F8.2",
+  "rg": "Fire Safety",
+  "sub": "Exit signage, warning",
+  "d": "Fire exit signs installed more than 2.7m from the ground.",
+  "c19": "EP4.2 · E4.8 · AS/NZS 2293.1",
+  "c22": "E4P2 · E4D8 · AS/NZS 2293.1 · Specification 25",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "F8.3": {
+  "id": "F8.3",
+  "rg": "Fire Safety",
+  "sub": "Exit signage, warning",
+  "d": "No emergency lighting in a required fire exit or part of the path of travel to a required fire exit.",
+  "c19": "EP4.1 · EV4.1 · E4.2 · D1.8",
+  "c22": "E4P1 · E4D2 · D2D13",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F8.4": {
+  "id": "F8.4",
+  "rg": "Fire Safety",
+  "sub": "Exit signage, warning",
+  "d": "Emergency lighting has insufficient illuminance (dim). The lighting must provide 0.2 lux at the floor level and 1 lux at the floor level or ",
+  "c19": "EP4.1 · EV4.1",
+  "c22": "E4P1 · EV4.1",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "F9.1": {
+  "id": "F9.1",
+  "rg": "Fire Safety",
+  "sub": "",
+  "d": "Defect not in library",
+  "c19": "",
+  "c22": "",
+  "pw": "s34(1)(a)",
+  "st": "catchall"
+ },
+ "F9.2": {
+  "id": "F9.2",
+  "rg": "Fire Safety",
+  "sub": "",
+  "d": "Failure to construct in accordance with the approved plans",
+  "c19": "",
+  "c22": "",
+  "pw": "s34(1)(a)",
+  "st": "catchall"
+ },
+ "FX1.1.1": {
+  "id": "FX1.1.1",
+  "rg": "Fire Safety",
+  "sub": "",
+  "d": "Vertical separation - horizontal & projection and spandral separation.",
+  "c19": "C2.6",
+  "c22": "C1P2 · C3D7 · Specification 17",
+  "pw": "",
+  "st": "active"
+ },
+ "FX1.2.1": {
+  "id": "FX1.2.1",
+  "rg": "Fire Safety",
+  "sub": "",
+  "d": "Path of travel near subject building",
+  "c19": "",
+  "c22": "C1P8 · C4D5 · C4D15",
+  "pw": "",
+  "st": "active"
+ },
+ "FX1.3.1": {
+  "id": "FX1.3.1",
+  "rg": "Fire Safety",
+  "sub": "",
+  "d": "Fire-stopping Penetrations (Benchmark)",
+  "c19": "",
+  "c22": "FX1.3",
+  "pw": "",
+  "st": "active"
+ },
+ "FX1.3.2": {
+  "id": "FX1.3.2",
+  "rg": "Fire Safety",
+  "sub": "",
+  "d": "There are unprotected services penetrations in a FLOOR system that required to have a FRL (Fire Reistance Level).The installation does not m",
+  "c19": "",
+  "c22": "C1P8 · C4D13 · C4D15 · Specification 5",
+  "pw": "",
+  "st": "active"
+ },
+ "FX1.3.3": {
+  "id": "FX1.3.3",
+  "rg": "Fire Safety",
+  "sub": "",
+  "d": "There are unprotected services penetrations in a MASONRY & CONCRETE WALLS required to have a FRL (Fire Reistance Level).The installation doe",
+  "c19": "",
+  "c22": "C1P8 · C4D15 · AS 4072.1 · AS 1530.4 · AS 1668.1 · Specification 13 · Specification 5",
+  "pw": "",
+  "st": "active"
+ },
+ "FX1.3.4": {
+  "id": "FX1.3.4",
+  "rg": "Fire Safety",
+  "sub": "",
+  "d": "There are unprotected services penetrations in a PLASTERBOARD WALLS required to have a FRL (Fire Reistance Level).The installation does not ",
+  "c19": "",
+  "c22": "C1P8 · C4D15 · AS 4072.1 · AS 1530.4 · AS 1668.1 · Specification 13 · Specification 5",
+  "pw": "",
+  "st": "active"
+ },
+ "FX2.1.1": {
+  "id": "FX2.1.1",
+  "rg": "Fire Safety",
+  "sub": "",
+  "d": "Number of exits",
+  "c19": "",
+  "c22": "D1P4 · D2D3 · C2D6 · D2D5",
+  "pw": "",
+  "st": "active"
+ },
+ "FX2.2.1": {
+  "id": "FX2.2.1",
+  "rg": "Fire Safety",
+  "sub": "",
+  "d": "Exit travel distances",
+  "c19": "",
+  "c22": "D1P4 · D2D15",
+  "pw": "",
+  "st": "active"
+ },
+ "FX3.1.1": {
+  "id": "FX3.1.1",
+  "rg": "Fire Safety",
+  "sub": "",
+  "d": "Fire Hydrant Booster Assembly",
+  "c19": "",
+  "c22": "E1P3 · E1D2 · AS 2419.1 · AS2419.1-2021",
+  "pw": "",
+  "st": "active"
+ },
+ "FX4.1": {
+  "id": "FX4.1",
+  "rg": "Fire Safety",
+  "sub": "",
+  "d": "Fire stair handrails",
+  "c19": "D2.17",
+  "c22": "",
+  "pw": "",
+  "st": "active"
+ },
+ "S1.1": {
+  "id": "S1.1",
+  "rg": "Structure",
+  "sub": "Concrete",
+  "d": "Inadequate cover, exposed reinforcement and honeycombing in a reinforced concrete element.",
+  "c19": "B1.4 · AS 3600 · AS3600",
+  "c22": "B1D4 · AS 3600 · AS3600",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "S1.2": {
+  "id": "S1.2",
+  "rg": "Structure",
+  "sub": "Concrete",
+  "d": "Concrete was placed during inclement weather (rain). The additional water from the rain mixes with the concrete and alters the water to ceme",
+  "c19": "B1.4 · AS 3600 · AS3600",
+  "c22": "B1D4 · AS 3600 · AS3600",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "S1.3": {
+  "id": "S1.3",
+  "rg": "Structure",
+  "sub": "Concrete",
+  "d": "Reinforcement has been cut in a reinforced concrete structure.",
+  "c19": "AS3600-2018",
+  "c22": "AS3600-2018",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "S1.4": {
+  "id": "S1.4",
+  "rg": "Structure",
+  "sub": "Concrete",
+  "d": "There are undocumented coreholes or penetrations in a reinforced concrete element.",
+  "c19": "B1.4 · AS 3600 · AS3600",
+  "c22": "B1D4 · AS 3600 · AS3600",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "S1.5": {
+  "id": "S1.5",
+  "rg": "Structure",
+  "sub": "Concrete",
+  "d": "Excessive cracking of reinforced concrete beams, slabs or columns (cracks exceeding 0.4mm).",
+  "c19": "BP1.1 · B1.4 · C8.6 · AS3600 · AS3600:2018",
+  "c22": "B1P1 · B1D4 · C8.6 · AS3600 · AS3600:2018",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "S1.6": {
+  "id": "S1.6",
+  "rg": "Structure",
+  "sub": "Concrete",
+  "d": "A required movement or expansion joint in a suspended concrete element (slab or beam) has not been constructed in accordance with the approv",
+  "c19": "B1.4 · AS 3600 · AS3600",
+  "c22": "B1D4 · AS 3600 · AS3600",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "S1.7": {
+  "id": "S1.7",
+  "rg": "Structure",
+  "sub": "Concrete",
+  "d": "The slab on ground does not have saw-cut joints or isolation joints in accordance with the approved plans.",
+  "c19": "B1.4 · AS 3600 · AS3600",
+  "c22": "B1D4 · AS 3600 · AS3600",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "S1.8": {
+  "id": "S1.8",
+  "rg": "Structure",
+  "sub": "Concrete",
+  "d": "Entrained debris and other contaminants in a concrete element.",
+  "c19": "B1.4 · AS 3600 · AS3600 · AS 1379 · AS1379",
+  "c22": "B1D4 · AS 3600 · AS3600 · AS 1379 · AS1379",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "S1.9": {
+  "id": "S1.9",
+  "rg": "Structure",
+  "sub": "",
+  "d": "Insufficient dowel depth into the wall and inadequate epoxy grout application.",
+  "c19": "B1.4 · AS 3600 · AS3600 · AS 1379",
+  "c22": "B1D4 · AS 3600 · AS3600 · AS 1379",
+  "pw": "",
+  "st": "active"
+ },
+ "S2.1": {
+  "id": "S2.1",
+  "rg": "Structure",
+  "sub": "Steel",
+  "d": "Steel structure has been supported with a weaker material as packers.",
+  "c19": "B1.4 · AS 4100 · AS4100",
+  "c22": "B1D4 · AS 4100 · AS4100",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "S2.2": {
+  "id": "S2.2",
+  "rg": "Structure",
+  "sub": "Steel",
+  "d": "Steel bolting has not been installed and tightened to specification.",
+  "c19": "B1.4 · AS 4100",
+  "c22": "B1D4 · AS 4100",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "S3.1": {
+  "id": "S3.1",
+  "rg": "Structure",
+  "sub": "Masonry",
+  "d": "A required barrier protecting a fall is constructed of unreinforced masonry.",
+  "c19": "BP1.1 · B1.2 · AS/NZS 1170.1 · AS1170.1:2002 · AS3700:2018",
+  "c22": "BP1.1 · B1.2 · AS/NZS 1170.1 · AS1170.1:2002 · AS3700:2018",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "S3.2": {
+  "id": "S3.2",
+  "rg": "Structure",
+  "sub": "Masonry",
+  "d": "A masonry wall was not constructed in accordance to the required tolerances",
+  "c19": "",
+  "c22": "",
+  "pw": "s34(1)(a)",
+  "st": "draft"
+ },
+ "S4.1": {
+  "id": "S4.1",
+  "rg": "Structure",
+  "sub": "",
+  "d": "Slab Edge Rebate",
+  "c19": "F1.10",
+  "c22": "F1D7 · AS 2870",
+  "pw": "",
+  "st": "active"
+ },
+ "S5.1": {
+  "id": "S5.1",
+  "rg": "Structure",
+  "sub": "",
+  "d": "Defect not in library",
+  "c19": "",
+  "c22": "",
+  "pw": "s34(1)(a)",
+  "st": "catchall"
+ },
+ "S5.2": {
+  "id": "S5.2",
+  "rg": "Structure",
+  "sub": "",
+  "d": "Failure to construct in accordance with the approved plans",
+  "c19": "",
+  "c22": "",
+  "pw": "s34(1)(a)",
+  "st": "catchall"
+ },
+ "S5.3": {
+  "id": "S5.3",
+  "rg": "Structure",
+  "sub": "Masonry",
+  "d": "Non-compliant lintel supporting masonry brickwork. Unreinforced masonry must be supported by a lintel. The lintel must have an end bearing o",
+  "c19": "B1.4 · AS 3700 · AS3700:2018 · AS3700",
+  "c22": "B1D4 · AS 3700 · AS3700:2018 · AS3700",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "BE1.1": {
+  "id": "BE1.1",
+  "rg": "Building Enclosure",
+  "sub": "Masonry;#Weatherproofing",
+  "d": "Damp proof course (DPC) does not project from the face of the brickwork",
+  "c19": "B1.4 · AS 3700 · AS3700-2018",
+  "c22": "B1D4 · AS 3700 · AS3700-2018",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "BE1.2": {
+  "id": "BE1.2",
+  "rg": "Building Enclosure",
+  "sub": "Masonry;#Weatherproofing",
+  "d": "The weepholes in a cavity masonry wall are absent or exceed the maximum spacings.",
+  "c19": "B1.4 · AS 3700 · AS3700-2018",
+  "c22": "B1D4 · AS 3700 · AS3700-2018",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "BE1.3": {
+  "id": "BE1.3",
+  "rg": "Building Enclosure",
+  "sub": "Masonry;#Weatherproofing",
+  "d": "The weepholes in a cavity masonry wall is below the level of the floor.",
+  "c19": "B1.4 · AS 3700 · AS3700-2018",
+  "c22": "B1D4 · AS 3700 · AS3700-2018",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "BE1.4": {
+  "id": "BE1.4",
+  "rg": "Building Enclosure",
+  "sub": "",
+  "d": "Masonry wall - Core Filled Reinforced Masonry",
+  "c19": "",
+  "c22": "B1D4 · F3D5 · AS3700 · AS 3700 · AS 5146.3 · AS 1562.1",
+  "pw": "",
+  "st": "active"
+ },
+ "BE1.5": {
+  "id": "BE1.5",
+  "rg": "Building Enclosure",
+  "sub": "",
+  "d": "Masonry wall - Lintel",
+  "c19": "",
+  "c22": "B1D4 · F3D5 · AS3700 · AS 3700 · AS 5146.3 · AS 1562.1",
+  "pw": "",
+  "st": "active"
+ },
+ "BE1.6": {
+  "id": "BE1.6",
+  "rg": "Building Enclosure",
+  "sub": "",
+  "d": "Masonry wall - Articulation joint",
+  "c19": "",
+  "c22": "B1D4 · F3D5 · AS3700 · AS 3700 · AS 5146.3 · AS 1562.1",
+  "pw": "",
+  "st": "active"
+ },
+ "BE1.7": {
+  "id": "BE1.7",
+  "rg": "Building Enclosure",
+  "sub": "",
+  "d": "Masonry wall - Window Head (Cavity Masonry)",
+  "c19": "",
+  "c22": "",
+  "pw": "",
+  "st": "active"
+ },
+ "BE1.4_alt": {
+  "id": "BE1.4",
+  "rg": "Building Enclosure",
+  "sub": "Masonry;#Weatherproofing",
+  "d": "Flashings have insufficient projections to direct moisture away from the masonry",
+  "c19": "B1.4 · AS 3700 · AS3700-2018",
+  "c22": "B1D4 · AS 3700 · AS3700-2018",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "BE2.1": {
+  "id": "BE2.1",
+  "rg": "Building Enclosure",
+  "sub": "Proprietary cladding;#Weatherproofing",
+  "d": "Proprietary AAC façade does not have pressure equalisation slots (weep holes) or slots exceed maximum allowable spacing.",
+  "c19": "",
+  "c22": "",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "BE2.2": {
+  "id": "BE2.2",
+  "rg": "Building Enclosure",
+  "sub": "Proprietary cladding;#Weatherproofing",
+  "d": "Proprietary AAC façade has pressure equalisation slots (weep holes) below the level of the floor.",
+  "c19": "",
+  "c22": "",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "BE3.1": {
+  "id": "BE3.1",
+  "rg": "Building Enclosure",
+  "sub": "Windows or doors;#Weatherproofing",
+  "d": "An external window or door has not been installed with adequate flashings.",
+  "c19": "FP1.4 · FV1.1 · AS 2047 · AS2047-2014",
+  "c22": "F3P1 · AS 2047 · AS2047-2014",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "BE3.2": {
+  "id": "BE3.2",
+  "rg": "Building Enclosure",
+  "sub": "",
+  "d": "Skylight",
+  "c19": "B1D4 · AS 1288",
+  "c22": "",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "BE3.3": {
+  "id": "BE3.3",
+  "rg": "Building Enclosure",
+  "sub": "Glass;#Windows or doors",
+  "d": "Glass door is not constructed of Grade A safety glass",
+  "c19": "BP1.3 · B1.4 · AS 2047 · AS2047:2014 · AS2047 · AS 1288 · AS1288:2006",
+  "c22": "B1P3 · B1D4 · AS 2047 · AS2047:2014 · AS2047 · AS 1288 · AS1288:2021",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "BE3.4": {
+  "id": "BE3.4",
+  "rg": "Building Enclosure",
+  "sub": "Glass",
+  "d": "Glazing capable of being mistaken for a doorway or opening is not constructed of Grade A safety glass.",
+  "c19": "BP1.3 · B1.4 · AS 2047 · AS2047:2014 · AS2047 · AS 1288 · AS1288:2006",
+  "c22": "B1P3 · B1D4 · AS2047:2014 · AS2047 · AS 1288 · AS1288",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "BE3.5": {
+  "id": "BE3.5",
+  "rg": "Building Enclosure",
+  "sub": "Weatherproofing",
+  "d": "An external lift door is not weatherproofed.",
+  "c19": "FP1.4 · F1.0",
+  "c22": "F3P1",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "BE4.5": {
+  "id": "BE4.5",
+  "rg": "Building Enclosure",
+  "sub": "Weatherproofing",
+  "d": "A balcony or terrace does not have an overflow or the overflows have not been installed in accordance with the approved plans.",
+  "c19": "AS/NZS 3500.2 · AS3500.3",
+  "c22": "AS3500.3",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "BE4.6": {
+  "id": "BE4.6",
+  "rg": "Building Enclosure",
+  "sub": "External waterproofing;#Weatherproofing;#Windows or doors",
+  "d": "Failure to prevent penetration of water through an external roof or wall (including openings around windows and doors) of a completed buildi",
+  "c19": "FP1.4",
+  "c22": "F3P1",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "BE5.1": {
+  "id": "BE5.1",
+  "rg": "Building Enclosure",
+  "sub": "",
+  "d": "Balustrade",
+  "c19": "",
+  "c22": "D3D17 · D3D23 · D3D29 · D3D18 · D3D19 · D3D20 · D3D21",
+  "pw": "",
+  "st": "active"
+ },
+ "BE5.2": {
+  "id": "BE5.2",
+  "rg": "Building Enclosure",
+  "sub": "",
+  "d": "Balustrade - Wire",
+  "c19": "",
+  "c22": "D3D17 · D3D23 · D3D29 · D3D18 · D3D19 · D3D20 · D3D21",
+  "pw": "",
+  "st": "active"
+ },
+ "BE5.1_alt": {
+  "id": "BE5.1",
+  "rg": "Building Enclosure",
+  "sub": "",
+  "d": "Defect not in library",
+  "c19": "",
+  "c22": "",
+  "pw": "s34(1)(a)",
+  "st": "catchall"
+ },
+ "BE5.2_alt": {
+  "id": "BE5.2",
+  "rg": "Building Enclosure",
+  "sub": "",
+  "d": "Failure to construct in accordance with the approved plans",
+  "c19": "",
+  "c22": "",
+  "pw": "s34(1)(a)",
+  "st": "catchall"
+ },
+ "ES1.1": {
+  "id": "ES1.1",
+  "rg": "Essential Services",
+  "sub": "Sanitary drainage",
+  "d": "The tundish connection does not have an air gap or, discharges to a waste pipe that is the incorrect size, or the connection is in the incor",
+  "c19": "AS/NZS 3500.2 · AS3500.2",
+  "c22": "AS/NZS 3500.2 · AS3500.2",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES1.2": {
+  "id": "ES1.2",
+  "rg": "Essential Services",
+  "sub": "Sanitary drainage",
+  "d": "Sanitary drain does not have sufficient falls.",
+  "c19": "AS/NZS 3500.2 · AS3500.2",
+  "c22": "AS/NZS 3500.2 · AS3500.2",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES1.3": {
+  "id": "ES1.3",
+  "rg": "Essential Services",
+  "sub": "Sanitary drainage",
+  "d": "Incorrect fixture trap and sanitary discharge pipe diameter (bathtub: 40mm, single shower: 40mm, multiple showers: 50mm).",
+  "c19": "AS/NZS 3500.2",
+  "c22": "AS/NZS 3500.2",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES1.4": {
+  "id": "ES1.4",
+  "rg": "Essential Services",
+  "sub": "Sanitary drainage",
+  "d": "Sanitary drain is blocked.",
+  "c19": "CP1.1",
+  "c22": "C1P4",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES2.2": {
+  "id": "ES2.2",
+  "rg": "Essential Services",
+  "sub": "Stormwater drainage",
+  "d": "Ponding of water in stormwater pits or in pipes.",
+  "c19": "AS/NZS 3500.3",
+  "c22": "AS/NZS 3500.3",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES2.3": {
+  "id": "ES2.3",
+  "rg": "Essential Services",
+  "sub": "Stormwater drainage",
+  "d": "Stormwater and sewer are not seperated",
+  "c19": "CP1.1",
+  "c22": "C1P6 · C1P7",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES2.4": {
+  "id": "ES2.4",
+  "rg": "Essential Services",
+  "sub": "Stormwater drainage",
+  "d": "Stormwater pit does not have a fall across the bottom.",
+  "c19": "AS/NZS 3500.3",
+  "c22": "AS/NZS 3500.3",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES2.5": {
+  "id": "ES2.5",
+  "rg": "Essential Services",
+  "sub": "Roofing;#Stormwater drainage",
+  "d": "Roof drainage systems and accessories have dissimilar metals in contact.",
+  "c19": "AS/NZS 3500.3",
+  "c22": "AS/NZS 3500.3",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES2.6": {
+  "id": "ES2.6",
+  "rg": "Essential Services",
+  "sub": "Stormwater drainage",
+  "d": "Non-compliant inspection openings (IO) in stormwater drainage.",
+  "c19": "AS/NZS 3500.3",
+  "c22": "AS/NZS 3500.3",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES2.7": {
+  "id": "ES2.7",
+  "rg": "Essential Services",
+  "sub": "",
+  "d": "Gutters",
+  "c19": "F1.1",
+  "c22": "F1P1 · F1P2 · F1P3 · F1D3 · AS/NZS 3500.3",
+  "pw": "",
+  "st": "active"
+ },
+ "ES2.8": {
+  "id": "ES2.8",
+  "rg": "Essential Services",
+  "sub": "",
+  "d": "Valley gutters",
+  "c19": "",
+  "c22": "F1P1 · F1P2 · F1P3 · F1D3 · AS/NZS 3500.3",
+  "pw": "",
+  "st": "active"
+ },
+ "ES3.1": {
+  "id": "ES3.1",
+  "rg": "Essential Services",
+  "sub": "Fire fighting equipment;#Electrical",
+  "d": "Fire detection, evacuation and alarm system cables are not segregated from other services/systems.",
+  "c19": "AS3000",
+  "c22": "AS3000",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES3.2": {
+  "id": "ES3.2",
+  "rg": "Essential Services",
+  "sub": "Electrical",
+  "d": "Electrical cables passing through apertures/holes are not protected from abrasion or damage.",
+  "c19": "AS/NZS 3000-2018",
+  "c22": "AS/NZS 3000-2018",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES3.3": {
+  "id": "ES3.3",
+  "rg": "Essential Services",
+  "sub": "Electrical",
+  "d": "Main switchboard is inaccessible and/or has insufficient space around it.",
+  "c19": "AS/NZS 3000-2018",
+  "c22": "AS/NZS 3000-2018",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "ES3.4": {
+  "id": "ES3.4",
+  "rg": "Essential Services",
+  "sub": "Electrical",
+  "d": "Main switchboard room only has 1 exit and does not have the minimum 3m clearance path to allow for only 1 exit.",
+  "c19": "AS/NZS 3000-2018",
+  "c22": "AS/NZS 3000-2018",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "ES4.1": {
+  "id": "ES4.1",
+  "rg": "Essential Services",
+  "sub": "Venitlation;#Smoke and hazard management",
+  "d": "Jet fan or impulse fan obstructed by fire protection devices (sprinkler, smoke or heat detectors). Jet fans must be installed centrally betw",
+  "c19": "E2.2 · AS 1668.2 · AS 1668.1 · AS1668.1-2015",
+  "c22": "E2D3 · E2D12 · AS 1668.2 · AS 1668.1 · AS1668.1-2015",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "ES4.2": {
+  "id": "ES4.2",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "A room intended to be occupied by a person does not have natural or mechanical ventilation.",
+  "c19": "FP4.3 · FP4.4 · FP4.5 · F4.5 · F4.6 · AS 1668.2",
+  "c22": "F6P3 · F6P4 · F6P5 · F6D6 · F4.6 · AS 1668.2 · AS/NZS3666.1",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "ES4.3": {
+  "id": "ES4.3",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "A flexible air duct has not been appropriately sealed.",
+  "c19": "AS4251.1-2012 · AS4254.1",
+  "c22": "AS4251.1-2012 · AS4254.1",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES4.4": {
+  "id": "ES4.4",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "A flexible duct has insufficient supports (supported every 1.5m and maximum sag of 40mm per metre between supports).",
+  "c19": "AS4251.1-2012 · AS4254.1",
+  "c22": "AS4251.1-2012 · AS4254.1",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES4.5": {
+  "id": "ES4.5",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "A flexible duct does not extend straight for at least 100mm from a connection to an air terminal device before a change of direction.",
+  "c19": "AS4251.1-2012 · AS4254.1",
+  "c22": "AS4251.1-2012 · AS4254.1",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES4.6": {
+  "id": "ES4.6",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "A flexible duct hanger or saddle is causing excessive distortion or pinching of the duct.",
+  "c19": "AS4254.1",
+  "c22": "AS4254.1",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES4.7": {
+  "id": "ES4.7",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "A flexible duct hanger is not adequately attached to the building structure.",
+  "c19": "AS4251.1-2012 · AS4254.1",
+  "c22": "AS4251.1-2012 · AS4254.1",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES4.8": {
+  "id": "ES4.8",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "An air terminal device or branch-off for a flexible duct is not supported independently of the flexible duct.",
+  "c19": "AS4251.1-2012 · AS4254.1",
+  "c22": "AS4251.1-2012 · AS4254.1",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES4.9": {
+  "id": "ES4.9",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "A flexible duct installed in the subfloor is touching the ground (all flexible ducts must be elevated above the ground).",
+  "c19": "AS4251.1-2012 · AS4254.1",
+  "c22": "AS4251.1-2012 · AS4254.1",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES4.10": {
+  "id": "ES4.10",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "A flexible duct penetration through a wall or partition does not have a rigid sleeve at the penetration. The rigid sleeve must have the same",
+  "c19": "AS4254.1",
+  "c22": "AS4254.1",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES4.11": {
+  "id": "ES4.11",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "Flexible duct not trimmed to length. All installed ducting shall be fully extended when installed. Excess flexible duct shall be removed fro",
+  "c19": "AS4251.1-2012 · AS4254.1",
+  "c22": "AS4251.1-2012 · AS4254.1",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES4.12": {
+  "id": "ES4.12",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "A flexible duct does not have the proper labelling. All labels must be repeated along the total length at 1000mm intervals and include the n",
+  "c19": "AS4251.1-2012 · AS4254.1 · AS 4254.1",
+  "c22": "AS4251.1-2012 · AS4254.1 · AS 4254.1",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES4.13": {
+  "id": "ES4.13",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "A rigid duct servicing a kitchen exhaust does not have liquid-tight cleanouts at each change of direction, at each junction, at 3m intervals",
+  "c19": "AS4251.2-2012 · AS4254.2",
+  "c22": "AS4251.2-2012 · AS4254.2",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES4.14": {
+  "id": "ES4.14",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "A rigid duct has not been properly sealed, leading to air leakage.",
+  "c19": "AS4254.2",
+  "c22": "AS4254.2",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES4.15": {
+  "id": "ES4.15",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "A rigid duct installed in an external environment has not been appropriately sealed against water ingress.",
+  "c19": "AS4254.2",
+  "c22": "AS4254.2",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES4.16": {
+  "id": "ES4.16",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "Insufficient vertical clearance between an external rigid duct's intake/exhaust and the roof surface. The minimum vertical clearance is 300m",
+  "c19": "AS4254.2",
+  "c22": "AS4254.2",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES4.17": {
+  "id": "ES4.17",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "A rigid duct has not been adequately supported. A duct section between adjacent hangers shall be capable of carrying its own weight and resi",
+  "c19": "AS4251.2-2012 · AS4254.2",
+  "c22": "AS4251.2-2012 · AS4254.2",
+  "pw": "s33(2)",
+  "st": "active"
+ },
+ "ES5.1": {
+  "id": "ES5.1",
+  "rg": "Essential Services",
+  "sub": "Venitlation",
+  "d": "Gas flue terminal has been installed in a location with insufficient ventilation.",
+  "c19": "AS5601.1:2013",
+  "c22": "AS5601.1:2022",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "ES5.2": {
+  "id": "ES5.2",
+  "rg": "Essential Services",
+  "sub": "Gas",
+  "d": "Gas hose connection within 1m of doorway.",
+  "c19": "",
+  "c22": "",
+  "pw": "s34(1)(a)",
+  "st": "active"
+ },
+ "ES5.3": {
+  "id": "ES5.3",
+  "rg": "Essential Services",
+  "sub": "",
+  "d": "Water meter",
+  "c19": "AS3500.1",
+  "c22": "",
+  "pw": "",
+  "st": "active"
+ },
+ "ES7.1": {
+  "id": "ES7.1",
+  "rg": "Essential Services",
+  "sub": "",
+  "d": "Defect not in library",
+  "c19": "",
+  "c22": "",
+  "pw": "s34(1)(a)",
+  "st": "catchall"
+ },
+ "ES7.2": {
+  "id": "ES7.2",
+  "rg": "Essential Services",
+  "sub": "",
+  "d": "Failure to construct in accordance with the approved plans",
+  "c19": "",
+  "c22": "",
+  "pw": "s34(1)(a)",
+  "st": "catchall"
+ }
+}

@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#1a1a2e" />
+<title>369 Field Inspector</title>
+<style>
+  :root { --navy:#1a1a2e; --panel:#12121f; --gold:#A68A64; --red:#e11d1d; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; }
+  body { background:var(--navy); color:#fff; font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif; overflow:hidden; }
+  #app { position:fixed; inset:0; display:flex; flex-direction:column; }
+  header { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--panel); z-index:5; }
+  header .brand { font-weight:700; letter-spacing:.08em; color:var(--gold); font-size:13px; white-space:nowrap; }
+  header .sub { font-size:10px; color:#ffffff88; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+  .chip { font-size:10px; text-transform:uppercase; letter-spacing:.06em; padding:2px 8px; border-radius:99px; }
+  .chip.on { background:#14532d; } .chip.off { background:#7c2d12; }
+  .iconbtn { background:#ffffff14; border:0; color:var(--gold); border-radius:99px; width:38px; height:38px; font-size:17px; display:flex; align-items:center; justify-content:center; }
+  .banner { text-align:center; font-size:11px; padding:4px 10px; background:#ffffff0d; color:#ffffffb0; }
+  .banner.warn { background:#b45309e0; color:#fff; }
+
+  /* Camera stage */
+  #stage { position:relative; flex:1; background:#000; overflow:hidden; }
+  #video, #still { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  #vignette { position:absolute; inset:0; border:8px solid #e11d1db0; display:none; pointer-events:none; animation:pulse 1.1s infinite; }
+  .circle { position:absolute; border:4px solid var(--red); border-radius:50%; pointer-events:none; box-shadow:0 0 30px #e11d1dcc; animation:pulse 1.1s infinite; }
+  .circle-label { position:absolute; transform:translateX(-50%); background:var(--red); color:#fff; font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; pointer-events:none; white-space:nowrap; }
+  #cta { position:absolute; bottom:110px; left:50%; transform:translateX(-50%); background:var(--red); font-weight:800; font-size:13px; padding:6px 16px; border-radius:99px; display:none; box-shadow:0 4px 18px #000a; }
+  #scanchip { position:absolute; top:10px; left:10px; background:#00000080; font-size:11px; padding:4px 10px; border-radius:99px; display:flex; gap:6px; align-items:center; }
+  #scanchip .dot { width:8px; height:8px; border-radius:50%; background:var(--gold); animation:pulse 2s infinite; }
+  #scanchip.hot .dot { background:var(--red); }
+  #camerr { position:absolute; inset:0; display:none; flex-direction:column; gap:10px; align-items:center; justify-content:center; text-align:center; padding:24px; color:#ffffffcc; font-size:13px; }
+  @keyframes pulse { 50% { opacity:.45; } }
+
+  /* Bottom bar */
+  #bar { display:flex; align-items:center; justify-content:space-between; padding:10px 18px calc(10px + env(safe-area-inset-bottom)); background:var(--panel); }
+  #shutter { width:74px; height:74px; border-radius:50%; border:4px solid #ffffff99; background:#ffffff2e; color:#fff; font-size:26px; }
+  #shutter.hot { border-color:var(--red); background:var(--red); animation:pulse 1.1s infinite; }
+  #shutter:disabled { opacity:.3; }
+  .side { display:flex; gap:10px; }
+  .count { position:absolute; margin:-6px 0 0 22px; background:var(--red); font-size:10px; font-weight:700; border-radius:99px; padding:1px 6px; }
+
+  /* Sheets */
+  .sheet { position:absolute; left:0; right:0; bottom:0; max-height:78%; overflow-y:auto; background:#12121ffa; border-radius:18px 18px 0 0; padding:14px 14px calc(16px + env(safe-area-inset-bottom)); z-index:8; }
+  .sheet h2 { font-size:13px; color:var(--gold); text-transform:uppercase; letter-spacing:.08em; margin-bottom:10px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .grid .full { grid-column:1 / -1; }
+  label.f { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:#ffffff80; margin-bottom:3px; }
+  input, select, textarea { width:100%; background:#ffffff12; color:#fff; border:1px solid #ffffff1c; border-radius:8px; padding:9px 10px; font-size:14px; }
+  select { appearance:none; }
+  option { color:#000; }
+  .btn { border:0; border-radius:10px; padding:11px 14px; font-size:14px; font-weight:700; color:#fff; background:#ffffff14; width:100%; }
+  .btn.gold { background:var(--gold); color:#1a1a2e; }
+  .btn.red { background:#b91c1c; }
+  .row { display:flex; gap:8px; }
+  .hint { font-size:11px; color:#ffffff70; margin-top:4px; }
+  #facadeThumb { width:100%; max-height:120px; object-fit:cover; border-radius:8px; display:none; margin-top:6px; }
+
+  /* Finding cards */
+  .card { width:100%; text-align:left; background:#ffffff0d; border:1px solid #ffffff1a; border-radius:12px; padding:11px; margin-bottom:8px; color:#fff; font-size:13px; }
+  .card.sel { border-color:var(--red); background:#e11d1d14; }
+  .card .top { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; font-weight:700; }
+  .card .rg { font-size:9px; text-transform:uppercase; background:#ffffff14; color:var(--gold); padding:2px 6px; border-radius:5px; white-space:nowrap; }
+  .card .meta { margin-top:5px; font-size:11.5px; color:#ffffffb0; display:grid; gap:2px; }
+  .card .warn { color:#fbbf24; }
+  details { margin-top:6px; font-size:11.5px; color:#ffffff99; }
+  summary { color:var(--gold); cursor:pointer; }
+  .drawer-row { border-bottom:1px solid #ffffff14; padding:7px 0; font-size:12px; }
+  .drawer-row small { color:#ffffff66; display:block; font-size:10px; }
+  #toast { position:absolute; top:64px; left:50%; transform:translateX(-50%); background:#000000d0; padding:8px 16px; border-radius:10px; font-size:12px; z-index:20; display:none; max-width:90%; }
+  .spin { display:inline-block; animation:rot 1.2s linear infinite; }
+  @keyframes rot { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <span class="brand">369 FIELD</span>
+    <span class="sub" id="ctx">—</span>
+    <span class="chip off" id="aichip">…</span>
+    <button class="iconbtn" id="setupBtn" title="Inspection setup">⚙</button>
+  </header>
+  <div class="banner warn" id="codebanner" style="display:none">Access code required — set it in ⚙ Setup.</div>
+  <div class="banner" id="demobanner" style="display:none">ANTHROPIC_API_KEY not set on Vercel — <b>demo mode</b> (simulated detections).</div>
+
+  <div id="stage">
+    <video id="video" playsinline muted autoplay></video>
+    <img id="still" style="display:none" alt="" />
+    <div id="vignette"></div>
+    <div id="overlays"></div>
+    <div id="cta">DEFECT IN VIEW — TAKE PHOTO</div>
+    <div id="scanchip"><span class="dot"></span><span id="scantxt">Starting…</span></div>
+    <div id="camerr">
+      <div style="font-size:34px">⚠️</div>
+      <p id="camerrmsg">Camera blocked. Allow permission or use Upload.</p>
+    </div>
+    <div class="sheet" id="resultSheet" style="display:none"></div>
+    <div class="sheet" id="setupSheet" style="display:none"></div>
+    <div class="sheet" id="drawerSheet" style="display:none"></div>
+  </div>
+
+  <div id="bar">
+    <div class="side">
+      <button class="iconbtn" id="scanToggle" title="Toggle scanning">📡</button>
+      <button class="iconbtn" title="Upload photo" onclick="document.getElementById('file').click()">⬆️</button>
+      <input type="file" id="file" accept="image/*" capture="environment" style="display:none" />
+    </div>
+    <button id="shutter" title="Take photo">📷</button>
+    <div class="side">
+      <button class="iconbtn" id="flip" title="Flip camera">🔄</button>
+      <button class="iconbtn" id="drawerBtn" title="Findings">📋<span class="count" id="count" style="display:none">0</span></button>
+    </div>
+  </div>
+  <div id="toast"></div>
+</div>
+
+<script>
+"use strict";
+// ------------------------------------------------------------------ state
+const LS = k => localStorage.getItem(k) || "";
+const S = {
+  project: LS("fi_project"), address: LS("fi_address"), gps: LS("fi_gps"),
+  ncc: LS("fi_ncc") || "2022", level: LS("fi_level"), unit: LS("fi_unit"), area: LS("fi_area"),
+  code: LS("fi_code"), facade: LS("fi_facade"), saveOriginal: LS("fi_saveorig") === "1",
+};
+const persist = () => { localStorage.setItem("fi_project",S.project); localStorage.setItem("fi_address",S.address);
+  localStorage.setItem("fi_gps",S.gps); localStorage.setItem("fi_ncc",S.ncc); localStorage.setItem("fi_level",S.level);
+  localStorage.setItem("fi_unit",S.unit); localStorage.setItem("fi_area",S.area); localStorage.setItem("fi_code",S.code);
+  localStorage.setItem("fi_saveorig",S.saveOriginal?"1":"0"); };
+let rows = []; try { rows = JSON.parse(localStorage.getItem("fi_rows") || "[]"); } catch {}
+const persistRows = () => localStorage.setItem("fi_rows", JSON.stringify(rows.slice(-300)));
+
+const NCC_VERSIONS = ["2019","2019 Amendment 1","2022","2022 Amendment 1","2025"];
+const LEVELS = ["Basement 3","Basement 2","Basement 1","Ground",...Array.from({length:40},(_,i)=>"Level "+(i+1)),"Roof"];
+const AREAS = ["Balcony","Bathroom","Ensuite","Laundry","Kitchen","Living/Dining","Bedroom","Corridor","Fire stairs",
+  "Fire door","Lift lobby","Lift shaft","Car park","Plant room","Services cupboard","Switchboard room","Roof","Facade",
+  "Planter","Podium","External works","Other"];
+const DEMO = [
+  {id:"W1.3",label:"Ponding / inadequate falls on balcony",regime:"Waterproofing",cx:.52,cy:.62,r:.14,confidence:"high"},
+  {id:"S1.1",label:"Exposed reinforcement / honeycombing",regime:"Structure",cx:.45,cy:.4,r:.12,confidence:"high"},
+  {id:"F3.1",label:"Fire door does not self-close and latch",regime:"Fire Safety",cx:.5,cy:.5,r:.18,confidence:"medium"},
+];
+const DEMO_FINDING = {id:"W1.3",regime:"Waterproofing",subcategory:"External waterproofing",
+  description:"Retained water, ponding or inadequate falls on an roof or balcony.",status:"active",
+  ncc2022Refs:"F1P2 · F1D5 · AS 4654.2",ncc2019Refs:"FP1.4 · F1.4 · AS 4654.2",pathway:"s33(2)",
+  scopePreview:"1. Survey the area, identify high/low spots.\n2. Grind back / top up.\n3. Prepare substrate for membrane.\n4. Rectify consequential damage.",
+  confidence:"high",note:"Demo finding — set ANTHROPIC_API_KEY for real AI."};
+
+let ai=null, codeRequired=false, demo=false, scanOn=true, camState="starting", facing="environment";
+let stream=null, busy=false, dets=[], lastSeen=0, captured=null, findings=[], selIdx=0, demoTick=0, lastObs="";
+
+// ------------------------------------------------------------------ dom
+const $ = id => document.getElementById(id);
+const video=$("video"), still=$("still"), overlays=$("overlays");
+function toast(msg, ms=4500){ const t=$("toast"); t.textContent=msg; t.style.display="block"; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display="none",ms); }
+function ctxLine(){
+  const loc=[S.level,S.unit&&("Unit "+S.unit),S.area].filter(Boolean).join(" · ");
+  $("ctx").textContent=[S.project||"(no project)",S.address,loc,"NCC "+S.ncc].filter(Boolean).join("  |  ");
+}
+function nccRefs(f){
+  if (S.ncc.startsWith("2019")) return {label:"NCC "+S.ncc, refs:f.ncc2019Refs, extra:""};
+  if (S.ncc==="2025") return {label:"NCC 2025", refs:f.ncc2022Refs, extra:"2022 numbering — verify 2025 amendments at ncc.abcb.gov.au"};
+  return {label:"NCC "+S.ncc, refs:f.ncc2022Refs, extra:""};
+}
+const esc = s => String(s??"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+// ------------------------------------------------------------------ status
+fetch("/api/status").then(r=>r.json()).then(s=>{
+  ai=!!s.ai; codeRequired=!!s.codeRequired; demo=!ai;
+  $("aichip").textContent = ai ? "AI ON" : "DEMO"; $("aichip").className = "chip "+(ai?"on":"off");
+  $("demobanner").style.display = ai ? "none" : "block";
+  if (codeRequired && !S.code) $("codebanner").style.display = "block";
+}).catch(()=>{ ai=false; demo=true; $("aichip").textContent="DEMO"; $("aichip").className="chip off"; $("demobanner").style.display="block"; });
+
+// ------------------------------------------------------------------ camera
+async function startCam(){
+  if (stream) stream.getTracks().forEach(t=>t.stop());
+  camState="starting";
+  if (!navigator.mediaDevices?.getUserMedia){ camState="unavailable"; return camErr("No camera in this browser/context. Use Upload."); }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing},width:{ideal:1920},height:{ideal:1080}},audio:false});
+    video.srcObject = stream; await video.play().catch(()=>{});
+    camState="live"; $("camerr").style.display="none"; $("scantxt").textContent="Scanning…";
+  } catch { camState="denied"; camErr("Camera blocked. Allow permission for this site, or use Upload."); }
+}
+function camErr(msg){ $("camerrmsg").textContent=msg; $("camerr").style.display="flex"; }
+$("flip").onclick=()=>{ facing = facing==="environment"?"user":"environment"; startCam(); };
+
+function grab(maxSide, q){
+  if (!video.videoWidth) return null;
+  const s=Math.min(1,maxSide/Math.max(video.videoWidth,video.videoHeight));
+  const c=document.createElement("canvas"); c.width=Math.round(video.videoWidth*s); c.height=Math.round(video.videoHeight*s);
+  c.getContext("2d").drawImage(video,0,0,c.width,c.height);
+  return c.toDataURL("image/jpeg",q);
+}
+
+// ------------------------------------------------------------------ scan loop
+const hdrs = () => ({"Content-Type":"application/json", ...(S.code?{"x-field-code":S.code}:{})});
+async function tick(){
+  const idle = !scanOn || captured || camState!=="live" || document.hidden || busy || sheetOpen();
+  if (!idle){
+    busy=true;
+    try{
+      if (demo){
+        demoTick++;
+        if (demoTick%3===0) push([DEMO[Math.floor(demoTick/3-1)%DEMO.length]]);
+      } else if (ai){
+        const img=grab(768,.6);
+        if (img){
+          const r=await fetch("/api/scan",{method:"POST",headers:hdrs(),body:JSON.stringify({image:img})});
+          if (r.status===401){ codeRequired=true; $("codebanner").style.display="block"; }
+          else if (r.ok){ const d=await r.json(); if (d.detections?.length) push(d.detections); }
+        }
+      }
+    } catch {} finally { busy=false; }
+  }
+  if (dets.length && Date.now()-lastSeen>7000) render([]);
+  setTimeout(tick, 3200);
+}
+function push(list){ const first=!dets.length; lastSeen=Date.now(); render(list); if (first&&list.length&&navigator.vibrate) navigator.vibrate(150); }
+function render(list){
+  dets=list; overlays.innerHTML="";
+  const hot=!!list.length;
+  $("vignette").style.display=hot?"block":"none";
+  $("cta").style.display=hot?"block":"none";
+  $("shutter").classList.toggle("hot",hot);
+  $("scanchip").classList.toggle("hot",hot);
+  $("scantxt").textContent = hot ? "Defect detected" : (scanOn?"Scanning… (~1 frame / 3s)":"Scan paused");
+  const st=$("stage"), cw=st.clientWidth, ch=st.clientHeight, vw=video.videoWidth||1280, vh=video.videoHeight||720;
+  const sc=Math.max(cw/vw,ch/vh), dw=vw*sc, dh=vh*sc, ox=(cw-dw)/2, oy=(ch-dh)/2;
+  for (const d of list){
+    const size=d.r*Math.min(dw,dh)*2, x=ox+d.cx*dw-size/2, y=oy+d.cy*dh-size/2;
+    const c=document.createElement("div"); c.className="circle";
+    Object.assign(c.style,{left:x+"px",top:y+"px",width:size+"px",height:size+"px"});
+    const l=document.createElement("div"); l.className="circle-label";
+    l.textContent=`${d.id} — ${d.label.slice(0,38)}`;
+    Object.assign(l.style,{left:(x+size/2)+"px",top:Math.max(4,y-26)+"px"});
+    overlays.append(c,l);
+  }
+}
+$("scanToggle").onclick=()=>{ scanOn=!scanOn; $("scanToggle").style.opacity=scanOn?1:.5; render(dets); };
+
+// ------------------------------------------------------------------ capture / identify
+$("shutter").onclick=()=>{ const img=grab(1600,.85); if (img) identify(img, dets.map(d=>d.id)); };
+$("file").onchange=async e=>{
+  const f=e.target.files[0]; if (!f) return;
+  const url=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(f); });
+  const im=new Image(); await new Promise(r=>{ im.onload=r; im.src=url; });
+  const s=Math.min(1,1600/Math.max(im.width,im.height));
+  const c=document.createElement("canvas"); c.width=Math.round(im.width*s); c.height=Math.round(im.height*s);
+  c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+  identify(c.toDataURL("image/jpeg",.85), []);
+  e.target.value="";
+};
+async function identify(img, hintIds){
+  captured=img; still.src=img; still.style.display="block"; render([]);
+  const sheet=$("resultSheet"); sheet.style.display="block";
+  sheet.innerHTML=`<div style="padding:8px;font-size:13px"><span class="spin">📡</span> Matching against the defect library…</div>`;
+  findings=[]; selIdx=0;
+  try{
+    let obs="";
+    if (demo || !ai){
+      await new Promise(r=>setTimeout(r,900));
+      const d=dets[0]||DEMO[0];
+      obs="Demo mode — sample classification.";
+      findings=[{...DEMO_FINDING,id:d.id,regime:d.regime,cx:d.cx??.5,cy:d.cy??.55,r:d.r??.15}];
+    } else {
+      const r=await fetch("/api/identify",{method:"POST",headers:hdrs(),body:JSON.stringify({image:img,hintIds})});
+      const data=await r.json();
+      if (r.status===401){ codeRequired=true; $("codebanner").style.display="block"; throw new Error("Access code required (⚙ Setup)"); }
+      if (!r.ok) throw new Error(data.message||data.error||"identify failed");
+      obs=data.observation||""; findings=data.findings||[];
+    }
+    lastObs=obs; renderResult();
+  } catch(e){ sheet.innerHTML=`<div style="padding:8px;font-size:13px">⚠️ ${esc(e.message)}</div><button class="btn" onclick="closeResult()">Back</button>`; }
+}
+function renderResult(){
+  const obs=lastObs;
+  const sheet=$("resultSheet");
+  const emoji=c=>c==="high"?"🔴":c==="medium"?"🟡":"⚪";
+  let h = obs?`<p style="font-size:11.5px;color:#ffffff99;margin-bottom:8px">${esc(obs)}</p>`:"";
+  if (!findings.length) h+=`<p style="padding:6px 0 10px">⚪ No library defect identified in this photo.</p>`;
+  findings.forEach((f,i)=>{
+    const v=nccRefs(f);
+    h+=`<button class="card ${i===selIdx?"sel":""}" onclick="selIdx=${i};renderResult()">
+      <div class="top"><span>${emoji(f.confidence)} ${esc(f.id)} — ${esc((f.description||"").slice(0,90))}</span><span class="rg">${esc(f.regime)}</span></div>
+      <div class="meta">
+        ${v.refs?`<div><b>${esc(v.label)}:</b> ${esc(v.refs)}</div>`:""}
+        ${v.extra?`<div class="warn">${esc(v.extra)}</div>`:""}
+        ${f.pathway?`<div>Pathway: RAB Act ${esc(f.pathway)}</div>`:""}
+        ${f.note?`<div><i>${esc(f.note)}</i></div>`:""}
+        ${f.status!=="active"?`<div class="warn">(${esc(f.status)} library row — verify wording)</div>`:""}
+      </div>
+      ${f.scopePreview&&i===selIdx?`<details open><summary>Scope of work</summary><pre style="white-space:pre-wrap;font:inherit;margin-top:4px">${esc(f.scopePreview)}</pre></details>`:""}
+    </button>`;
+  });
+  if (findings.length) h+=`<input id="notes" placeholder="Notes (optional)" style="margin:2px 0 8px" />`;
+  h+=`<div class="row">
+    ${findings.length?`<button class="btn red" onclick="saveFinding()">💾 Save ${esc(findings[selIdx]?.id||"")}</button>`:""}
+    <button class="btn" style="flex:0 0 34%" onclick="closeResult()">✕ Discard</button>
+  </div>`;
+  sheet.innerHTML=h;
+}
+function closeResult(){ $("resultSheet").style.display="none"; still.style.display="none"; captured=null; findings=[]; }
+window.closeResult=closeResult; window.renderResult=renderResult; window.saveFinding=saveFinding;
+
+// ------------------------------------------------------------------ save (client-side register + download marked photo)
+async function composeMarked(f){
+  const im=new Image(); await new Promise(r=>{ im.onload=r; im.src=captured; });
+  const c=document.createElement("canvas"); c.width=im.width; c.height=im.height;
+  const x=c.getContext("2d"); x.drawImage(im,0,0);
+  const cx=f.cx*im.width, cy=f.cy*im.height, r=f.r*Math.min(im.width,im.height);
+  x.strokeStyle="#e11d1d"; x.lineWidth=Math.max(6,im.width/150);
+  x.beginPath(); x.arc(cx,cy,r,0,Math.PI*2); x.stroke();
+  const fp=Math.max(20,Math.round(im.width/40)); x.font=`bold ${fp}px Arial`;
+  const tw=x.measureText(f.id).width;
+  const lx=Math.min(Math.max(cx-tw/2,8),im.width-tw-8);
+  const ly=cy-r-12>fp ? cy-r-12 : Math.min(cy+r+fp+8,im.height-8);
+  x.fillStyle="#e11d1d"; x.fillRect(lx-6,ly-fp,tw+12,fp+10);
+  x.fillStyle="#fff"; x.fillText(f.id,lx,ly+4);
+  return c.toDataURL("image/jpeg",.85);
+}
+function download(dataUrl,name){ const a=document.createElement("a"); a.href=dataUrl; a.download=name; a.click(); }
+async function saveFinding(){
+  const f=findings[selIdx]; if (!f||!captured) return;
+  const seq=rows.length+1, nn=String(seq).padStart(2,"0");
+  const marked=await composeMarked(f);
+  const v=nccRefs(f);
+  rows.push({seq, time:new Date().toISOString(), project:S.project||"Site", address:S.address, gps:S.gps,
+    ncc:S.ncc, location:[S.level,S.unit&&("Unit "+S.unit),S.area].filter(Boolean).join(" · "),
+    id:f.id, verdict:f.confidence==="high"?"confirmed":"possible", confidence:f.confidence,
+    description:(f.description||"").slice(0,120), refs:`${v.label}: ${v.refs}`, pathway:f.pathway||"",
+    notes:document.getElementById("notes")?.value||""});
+  persistRows(); updateCount();
+  download(marked,`${nn}_${f.id.replace(/[^A-Za-z0-9._-]/g,"-")}_marked.jpg`);
+  if (S.saveOriginal) download(captured,`${nn}_${f.id.replace(/[^A-Za-z0-9._-]/g,"-")}.jpg`);
+  toast(`Saved #${nn} ${f.id} — photo downloaded to device; row added to register`);
+  closeResult();
+}
+function updateCount(){ const c=$("count"); c.textContent=rows.length; c.style.display=rows.length?"inline":"none"; }
+updateCount();
+
+// ------------------------------------------------------------------ drawer + CSV
+$("drawerBtn").onclick=()=>{ const d=$("drawerSheet"); if (d.style.display==="block") return d.style.display="none"; renderDrawer(); };
+function renderDrawer(){
+  const d=$("drawerSheet");
+  const emoji=c=>c==="high"?"🔴":c==="medium"?"🟡":"⚪";
+  d.innerHTML=`<h2>Session findings (${rows.length})</h2>
+  ${rows.slice().reverse().map(r=>`<div class="drawer-row"><b>#${String(r.seq).padStart(2,"0")} ${esc(r.id)}</b> ${emoji(r.confidence)} — ${esc(r.description)}
+    <small>${esc([r.project,r.location,r.ncc&&("NCC "+r.ncc)].filter(Boolean).join(" · "))} · ${new Date(r.time).toLocaleTimeString()}</small></div>`).join("")||`<p class="hint">Nothing saved yet.</p>`}
+  <div class="row" style="margin-top:10px">
+    <button class="btn gold" onclick="exportCsv()">⬇ Export CSV</button>
+    <button class="btn" onclick="if(confirm('Clear all session findings?')){rows.length=0;persistRows();updateCount();renderDrawer();}">Clear</button>
+    <button class="btn" style="flex:0 0 26%" onclick="document.getElementById('drawerSheet').style.display='none'">Close</button>
+  </div>`;
+  d.style.display="block";
+}
+function exportCsv(){
+  const head="seq,timestamp,project,address,gps,ncc_version,location,defect_id,verdict,confidence,description_short,ncc_refs,pathway,notes\n";
+  const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const body=rows.map(r=>[r.seq,r.time,q(r.project),q(r.address),q(r.gps),q(r.ncc),q(r.location),r.id,r.verdict,r.confidence,q(r.description),q(r.refs),r.pathway,q(r.notes)].join(",")).join("\n");
+  download("data:text/csv;charset=utf-8,"+encodeURIComponent(head+body),`findings_register_${new Date().toISOString().slice(0,10)}.csv`);
+}
+window.exportCsv=exportCsv;
+
+// ------------------------------------------------------------------ setup sheet
+function sheetOpen(){ return ["resultSheet","setupSheet","drawerSheet"].some(id=>$(id).style.display==="block"); }
+$("setupBtn").onclick=()=>{ const sh=$("setupSheet"); if (sh.style.display==="block") return sh.style.display="none"; renderSetup(); };
+function renderSetup(){
+  const sh=$("setupSheet");
+  sh.innerHTML=`<h2>Inspection setup</h2>
+  <div class="grid">
+    <div class="full"><label class="f">Project / building</label><input id="s_project" value="${esc(S.project)}" placeholder="e.g. Alpha Towers" /></div>
+    <div class="full"><label class="f">Site address</label>
+      <div class="row"><input id="s_address" value="${esc(S.address)}" placeholder="Street, suburb" /><button class="btn gold" style="flex:0 0 96px" onclick="useGps()">📍 GPS</button></div>
+      <div class="hint" id="gpshint">${esc(S.gps?("GPS: "+S.gps):"Or confirm by GPS when on site")}</div>
+    </div>
+    <div><label class="f">NCC version</label><select id="s_ncc">${NCC_VERSIONS.map(v=>`<option ${v===S.ncc?"selected":""}>${v}</option>`).join("")}</select></div>
+    <div><label class="f">Level / floor</label><select id="s_level"><option value="">—</option>${LEVELS.map(v=>`<option ${v===S.level?"selected":""}>${v}</option>`).join("")}</select></div>
+    <div><label class="f">Apartment / unit</label><input id="s_unit" value="${esc(S.unit)}" placeholder="e.g. 302" /></div>
+    <div><label class="f">Compartment / area</label><select id="s_area"><option value="">—</option>${AREAS.map(v=>`<option ${v===S.area?"selected":""}>${v}</option>`).join("")}</select></div>
+    <div class="full"><label class="f">Facade photo</label>
+      <div class="row"><button class="btn" onclick="document.getElementById('s_facadefile').click()">📷 Capture / upload facade</button>
+      ${S.facade?`<button class="btn" style="flex:0 0 34%" onclick="download(localStorage.getItem('fi_facade_full')||'', 'facade.jpg')">⬇ Save</button>`:""}</div>
+      <input type="file" id="s_facadefile" accept="image/*" capture="environment" style="display:none" />
+      <img id="facadeThumb" ${S.facade?`src="${S.facade}" style="display:block"`:""} />
+    </div>
+    ${""/* access code only when the deployment requires it */}
+    <div class="full" id="codewrap" style="display:${codeRequired?"block":"none"}"><label class="f">Access code</label><input id="s_code" value="${esc(S.code)}" placeholder="Shared code (set FIELD_ACCESS_CODE on Vercel)" /></div>
+    <div class="full"><label class="f" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="s_orig" style="width:auto" ${S.saveOriginal?"checked":""}/> also download the original (unmarked) photo on save</label></div>
+  </div>
+  <div class="row" style="margin-top:10px"><button class="btn gold" onclick="applySetup()">✓ Apply</button></div>`;
+  sh.style.display="block";
+  $("s_facadefile").onchange=async e=>{
+    const f=e.target.files[0]; if (!f) return;
+    const url=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(f); });
+    const im=new Image(); await new Promise(r=>{ im.onload=r; im.src=url; });
+    const full=(()=>{ const s=Math.min(1,1600/Math.max(im.width,im.height)); const c=document.createElement("canvas");
+      c.width=Math.round(im.width*s); c.height=Math.round(im.height*s); c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+      return c.toDataURL("image/jpeg",.82); })();
+    const thumb=(()=>{ const s=Math.min(1,480/Math.max(im.width,im.height)); const c=document.createElement("canvas");
+      c.width=Math.round(im.width*s); c.height=Math.round(im.height*s); c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+      return c.toDataURL("image/jpeg",.7); })();
+    try { localStorage.setItem("fi_facade_full", full); } catch { toast("Facade stored as thumbnail only (storage limit)"); }
+    S.facade=thumb; localStorage.setItem("fi_facade",thumb); persist();
+    const t=$("facadeThumb"); t.src=thumb; t.style.display="block";
+    toast("Facade photo attached to this inspection");
+  };
+}
+function applySetup(){
+  S.project=$("s_project").value.trim(); S.address=$("s_address").value.trim(); S.ncc=$("s_ncc").value;
+  S.level=$("s_level").value; S.unit=$("s_unit").value.trim(); S.area=$("s_area").value;
+  const cw=document.getElementById("s_code"); if (cw) S.code=cw.value.trim();
+  S.saveOriginal=$("s_orig").checked;
+  persist(); ctxLine(); $("setupSheet").style.display="none";
+  if (S.code) $("codebanner").style.display="none";
+}
+window.applySetup=applySetup; window.download=download;
+async function useGps(){
+  if (!navigator.geolocation) return toast("GPS not available in this browser");
+  $("gpshint").textContent="Getting GPS fix…";
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const {latitude:lat, longitude:lon}=pos.coords;
+    S.gps=lat.toFixed(6)+","+lon.toFixed(6);
+    $("gpshint").textContent="GPS: "+S.gps+" — resolving address…";
+    try{
+      const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=18`,{headers:{Accept:"application/json"}});
+      const j=await r.json();
+      if (j.display_name){ $("s_address").value=j.display_name; }
+      $("gpshint").textContent="GPS: "+S.gps+(j.display_name?" ✓ address filled (edit if needed)":"");
+    } catch { $("gpshint").textContent="GPS: "+S.gps+" (address lookup failed — type it manually)"; }
+    persist();
+  }, err=>{ $("gpshint").textContent="GPS failed: "+err.message; }, {enableHighAccuracy:true,timeout:12000});
+}
+window.useGps=useGps;
+
+// ------------------------------------------------------------------ boot
+ctxLine();
+startCam();
+setTimeout(tick, 900);
+if (!S.project) setTimeout(()=>renderSetup(), 400); // first run: open setup
+</script>
+</body>
+</html>
