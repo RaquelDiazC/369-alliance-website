@@ -225,7 +225,6 @@ router.post("/identify", async (req: Request, res: Response) => {
     const message = await client.messages.create({
       model: IDENTIFY_MODEL,
       max_tokens: 1200,
-      temperature: 0,
       system: [{ type: "text", text: IDENTIFY_SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [
         {
