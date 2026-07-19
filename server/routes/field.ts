@@ -14,7 +14,7 @@ import { Router, Request, Response } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import fs from "fs";
 import path from "path";
-import defectLibraryJson from "../defect-library.json";
+import defectLibraryJson from "../defect-library.json" with { type: "json" };
 
 const router = Router();
 

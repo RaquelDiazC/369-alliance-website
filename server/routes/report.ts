@@ -20,7 +20,7 @@ import multer from "multer";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import defectLibraryJson from "../defect-library.json";
+import defectLibraryJson from "../defect-library.json" with { type: "json" };
 import { STATE_BY_CODE, stateProfileText } from "../brain/states.js";
 
 const router = Router();
