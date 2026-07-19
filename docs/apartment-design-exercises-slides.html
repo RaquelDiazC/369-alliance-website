@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>369 Alliance — Apartment Design Site Exercises (6 Cases)</title>
+<style>
+  :root{
+    --navy:#1a1a2e;
+    --gold:#A68A64;
+    --amber:#C07040;
+    --bg:#0f1020;
+    --paper:#fbf7ef;
+    --ink:#1a1a2e;
+    --muted:#5a5a6a;
+    --rule:#d8cdb6;
+    --chip:#efe6cf;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:"Inter","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .deck{display:flex;flex-direction:column;align-items:center;gap:18px;padding:18px}
+  .nav{position:fixed;top:14px;right:14px;z-index:10;background:rgba(26,26,46,.85);color:#fff;padding:8px 14px;border-radius:999px;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+  .nav a{color:var(--gold);text-decoration:none;margin:0 4px}
+  .nav a:hover{color:#fff}
+
+  .slide{
+    width:min(1280px,96vw);
+    aspect-ratio:16/9;
+    background:var(--paper);
+    border-radius:8px;
+    box-shadow:0 30px 60px rgba(0,0,0,.45),0 6px 20px rgba(0,0,0,.25);
+    overflow:hidden;
+    position:relative;
+    display:grid;
+    grid-template-rows:56px 1fr 32px;
+    page-break-after:always;
+  }
+  .slide header{
+    background:var(--navy);color:#fff;
+    padding:0 28px;display:flex;align-items:center;justify-content:space-between;
+  }
+  .slide header .brand{font-weight:700;letter-spacing:.18em;font-size:11px;text-transform:uppercase;color:var(--gold)}
+  .slide header .casenum{font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.7}
+  .slide header h1{margin:0;font-size:18px;font-weight:600;letter-spacing:.02em}
+  .slide footer{
+    background:#fff;border-top:1px solid var(--rule);
+    padding:0 28px;display:flex;align-items:center;justify-content:space-between;
+    font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;
+  }
+
+  .body{
+    display:grid;grid-template-columns: 1.1fr 1fr 1fr;gap:18px;padding:18px 22px;
+    overflow:hidden;
+  }
+  .col{display:flex;flex-direction:column;gap:10px;min-height:0}
+  .panel{
+    background:#fff;border:1px solid var(--rule);border-radius:6px;
+    padding:10px 12px;overflow:hidden;
+  }
+  .panel h2{
+    margin:0 0 6px 0;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--amber);font-weight:700;
+  }
+  .panel h2 .num{color:var(--navy);background:var(--chip);padding:2px 6px;border-radius:4px;margin-right:6px;font-weight:700}
+  .panel p, .panel li, .panel dd, .panel dt{font-size:11.5px;line-height:1.35;margin:2px 0}
+  .panel ul{margin:2px 0 2px 14px;padding:0}
+  .panel ul li{margin:1px 0}
+  .panel dl{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin:0}
+  .panel dt{color:var(--muted);font-weight:600;font-size:10.5px}
+  .panel dd{margin:0;font-size:10.5px}
+
+  .scenario{
+    border-left:4px solid var(--amber);
+    background:linear-gradient(180deg,#fff,#fbf7ef);
+  }
+  .scenario h1{margin:0 0 4px 0;font-size:18px;color:var(--navy);line-height:1.2}
+  .scenario .addr{font-size:11.5px;color:var(--muted);margin-bottom:6px}
+  .badges{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
+  .badge{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;background:var(--chip);color:var(--navy);padding:3px 7px;border-radius:999px;font-weight:600}
+  .badge.amber{background:var(--amber);color:#fff}
+  .badge.navy{background:var(--navy);color:var(--gold)}
+  .badge.gold{background:var(--gold);color:#fff}
+
+  table.controls{width:100%;border-collapse:collapse;font-size:10.5px}
+  table.controls th, table.controls td{
+    text-align:left;padding:3px 5px;border-bottom:1px solid var(--rule);vertical-align:top;
+  }
+  table.controls th{font-weight:700;color:var(--navy);background:#f6efde;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase}
+  table.controls td.k{font-weight:700;color:var(--amber);width:78px;white-space:nowrap}
+  table.controls td.v{color:var(--ink)}
+
+  .ncc{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}
+  .ncc .pill{
+    background:var(--navy);color:#fff;border-radius:6px;padding:6px 8px;
+    display:flex;flex-direction:column;gap:2px;
+  }
+  .ncc .pill .lab{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+  .ncc .pill .val{font-size:13px;font-weight:700;color:#fff}
+
+  .ps li::marker{color:var(--amber)}
+  .ev{font-size:10.5px;color:var(--muted);line-height:1.3}
+
+  .footer-meta span{margin-right:14px}
+  .footer-meta b{color:var(--navy)}
+
+  /* COVER */
+  .cover{
+    background:radial-gradient(1200px 600px at 20% 10%, #2a2a55 0, var(--navy) 60%);
+    color:#fff;
+  }
+  .cover header{background:transparent}
+  .cover .body{grid-template-columns:1fr;align-content:center;justify-items:start;padding:40px 60px}
+  .cover h1{font-size:48px;line-height:1.05;margin:0 0 10px 0;color:#fff;letter-spacing:-.01em}
+  .cover .sub{font-size:18px;color:var(--gold);margin-bottom:20px;letter-spacing:.04em}
+  .cover .lede{font-size:14px;max-width:760px;color:#e8e3d4;line-height:1.5}
+  .cover .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:24px;width:100%;max-width:1080px}
+  .cover .gcard{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:10px 12px}
+  .cover .gcard .n{font-size:10px;color:var(--gold);letter-spacing:.18em;text-transform:uppercase}
+  .cover .gcard .t{font-size:13px;font-weight:600;margin:2px 0}
+  .cover .gcard .a{font-size:10.5px;color:#cfc7b3}
+
+  @media print{
+    html,body{background:#fff}
+    .deck{padding:0;gap:0}
+    .nav{display:none}
+    .slide{box-shadow:none;border-radius:0;margin:0;page-break-after:always;width:100vw;height:100vh;aspect-ratio:auto}
+  }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  Press <a href="#s1">1</a><a href="#s2">2</a><a href="#s3">3</a><a href="#s4">4</a><a href="#s5">5</a><a href="#s6">6</a> · <a href="javascript:print()">Print PDF</a>
+</div>
+
+<div class="deck">
+
+<!-- COVER -->
+<section class="slide cover" id="s0">
+  <header>
+    <span class="brand">369 Alliance · Building Compliance Specialists</span>
+    <span class="casenum">Performance-Based Apartment Design Guide</span>
+  </header>
+  <div class="body">
+    <div>
+      <div class="sub">Six worked NSW site exercises</div>
+      <h1>Apartment Design<br/>Site Exercises</h1>
+      <p class="lede">Each slide walks one real-world NSW site through Parts 1–4 of the Performance-Based Apartment Design Guide and the NCC 2022 construction-type + effective-height overlays. Use the deck as a teaching set, a peer-review map, or a project kick-off frame.</p>
+      <div class="grid">
+        <div class="gcard"><div class="n">Case 1</div><div class="t">Marrickville</div><div class="a">Flat infill · NCC Type C · &lt; 12 m</div></div>
+        <div class="gcard"><div class="n">Case 2</div><div class="t">Wollstonecraft</div><div class="a">Sloping corner · Type A · ~17.5 m</div></div>
+        <div class="gcard"><div class="n">Case 3</div><div class="t">Glebe</div><div class="a">Heritage-adjacent · Type C · &lt; 12 m</div></div>
+        <div class="gcard"><div class="n">Case 4</div><div class="t">Macquarie Park</div><div class="a">Amalgamated podium + towers · Type A · ~75 m</div></div>
+        <div class="gcard"><div class="n">Case 5</div><div class="t">Strathfield</div><div class="a">Noisy frontage · Type A · ~18 m</div></div>
+        <div class="gcard"><div class="n">Case 6</div><div class="t">Burwood</div><div class="a">Town-centre shop-top · Type A · ~24 m</div></div>
+      </div>
+    </div>
+  </div>
+  <footer><span class="footer-meta">Workflow: <b>1 Site intelligence</b> → <b>2 Massing</b> → <b>3 Apartment performance</b> → <b>4 Regulated design</b> → <b>5 Operation</b></span><span>369 Alliance</span></footer>
+</section>
+
+<!-- CASE 1 — MARRICKVILLE -->
+<section class="slide" id="s1">
+  <header>
+    <span class="brand">369 Alliance · Apartment Design Site Exercise</span>
+    <span class="casenum">Case 01 of 06</span>
+  </header>
+  <div class="body">
+
+    <div class="col">
+      <div class="panel scenario">
+        <h1>Inner West Flat Infill</h1>
+        <div class="addr">14–18 Premier St, Marrickville NSW 2204 · Inner West Council</div>
+        <div class="badges">
+          <span class="badge navy">R3 Medium Density</span>
+          <span class="badge">3 lots · ~1,540 m²</span>
+          <span class="badge">Near-flat (0.8 m fall)</span>
+          <span class="badge">800 m to Marrickville Stn</span>
+        </div>
+        <dl>
+          <dt>Frontage / depth</dt><dd>36 m / 43 m, long axis E–W</dd>
+          <dt>Context</dt><dd>Federation cottages + 1970s walk-ups</dd>
+          <dt>Hazards</dt><dd>Acid-sulfate Class 4; no flood; no heritage</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h2><span class="num">P1</span>Identifying the context</h2>
+        <ul>
+          <li><b>1A Type:</b> 3-storey walk-up infill</li>
+          <li><b>1B Character:</b> brick + tile, intermittent canopy, 3–6 m gardens, low fences</li>
+          <li><b>1C Precinct:</b> individual-site response — character review on garden depth, fence type, brick palette</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h2><span class="num">P2</span>Developing the controls</h2>
+        <table class="controls">
+          <tr><td class="k">2A primary</td><td class="v">3-storey + screened roof terrace inside 12 m datum</td></tr>
+          <tr><td class="k">2B envelope</td><td class="v">~6,200 m³ container · ~1,680 m² achievable GFA</td></tr>
+          <tr><td class="k">2C height</td><td class="v">LEP 11 m / 3 storeys; effective height &lt; 12 m</td></tr>
+          <tr><td class="k">2D FSR</td><td class="v">1.1:1 ≈ 1,694 m² · courtyard option chosen on amenity</td></tr>
+          <tr><td class="k">2E depth</td><td class="v">11.4 m glass-to-glass, dual-aspect corners</td></tr>
+          <tr><td class="k">2F separation</td><td class="v">12 / 9 / 6 m at &lt; 12 m band</td></tr>
+          <tr><td class="k">2G street</td><td class="v">4.5 m garden setback, low brick fence, retain street tree</td></tr>
+          <tr><td class="k">2H side/rear</td><td class="v">3 m sides · 6 m rear lane · deep-soil reserve</td></tr>
+        </table>
+        <div class="ncc">
+          <div class="pill"><span class="lab">NCC type</span><span class="val">Type C</span></div>
+          <div class="pill"><span class="lab">Effective height</span><span class="val">&lt; 12 m</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h2><span class="num">P3</span>Siting</h2>
+        <ul>
+          <li><b>3A:</b> tree register (2 jacarandas retained) + window survey</li>
+          <li><b>3B:</b> long axis E–W → north exposure for living rooms; courtyard sun 9–15 mid-winter</li>
+          <li><b>3C:</b> front-loaded entry on Premier St + planted privacy buffer</li>
+          <li><b>3D:</b> rear north-facing courtyard ~280 m² (≥ 25 % site)</li>
+          <li><b>3E:</b> ~9 % deep soil; basement pulled 3 m off rear boundary</li>
+          <li><b>3F:</b> angled bedroom windows on south façade to #20</li>
+          <li><b>3G:</b> 1:20 accessible route boundary to lift</li>
+          <li><b>3H:</b> driveway off rear lane only — no street crossover</li>
+          <li><b>3J:</b> 0.5 sp/unit + 1 bike sp/unit · EV conduit only</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2><span class="num">P4</span>Designing the building</h2>
+        <ul>
+          <li><b>4A:</b> ≥ 70 % units 2 hr mid-winter sun · neighbour shadow study</li>
+          <li><b>4B:</b> 65 % cross-vent via courtyard + corner units</li>
+          <li><b>4C/D/E:</b> 2.7 m ceilings · furnished 1B/2B/2B+S/3B · 8–12 m² balconies</li>
+          <li><b>4G/H:</b> tagged storage · wet stacks aligned · bedrooms off lift &amp; chute</li>
+          <li><b>4O/U:</b> retained jacarandas + new canopy · roof PV · BASIX passive</li>
+        </ul>
+      </div>
+      <div class="panel ps">
+        <h2><span class="num">PS</span>Performance Solutions / Evidence</h2>
+        <p style="margin:2px 0;font-size:11px"><b>Performance Solutions:</b> none expected — DtS pathway viable.</p>
+        <p class="ev"><b>Evidence pack:</b> site analysis · shadow study (9/12/15 mid-winter) · unit schedule with solar+vent tags · deep-soil plan · tree retention · BASIX · NCC Type C confirmation memo.</p>
+      </div>
+    </div>
+
+  </div>
+  <footer><span class="footer-meta"><b>Five-pass:</b> site → massing → apartment → regulated → operation</span><span>369 Alliance · Case 01 / Marrickville</span></footer>
+</section>
+
+
+<!-- CASE 2 — WOLLSTONECRAFT -->
+<section class="slide" id="s2">
+  <header>
+    <span class="brand">369 Alliance · Apartment Design Site Exercise</span>
+    <span class="casenum">Case 02 of 06</span>
+  </header>
+  <div class="body">
+
+    <div class="col">
+      <div class="panel scenario">
+        <h1>Sloping Corner Mid-Rise</h1>
+        <div class="addr">3–7 Shirley Rd cnr Romsey St, Wollstonecraft NSW 2065 · North Sydney</div>
+        <div class="badges">
+          <span class="badge navy">R4 High Density</span>
+          <span class="badge">3 lots · 1,820 m²</span>
+          <span class="badge amber">5.4 m fall · 1:8</span>
+          <span class="badge">600 m to station</span>
+        </div>
+        <dl>
+          <dt>Slope</dt><dd>NW (high) → SE (low) — stepped massing</dd>
+          <dt>Context</dt><dd>1960s walk-ups + new 6–8 storey apartments</dd>
+          <dt>Hazards</dt><dd>Sandstone subgrade · BAL-LOW · no flood</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h2><span class="num">P1</span>Identifying the context</h2>
+        <ul>
+          <li><b>1A Type:</b> 6–7 storey stepped mid-rise, lower from upslope</li>
+          <li><b>1B Character:</b> garden suburb → apartment renewal · sandstone walls + mature trees character-defining</li>
+          <li><b>1C Precinct:</b> read as a precinct corner anchor even on a single site</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h2><span class="num">P2</span>Developing the controls</h2>
+        <table class="controls">
+          <tr><td class="k">2A primary</td><td class="v">Stepped 5–6–7 storey reading lower upslope</td></tr>
+          <tr><td class="k">2B envelope</td><td class="v">Real envelope &lt; control prism (street-wall step at L5)</td></tr>
+          <tr><td class="k">2C height</td><td class="v">LEP 21 m · effective height ~17.5 m</td></tr>
+          <tr><td class="k">2D FSR</td><td class="v">2.0:1 ≈ 3,640 m² · courtyard option (solar evidence)</td></tr>
+          <tr><td class="k">2E depth</td><td class="v">12–14 m · through-corner planning replaces deep units</td></tr>
+          <tr><td class="k">2F separation</td><td class="v">12–25 m band: 18 / 12 / 9 m</td></tr>
+          <tr><td class="k">2G street</td><td class="v">5 m Shirley · 4 m Romsey · sandstone retaining rebuild</td></tr>
+          <tr><td class="k">2H side/rear</td><td class="v">6 m + upper-level step · future-neighbour test critical</td></tr>
+        </table>
+        <div class="ncc">
+          <div class="pill"><span class="lab">NCC type</span><span class="val">Type A</span></div>
+          <div class="pill"><span class="lab">Effective height</span><span class="val">12–25 m band</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h2><span class="num">P3</span>Siting</h2>
+        <ul>
+          <li><b>3A:</b> 250 mm grid level survey · sandstone outcrop NW retained · 2 fig trees on Romsey verge</li>
+          <li><b>3B:</b> long axis N–S; west façade balcony depth + screening</li>
+          <li><b>3C:</b> corner lobby at high point · 1:20 accessible ramp + steps</li>
+          <li><b>3D:</b> sky terrace at L5 step-back + south ground garden</li>
+          <li><b>3E:</b> ~15 % deep soil concentrated downslope (south)</li>
+          <li><b>3F:</b> sloping-site overlooking checked in section</li>
+          <li><b>3G:</b> continuous accessible route from Romsey footpath</li>
+          <li><b>3H:</b> basement entry from Romsey (lower) — minimises ramp</li>
+          <li><b>3J:</b> 1 sp/unit · 2-level basement · EV room ventilation + FRL</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2><span class="num">P4</span>Designing the building</h2>
+        <ul>
+          <li><b>4A:</b> 70 % solar by stepping south side of courtyard down 1 storey</li>
+          <li><b>4B/F:</b> 60 % cross-vent · corridors capped 15 m, daylit ends</li>
+          <li><b>4C/D:</b> 2.7 m typical · 3.0 m top floor · 8.4 m grid · 15/40/35/10 % mix</li>
+          <li><b>4H:</b> wet stacks aligned · bedrooms off lift &amp; chute</li>
+          <li><b>4M/N/Q:</b> sandstone-toned base · screened plant + PV · ≥ 20 % adaptable</li>
+        </ul>
+      </div>
+      <div class="panel ps">
+        <h2><span class="num">PS</span>Performance Solutions / Evidence</h2>
+        <ul style="font-size:10.5px;margin:2px 0 4px 14px">
+          <li><b>Effective height limit:</b> if plant pushes &gt; 25 m → emergency lift + FCR Required (PS or design-around)</li>
+          <li><b>Sloping-site privacy:</b> angled upslope bedroom windows + sightline diagrams</li>
+        </ul>
+        <p class="ev"><b>Evidence pack:</b> survey + sandstone outcrop · stepped-massing 3D · future-neighbour envelope (south) · slope-section privacy · NCC Type A FRL schedule · fire-engineering brief · BASIX · landscape + deep-soil · EV ventilation.</p>
+      </div>
+    </div>
+
+  </div>
+  <footer><span class="footer-meta"><b>Five-pass:</b> site → massing → apartment → regulated → operation</span><span>369 Alliance · Case 02 / Wollstonecraft</span></footer>
+</section>
+
+
+<!-- CASE 3 — GLEBE -->
+<section class="slide" id="s3">
+  <header>
+    <span class="brand">369 Alliance · Apartment Design Site Exercise</span>
+    <span class="casenum">Case 03 of 06</span>
+  </header>
+  <div class="body">
+
+    <div class="col">
+      <div class="panel scenario">
+        <h1>Heritage-Adjacent Infill</h1>
+        <div class="addr">22–26 Mitchell St, Glebe NSW 2037 · City of Sydney</div>
+        <div class="badges">
+          <span class="badge navy">R1 General Residential</span>
+          <span class="badge">1,150 m²</span>
+          <span class="badge amber">Heritage Conservation Area</span>
+          <span class="badge">Listed terrace at #20</span>
+        </div>
+        <dl>
+          <dt>Frontage</dt><dd>21 m, near-flat with 0.6 m crossfall</dd>
+          <dt>Context</dt><dd>Continuous Victorian / Edwardian terrace street</dd>
+          <dt>Hazards</dt><dd>Archaeological potential; party-wall risk</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h2><span class="num">P1</span>Identifying the context</h2>
+        <ul>
+          <li><b>1A Type:</b> 3-storey + recessed roof-form terrace-scale infill</li>
+          <li><b>1B Character:</b> Victorian parapet rhythm, 5.5 m party-wall cadence, sandstone kerbs — character is the primary control</li>
+          <li><b>1C Precinct:</b> HCA DCP overrides generic apartment massing (Housing SEPP s.149 displacement)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h2><span class="num">P2</span>Developing the controls</h2>
+        <table class="controls">
+          <tr><td class="k">2A primary</td><td class="v">Heritage CMP + DCP rule the form, not LEP prism</td></tr>
+          <tr><td class="k">2B envelope</td><td class="v">Real envelope much smaller than R1 prism</td></tr>
+          <tr><td class="k">2C height</td><td class="v">LEP 11 m · DCP eaves ~6.5 m · 3rd storey set back ≥ 4 m</td></tr>
+          <tr><td class="k">2D FSR</td><td class="v">0.9:1 ≈ 1,035 m² · ~10 boutique units</td></tr>
+          <tr><td class="k">2E depth</td><td class="v">11 m glass-to-glass · single rear-court apartment / floor</td></tr>
+          <tr><td class="k">2F separation</td><td class="v">&lt; 12 m band 12/9/6 met internally</td></tr>
+          <tr><td class="k">2G street</td><td class="v">Inherit 3 m terrace setback exactly · cast-iron palisade</td></tr>
+          <tr><td class="k">2H side/rear</td><td class="v">0 m party walls · 6 m rear deep-soil garden</td></tr>
+        </table>
+        <div class="ncc">
+          <div class="pill"><span class="lab">NCC type</span><span class="val">Type C</span></div>
+          <div class="pill"><span class="lab">Effective height</span><span class="val">&lt; 12 m</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h2><span class="num">P3</span>Siting</h2>
+        <ul>
+          <li><b>3A:</b> heritage CMP · archaeological assessment · party-wall survey #20 + #28</li>
+          <li><b>3B:</b> long axis E–W · south-rear unfavourable · living rooms north</li>
+          <li><b>3C:</b> restored carriage opening as front entry · CMP palette</li>
+          <li><b>3D:</b> rear-garden communal space ~25 % of site, level entry</li>
+          <li><b>3E:</b> 35 % rear deep soil · tank + plant relocated to roof void</li>
+          <li><b>3F:</b> raised sills / offset windows protect #20 first-floor windows</li>
+          <li><b>3G:</b> level threshold + accessible ramp behind front fence</li>
+          <li><b>3H:</b> NO basement (heritage subgrade + small footprint)</li>
+          <li><b>3J:</b> 1.5 bike sp/unit + pram store · zero on-site car parking</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2><span class="num">P4</span>Designing the building</h2>
+        <ul>
+          <li><b>4A:</b> ~50 % solar — best-practicable evidence required</li>
+          <li><b>4B:</b> dual-aspect every unit → 100 % cross-vent (strong response)</li>
+          <li><b>4C/D/E:</b> 3.0 m ground · 2.7 m above · 6×2B + 4×3B · Juliet front, generous rear balconies</li>
+          <li><b>4M/O:</b> reads as one terrace · restored rear garden + retained tree</li>
+          <li><b>4R/U:</b> existing-fabric upgrade documented · BASIX via envelope + roof PV</li>
+        </ul>
+      </div>
+      <div class="panel ps">
+        <h2><span class="num">PS</span>Performance Solutions / Evidence</h2>
+        <ul style="font-size:10.5px;margin:2px 0 4px 14px">
+          <li><b>Solar &lt; 70 % (4A):</b> best-practicable PS · compensated by cross-vent + outlook + heritage outcome</li>
+          <li><b>Zero on-site parking (3J):</b> Council parking-strategy memo (HCA + transport precedent)</li>
+        </ul>
+        <p class="ev"><b>Evidence pack:</b> Heritage Impact Statement · archaeology · party-wall protection · CMP material schedule · sightline analysis to #20 · best-practicable solar memo · BASIX · NCC Type C FRL · parking strategy.</p>
+      </div>
+    </div>
+
+  </div>
+  <footer><span class="footer-meta"><b>Five-pass:</b> site → massing → apartment → regulated → operation</span><span>369 Alliance · Case 03 / Glebe</span></footer>
+</section>
+
+
+<!-- CASE 4 — MACQUARIE PARK -->
+<section class="slide" id="s4">
+  <header>
+    <span class="brand">369 Alliance · Apartment Design Site Exercise</span>
+    <span class="casenum">Case 04 of 06</span>
+  </header>
+  <div class="body">
+
+    <div class="col">
+      <div class="panel scenario">
+        <h1>Amalgamated Renewal Site</h1>
+        <div class="addr">100–120 Talavera Rd, Macquarie Park NSW 2113 · City of Ryde</div>
+        <div class="badges">
+          <span class="badge navy">MU1 Mixed Use</span>
+          <span class="badge">6 lots · 8,400 m²</span>
+          <span class="badge amber">Towers 12–28 storeys nearby</span>
+          <span class="badge">350 m to Metro</span>
+        </div>
+        <dl>
+          <dt>Frontage</dt><dd>95 m + new through-block lane</dd>
+          <dt>Context</dt><dd>Renewal precinct — public realm being formed by this generation</dd>
+          <dt>Hazards</dt><dd>Site contamination (former commercial) — remediation required</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h2><span class="num">P1</span>Identifying the context</h2>
+        <ul>
+          <li><b>1A Type:</b> 2 slender residential towers above a 4-storey podium with retail + childcare</li>
+          <li><b>1B Character:</b> emerging high-rise renewal — public-domain rules dominate</li>
+          <li><b>1C Precinct:</b> large enough to <i>create</i> the public realm — through-site link, plaza, green spine</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h2><span class="num">P2</span>Developing the controls</h2>
+        <table class="controls">
+          <tr><td class="k">2A primary</td><td class="v">2 towers (max plate ~750 m²) + 4-storey podium</td></tr>
+          <tr><td class="k">2B envelope</td><td class="v">Podium 16 m + towers ~78 m, 6 m tower setback off podium edge</td></tr>
+          <tr><td class="k">2C height</td><td class="v">LEP 80 m · effective height ~75 m → top-band fire matrix</td></tr>
+          <tr><td class="k">2D FSR</td><td class="v">4.5:1 ≈ 37,800 m² · retail 3,500 + childcare 800 + res ~33,500</td></tr>
+          <tr><td class="k">2E depth</td><td class="v">Tower plate 18 m max · centre core · dual-aspect units</td></tr>
+          <tr><td class="k">2F separation</td><td class="v">&gt; 25 m band: 24 / 18 / 12 m · tower-to-tower 24 m</td></tr>
+          <tr><td class="k">2G street</td><td class="v">Podium to street + awning · towers set back 6 m</td></tr>
+          <tr><td class="k">2H side/rear</td><td class="v">6 m podium · tower step-back 6 m · future-neighbour critical</td></tr>
+        </table>
+        <div class="ncc">
+          <div class="pill"><span class="lab">NCC type</span><span class="val">Type A · Class 2+6+9b</span></div>
+          <div class="pill"><span class="lab">Effective height</span><span class="val">&gt; 50 m — all systems Required</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h2><span class="num">P3</span>Siting</h2>
+        <ul>
+          <li><b>3A:</b> contamination delineation · geotech · wind study · neighbour shadow · traffic</li>
+          <li><b>3B:</b> long axis NE–SW · maximise N · podium awning + tower setback for footpath comfort</li>
+          <li><b>3C:</b> through-site link · retail spine · plaza outside childcare</li>
+          <li><b>3D:</b> L4 podium-roof terrace ~1,500 m², shaded + sunny zones</li>
+          <li><b>3E:</b> ≥ 7 % deep soil concentrated at ground link + tree pockets</li>
+          <li><b>3F:</b> 24 m tower-to-tower + sky-view test from neighbours</li>
+          <li><b>3G:</b> separate residential lobbies / childcare / retail</li>
+          <li><b>3H:</b> loading + waste from rear lane · resident basement off side street</li>
+          <li><b>3J:</b> 3-level basement · 1 sp/unit · end-of-trip retail · bike near each lobby</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2><span class="num">P4</span>Designing the building</h2>
+        <ul>
+          <li><b>4A/B:</b> ≥ 70 % solar by-unit · 75 % cross-vent (corner + through)</li>
+          <li><b>4C/D:</b> 2.7 m res · 3.3 m retail · 10/40/35/15 mix · podium townhouse units</li>
+          <li><b>4H/J:</b> structural break res ↔ podium · acoustic façade to Talavera · winter-gardens road side</li>
+          <li><b>4O/P:</b> engineered podium-roof landscape · soil depth + drainage cells + irrigation</li>
+          <li><b>4S/U/V/W/X:</b> all-electric + PV + embedded network · WSUD · tri-stream waste · BMU + façade access</li>
+        </ul>
+      </div>
+      <div class="panel ps">
+        <h2><span class="num">PS</span>Performance Solutions / Evidence</h2>
+        <ul style="font-size:10.5px;margin:2px 0 4px 14px">
+          <li><b>Acoustic façade vs cross-vent:</b> wintergardens with operable acoustic doors</li>
+          <li><b>Podium-roof deep-soil substitute:</b> equivalent canopy + cooling outcome</li>
+          <li><b>Mixed-class fire separation:</b> childcare + residential + retail compartmentation + egress</li>
+        </ul>
+        <p class="ev"><b>Evidence pack:</b> masterplan · contamination + remediation · geotech · wind tunnel · traffic · neighbour shadow · NCC Type A schedule · fire engineering · BASIX + Net Zero · podium landscape engineering · BMU · RAB Act regulated declarations.</p>
+      </div>
+    </div>
+
+  </div>
+  <footer><span class="footer-meta"><b>Five-pass:</b> site → massing → apartment → regulated → operation</span><span>369 Alliance · Case 04 / Macquarie Park</span></footer>
+</section>
+
+
+<!-- CASE 5 — STRATHFIELD -->
+<section class="slide" id="s5">
+  <header>
+    <span class="brand">369 Alliance · Apartment Design Site Exercise</span>
+    <span class="casenum">Case 05 of 06</span>
+  </header>
+  <div class="body">
+
+    <div class="col">
+      <div class="panel scenario">
+        <h1>Noisy Frontage Shop-Top</h1>
+        <div class="addr">245–251 Parramatta Rd, Strathfield NSW 2135 · Strathfield Council</div>
+        <div class="badges">
+          <span class="badge navy">E2 Commercial Centre</span>
+          <span class="badge">2,200 m²</span>
+          <span class="badge amber">24/7 traffic + freight noise</span>
+          <span class="badge">Air-quality risk</span>
+        </div>
+        <dl>
+          <dt>Frontage</dt><dd>38 m to Parramatta Rd · rear lane access</dd>
+          <dt>Context</dt><dd>Mixed shop-top, fragmented frontages, weak pedestrian environment</dd>
+          <dt>Hazards</dt><dd>Severe road noise + air quality · potential historic contamination</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h2><span class="num">P1</span>Identifying the context</h2>
+        <ul>
+          <li><b>1A Type:</b> 6-storey shop-top mixed use — retail at ground, apartments above</li>
+          <li><b>1B Character:</b> Parramatta Rd corridor, auto-oriented, character being replaced by renewal</li>
+          <li><b>1C Precinct:</b> individual-site with corridor logic — align street wall + awning continuity</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h2><span class="num">P2</span>Developing the controls</h2>
+        <table class="controls">
+          <tr><td class="k">2A primary</td><td class="v">Noise dictates plan + façade — courtyard plan with bedrooms inward</td></tr>
+          <tr><td class="k">2B envelope</td><td class="v">4-storey street wall + 2-storey set back 5 m</td></tr>
+          <tr><td class="k">2C height</td><td class="v">LEP 21 m · effective height ~18 m → 12–25 m band</td></tr>
+          <tr><td class="k">2D FSR</td><td class="v">2.5:1 ≈ 5,500 m² · retail 600 + res ~4,900 m²</td></tr>
+          <tr><td class="k">2E depth</td><td class="v">14 m glass-to-glass · central courtyard plate workable</td></tr>
+          <tr><td class="k">2F separation</td><td class="v">Internal courtyard ≥ 12 m</td></tr>
+          <tr><td class="k">2G street</td><td class="v">Zero to Parramatta Rd · awning + recessed res entry</td></tr>
+          <tr><td class="k">2H side/rear</td><td class="v">6 m rear · future-envelope test on flank</td></tr>
+        </table>
+        <div class="ncc">
+          <div class="pill"><span class="lab">NCC type</span><span class="val">Type A · Class 2+6</span></div>
+          <div class="pill"><span class="lab">Effective height</span><span class="val">12–25 m band</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h2><span class="num">P3</span>Siting</h2>
+        <ul>
+          <li><b>3A:</b> 24-hr acoustic survey · NOx air quality · contamination · neighbour windows + POS</li>
+          <li><b>3B:</b> front faces north — solar opportunity but noise risk → wintergarden response</li>
+          <li><b>3C:</b> continuous awning · set-back residential entry · planted buffer to glazing</li>
+          <li><b>3D:</b> rear courtyard sheltered from road + L4 podium roof terrace</li>
+          <li><b>3E:</b> small ground deep-soil + engineered podium-roof landscape (4P)</li>
+          <li><b>3F:</b> rear units overlook neighbour yards — angled sightlines + planting</li>
+          <li><b>3G:</b> separate residential entry from retail · lobby fully internal</li>
+          <li><b>3H:</b> rear lane only — NO Parramatta Rd crossover</li>
+          <li><b>3J:</b> 0.7 sp/unit · bike room near rear lobby · retail loading off lane</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2><span class="num">P4</span>Designing the building</h2>
+        <ul>
+          <li><b>4A:</b> N solar opportunity but open-window living constrained</li>
+          <li><b>4B:</b> CANNOT count road-facing units cross-vented · realistic ~40 %</li>
+          <li><b>4D/E:</b> bedrooms turned to courtyard / rear · wintergardens road side</li>
+          <li><b>4J:</b> acoustic façade to AS/NZS 2107 · filtered mechanical fresh-air · acoustic refuges</li>
+          <li><b>4S/U:</b> retail / residential separated by floor + acoustic + entry · mech vent + heat recovery</li>
+        </ul>
+      </div>
+      <div class="panel ps">
+        <h2><span class="num">PS</span>Performance Solutions / Evidence</h2>
+        <ul style="font-size:10.5px;margin:2px 0 4px 14px">
+          <li><b>Cross-vent &lt; 60 % (4B):</b> acoustic + air-quality reports + mechanical fresh-air alternative</li>
+          <li><b>Acoustic façade DtS (4J):</b> internal noise targets achieved + maintained</li>
+          <li><b>Communal sun (3D):</b> podium-roof terrace as compensating amenity</li>
+        </ul>
+        <p class="ev"><b>Evidence pack:</b> 24-hr acoustic + air quality · acoustic façade spec · mech ventilation strategy · contamination + remediation · BASIX · NCC Type A FRL + Part A6 mixed-class · fire engineering · evidenced cross-vent count · neighbour-impact privacy.</p>
+      </div>
+    </div>
+
+  </div>
+  <footer><span class="footer-meta"><b>Five-pass:</b> site → massing → apartment → regulated → operation</span><span>369 Alliance · Case 05 / Strathfield</span></footer>
+</section>
+
+
+<!-- CASE 6 — BURWOOD -->
+<section class="slide" id="s6">
+  <header>
+    <span class="brand">369 Alliance · Apartment Design Site Exercise</span>
+    <span class="casenum">Case 06 of 06</span>
+  </header>
+  <div class="body">
+
+    <div class="col">
+      <div class="panel scenario">
+        <h1>Town-Centre Mixed-Use</h1>
+        <div class="addr">30–34 Burwood Rd, Burwood NSW 2134 · Burwood Council</div>
+        <div class="badges">
+          <span class="badge navy">E2 Commercial Centre</span>
+          <span class="badge">1,650 m²</span>
+          <span class="badge amber">25 m fire-matrix boundary</span>
+          <span class="badge">Burwood Park solar plane</span>
+        </div>
+        <dl>
+          <dt>Frontage</dt><dd>24 m Burwood Rd · 28 m side lane · near-flat</dd>
+          <dt>Context</dt><dd>Active town centre · station + Westfield 200 m · shop-top context</dd>
+          <dt>Hazards</dt><dd>Park overshadowing risk to the north</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h2><span class="num">P1</span>Identifying the context</h2>
+        <ul>
+          <li><b>1A Type:</b> 8-storey shop-top — retail + small commercial L1 + apartments above</li>
+          <li><b>1B Character:</b> shopfront rhythm + awning + signage hierarchy = precinct character</li>
+          <li><b>1C Precinct:</b> town-centre corner — reinforce footpath continuity + public realm</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h2><span class="num">P2</span>Developing the controls</h2>
+        <table class="controls">
+          <tr><td class="k">2A primary</td><td class="v">4-storey street wall + 4-storey upper element set back 4 m</td></tr>
+          <tr><td class="k">2B envelope</td><td class="v">DCP street-wall + Burwood Park sun-access plane shape upper massing</td></tr>
+          <tr><td class="k">2C height</td><td class="v">LEP 28 m · effective height ~24 m (close to 25 m boundary)</td></tr>
+          <tr><td class="k">2D FSR</td><td class="v">4.0:1 ≈ 6,600 m² · retail 700 + commercial 600 + res ~5,300</td></tr>
+          <tr><td class="k">2E depth</td><td class="v">13–14 m double-loaded · corner planning + small light wells</td></tr>
+          <tr><td class="k">2F separation</td><td class="v">12–25 m band: 18 / 12 / 9 m</td></tr>
+          <tr><td class="k">2G street</td><td class="v">Zero to Burwood Rd · continuous awning at 3.6 m</td></tr>
+          <tr><td class="k">2H side/rear</td><td class="v">Side party wall · plan for shared light wells with adjoining redev</td></tr>
+        </table>
+        <div class="ncc">
+          <div class="pill"><span class="lab">NCC type</span><span class="val">Type A · Class 2+5/6</span></div>
+          <div class="pill"><span class="lab">Effective height</span><span class="val">Just under 25 m</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel">
+        <h2><span class="num">P3</span>Siting</h2>
+        <ul>
+          <li><b>3A:</b> survey + Burwood Park solar study · retail tenancy depth · lane logistics</li>
+          <li><b>3B:</b> living rooms N + E · upper setback shaped for park afternoon sun</li>
+          <li><b>3C:</b> continuous Burwood Rd awning · res entry on lane · refurbished side paving</li>
+          <li><b>3D:</b> L5 podium roof terrace ~350 m² · supplemented by Burwood Park 200 m walk</li>
+          <li><b>3E:</b> minimal ground deep soil · podium-roof landscape (4P)</li>
+          <li><b>3F:</b> internal light-well privacy via offset windows + sill heights</li>
+          <li><b>3G:</b> separated residential lobby on lane · retail entries on Burwood Rd</li>
+          <li><b>3H:</b> loading + basement off side lane only</li>
+          <li><b>3J:</b> 2-level basement · 0.6 sp/unit · ample bike + commercial end-of-trip</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2><span class="num">P4</span>Designing the building</h2>
+        <ul>
+          <li><b>4A:</b> ≥ 70 % units 2 hr mid-winter sun · NO new park shadow 12:00–14:00 mid-winter</li>
+          <li><b>4B/F:</b> 65 % cross-vent · corridors capped 12 m, daylit ends</li>
+          <li><b>4C/D:</b> retail 4.0 / commercial 3.3 / res 2.7 m · 10/45/35/10 mix · 3B units on lane</li>
+          <li><b>4M/N/T:</b> modulated upper façade above masonry podium · plant under 25 m · DCP-aligned awning + signage</li>
+          <li><b>4S/U/V/W/X:</b> all-electric + PV + heat recovery · greywater podium irrigation · waste swept-path · BMU planned at DA</li>
+        </ul>
+      </div>
+      <div class="panel ps">
+        <h2><span class="num">PS</span>Performance Solutions / Evidence</h2>
+        <ul style="font-size:10.5px;margin:2px 0 4px 14px">
+          <li><b>Effective height creep:</b> manage plant + lift overrun to stay &lt; 25 m or design in emergency lift</li>
+          <li><b>Deep-soil shortfall (3E):</b> engineered podium planting + park proximity</li>
+          <li><b>Burwood Park solar plane:</b> if any encroachment, comparative shadow studies</li>
+        </ul>
+        <p class="ev"><b>Evidence pack:</b> Burwood Park solar protection · town-centre DCP frontage compliance · NCC Type A + Part A6 schedule · fire engineering on 25 m boundary · BASIX · podium landscape engineering · waste swept-path · RAB Act regulated declarations.</p>
+      </div>
+    </div>
+
+  </div>
+  <footer><span class="footer-meta"><b>Five-pass:</b> site → massing → apartment → regulated → operation</span><span>369 Alliance · Case 06 / Burwood</span></footer>
+</section>
+
+</div>
+
+<script>
+  // Arrow-key navigation between slides
+  const slides=[...document.querySelectorAll('.slide')];
+  let i=0;
+  function go(d){
+    i=Math.max(0,Math.min(slides.length-1,i+d));
+    slides[i].scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  window.addEventListener('keydown',e=>{
+    if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();go(1)}
+    else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();go(-1)}
+    else if(e.key==='Home'){e.preventDefault();i=0;slides[0].scrollIntoView()}
+    else if(e.key==='End'){e.preventDefault();i=slides.length-1;slides[i].scrollIntoView()}
+  });
+  // Track current slide on scroll
+  const io=new IntersectionObserver(es=>{
+    es.forEach(en=>{if(en.isIntersecting){i=slides.indexOf(en.target)}})
+  },{threshold:.6});
+  slides.forEach(s=>io.observe(s));
+</script>
+
+</body>
+</html>

@@ -1,10 +1,36 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from "vite";
+import express from "express";
+import fieldRoute from "./server/routes/field";
+import brainRoute from "./server/routes/brain";
+import reportRoute from "./server/routes/report";
+
+// Exposes the field-inspector + legislation-brain APIs during `pnpm dev`
+// (prod mounts them in server/index.ts).
+function fieldApiPlugin(): Plugin {
+  return {
+    name: "field-api",
+    configureServer(server: ViteDevServer) {
+      // Vite only injects VITE_* vars into client code; the API middleware reads
+      // process.env, so surface .env/.env.local values (ANTHROPIC_API_KEY) here.
+      const fileEnv = loadEnv(server.config.mode, server.config.envDir || process.cwd(), "");
+      if (!process.env.ANTHROPIC_API_KEY && fileEnv.ANTHROPIC_API_KEY) {
+        process.env.ANTHROPIC_API_KEY = fileEnv.ANTHROPIC_API_KEY;
+      }
+      const app = express();
+      app.use(express.json({ limit: "10mb" }));
+      app.use("/api/field", fieldRoute);
+      app.use("/api/brain", brainRoute);
+      app.use("/api/report", reportRoute);
+      server.middlewares.use(app);
+    },
+  };
+}
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), fieldApiPlugin()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),

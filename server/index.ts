@@ -3,6 +3,9 @@ import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import analyseRoute from "./routes/analyse.js";
+import fieldRoute from "./routes/field.js";
+import brainRoute from "./routes/brain.js";
+import reportRoute from "./routes/report.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +19,9 @@ async function startServer() {
 
   // API routes (must be before static/SPA fallback)
   app.use("/api/analyse-drawing", analyseRoute);
+  app.use("/api/field", fieldRoute);
+  app.use("/api/brain", brainRoute);
+  app.use("/api/report", reportRoute);
 
   // Serve static files from dist/public in production
   const staticPath =

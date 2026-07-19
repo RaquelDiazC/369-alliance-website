@@ -103,6 +103,83 @@ export default function AdmLanding() {
       external: false,
     },
     {
+      key: "brain",
+      icon: (
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="56" height="56" rx="14" fill="url(#br-grad)" />
+          {/* brain outline */}
+          <path
+            d="M28 14c-3 0-5 2-5.5 4-2.5 0-4.5 2-4.5 4.5 0 1-1.5 1.8-1.5 4 0 2 1 3.2 2 3.8-.3 3 1.8 5.7 5 5.7 1.2 1.6 2.8 2 4.5 2s3.3-.4 4.5-2c3.2 0 5.3-2.7 5-5.7 1-.6 2-1.8 2-3.8 0-2.2-1.5-3-1.5-4 0-2.5-2-4.5-4.5-4.5C33 16 31 14 28 14z"
+            fill="#fff"
+            fillOpacity="0.15"
+            stroke="#fff"
+            strokeOpacity="0.85"
+            strokeWidth="2"
+          />
+          <path d="M28 15v22M22.5 22c2 .8 3.5 0 5.5-1.5M33.5 22c-2 .8-3.5 0-5.5-1.5M22 29c2.2 1 4 .5 6-1M34 29c-2.2 1-4 .5-6-1" stroke="#fff" strokeOpacity="0.7" strokeWidth="1.6" strokeLinecap="round" fill="none" />
+        </svg>
+      ),
+      title: "AUS Expert Brains",
+      desc: "29 expert brains — CEO, CFO, legal, sales, marketing plus NCC and state legislation specialists for NSW, VIC, QLD, WA, SA, TAS, ACT and NT. Ask anything, drop a site photo, run templates, or convene a multi-persona panel.",
+      cta: "Open Brains →",
+      path: "/brain",
+      accent: "linear-gradient(135deg,#1a1a2e,#A68A64)",
+      border: "#A68A64",
+      external: false,
+    },
+    {
+      key: "report-studio",
+      icon: (
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="56" height="56" rx="14" fill="url(#rs-grad)" />
+          <rect x="16" y="12" width="24" height="32" rx="3" fill="#fff" fillOpacity="0.15" stroke="#fff" strokeOpacity="0.8" strokeWidth="2" />
+          <rect x="20" y="18" width="16" height="2.6" rx="1.3" fill="#fff" fillOpacity="0.85" />
+          <rect x="20" y="24" width="12" height="2.6" rx="1.3" fill="#ef4444" />
+          <rect x="20" y="30" width="14" height="2.6" rx="1.3" fill="#f59e0b" />
+          <rect x="20" y="36" width="10" height="2.6" rx="1.3" fill="#22c55e" />
+          <defs>
+            <linearGradient id="rs-grad" x1="0" y1="0" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#7A4A2E" />
+              <stop offset="1" stopColor="#1a1a2e" />
+            </linearGradient>
+          </defs>
+        </svg>
+      ),
+      title: "369 Alliance Report Studio",
+      desc: "Upload drawing sets and inspection photos per discipline (e.g. Basement 2: Architectural, Structural, Fire, Waterproofing) — AI finds the defects and builds an official-format OC Audit report with the Red/Amber/Green defect matrix.",
+      cta: "Open Studio →",
+      path: "/report-studio",
+      accent: "linear-gradient(135deg,#7A4A2E,#1a1a2e)",
+      border: "#C07040",
+      external: false,
+    },
+    {
+      key: "training",
+      icon: (
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="56" height="56" rx="14" fill="url(#tr-grad)" />
+          <rect x="14" y="30" width="8" height="14" rx="1.5" fill="#fff" fillOpacity="0.85" />
+          <rect x="24" y="22" width="8" height="22" rx="1.5" fill="#2dd4bf" />
+          <rect x="34" y="14" width="8" height="30" rx="1.5" fill="#A68A64" />
+          <circle cx="18" cy="22" r="3.2" stroke="#fff" strokeWidth="1.8" />
+          <path d="M18 22l8-6" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+          <defs>
+            <linearGradient id="tr-grad" x1="0" y1="0" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#0f1420" />
+              <stop offset="1" stopColor="#2a3149" />
+            </linearGradient>
+          </defs>
+        </svg>
+      ),
+      title: "NCC Training Platform",
+      desc: "Clause-by-clause NCC 2022 training: 824 clauses with full text, 1,300+ evidence boards, interactive 3D element explorer with anchored hotspots (S1C1 flagship), 8-step procedures, checklists, risks and knowledge checks with progress tracking.",
+      cta: "Start Training →",
+      path: "/training",
+      accent: "linear-gradient(135deg,#0f1420,#2dd4bf)",
+      border: "#2dd4bf",
+      external: false,
+    },
+    {
       key: "dashboard",
       icon: (
         <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -107,3 +107,7 @@ temp/
 
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
+
+# Field inspector output (photos + registers) and drawing-analyser temp uploads
+inspections/
+tmp_uploads/
