@@ -145,12 +145,38 @@ export default function AdmLanding() {
           </defs>
         </svg>
       ),
-      title: "Report Studio",
+      title: "369 Alliance Report Studio",
       desc: "Upload drawing sets and inspection photos per discipline (e.g. Basement 2: Architectural, Structural, Fire, Waterproofing) — AI finds the defects and builds an official-format OC Audit report with the Red/Amber/Green defect matrix.",
       cta: "Open Studio →",
       path: "/report-studio",
       accent: "linear-gradient(135deg,#7A4A2E,#1a1a2e)",
       border: "#C07040",
+      external: false,
+    },
+    {
+      key: "training",
+      icon: (
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="56" height="56" rx="14" fill="url(#tr-grad)" />
+          <rect x="14" y="30" width="8" height="14" rx="1.5" fill="#fff" fillOpacity="0.85" />
+          <rect x="24" y="22" width="8" height="22" rx="1.5" fill="#2dd4bf" />
+          <rect x="34" y="14" width="8" height="30" rx="1.5" fill="#A68A64" />
+          <circle cx="18" cy="22" r="3.2" stroke="#fff" strokeWidth="1.8" />
+          <path d="M18 22l8-6" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+          <defs>
+            <linearGradient id="tr-grad" x1="0" y1="0" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#0f1420" />
+              <stop offset="1" stopColor="#2a3149" />
+            </linearGradient>
+          </defs>
+        </svg>
+      ),
+      title: "NCC Training Platform",
+      desc: "Clause-by-clause NCC 2022 training: 824 clauses with full text, 1,300+ evidence boards, interactive 3D element explorer with anchored hotspots (S1C1 flagship), 8-step procedures, checklists, risks and knowledge checks with progress tracking.",
+      cta: "Start Training →",
+      path: "/training",
+      accent: "linear-gradient(135deg,#0f1420,#2dd4bf)",
+      border: "#2dd4bf",
       external: false,
     },
     {

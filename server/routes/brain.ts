@@ -32,6 +32,7 @@ const BOARDS_DIR =
   "C:/Users/raque/OneDrive/3. Working/0. For review/2. Legislation";
 const BOARDS_MAIN = (boardsPack as any).main as Record<string, string>;
 const BOARDS_STATE = (boardsPack as any).state as Record<string, Record<string, string>>;
+const BOARDS_PLAIN = ((boardsPack as any).plain || {}) as Record<string, string>;
 const BOARDS_AVAILABLE = fs.existsSync(BOARDS_DIR);
 
 function boardFile(rel: string | undefined): string | null {
@@ -471,6 +472,69 @@ router.get("/board/:state/:code", (req: Request, res: Response) => {
   if (!abs) return res.status(404).json({ error: "no board" });
   res.set("Cache-Control", "public, max-age=86400");
   return res.sendFile(abs);
+});
+
+router.get("/plainboard/:code", (req: Request, res: Response) => {
+  const abs = boardFile(BOARDS_PLAIN[String(req.params.code).toUpperCase()]);
+  if (!abs) return res.status(404).json({ error: "no plain board" });
+  res.set("Cache-Control", "public, max-age=86400");
+  return res.sendFile(abs);
+});
+
+// ---------------------------------------------------------------- training support
+const SECTION_TITLES: Record<string, string> = { ...SECTIONS, S: "Specifications" };
+const SECTION_ORDER = ["A", "B", "C", "D", "E", "F", "G", "I", "J", "S"];
+
+interface TocPart { p: string; pt: string; clauses: [string, string, string][] }
+const TOC: { s: string; title: string; parts: TocPart[] }[] = (() => {
+  const bySec = new Map<string, Map<string, TocPart>>();
+  for (const [code, c] of Object.entries(VOL1)) {
+    const sec = c.s || "?";
+    if (!bySec.has(sec)) bySec.set(sec, new Map());
+    const parts = bySec.get(sec)!;
+    const pKey = c.p || sec;
+    if (!parts.has(pKey)) parts.set(pKey, { p: pKey, pt: c.pt || pKey, clauses: [] });
+    parts.get(pKey)!.clauses.push([code, c.t, c.k.slice(0, 1)]);
+  }
+  return SECTION_ORDER.filter(s => bySec.has(s)).map(s => ({
+    s,
+    title: SECTION_TITLES[s] || s,
+    parts: Array.from(bySec.get(s)!.values()),
+  }));
+})();
+
+const CLAUSE_ORDER: string[] = TOC.flatMap(sec => sec.parts.flatMap(p => p.clauses.map(c => c[0])));
+
+router.get("/toc", (_req: Request, res: Response) => {
+  res.set("Cache-Control", "public, max-age=3600");
+  res.json({ toc: TOC, total: CLAUSE_ORDER.length });
+});
+
+router.get("/clause/:code", (req: Request, res: Response) => {
+  const code = String(req.params.code).toUpperCase();
+  const c = VOL1[code];
+  if (!c) return res.status(404).json({ error: "unknown clause" });
+  const idx = CLAUSE_ORDER.indexOf(code);
+  res.json({
+    code,
+    title: c.t,
+    section: c.s,
+    sectionTitle: SECTION_TITLES[c.s] || c.s,
+    part: c.p,
+    partTitle: c.pt,
+    kind: c.k,
+    text: c.x,
+    page: c.pg,
+    legacy2019: c.l19,
+    as: c.as,
+    asClauses: c.asc,
+    defectIds: c.d,
+    board: BOARDS_AVAILABLE && !!BOARDS_MAIN[code],
+    plain: BOARDS_AVAILABLE && !!BOARDS_PLAIN[code],
+    variations: Object.keys(BOARDS_STATE).filter(st => BOARDS_STATE[st][code]),
+    prev: idx > 0 ? CLAUSE_ORDER[idx - 1] : null,
+    next: idx >= 0 && idx < CLAUSE_ORDER.length - 1 ? CLAUSE_ORDER[idx + 1] : null,
+  });
 });
 
 router.post("/ask", async (req: Request, res: Response) => {

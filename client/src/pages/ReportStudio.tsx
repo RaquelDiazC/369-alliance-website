@@ -16,10 +16,10 @@ import { Link } from "wouter";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import { Logo369 } from "@/components/Logo369";
 import {
   ArrowLeft,
   CircleAlert,
-  ClipboardList,
   FileDown,
   FileSpreadsheet,
   FileText,
@@ -384,9 +384,9 @@ export default function ReportStudio() {
       <header className="sticky top-0 z-20 text-white shadow-md" style={{ background: NAVY }}>
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
           <Link href="/adm" className="text-white/70 hover:text-white"><ArrowLeft size={16} /></Link>
-          <ClipboardList size={22} style={{ color: GOLD }} />
+          <Logo369 size={40} variant="dark" />
           <div>
-            <h1 className="text-base font-bold leading-tight">Report Studio <span className="font-normal text-white/60">· OC Audit format</span></h1>
+            <h1 className="text-base font-bold leading-tight">369 Alliance Report Studio <span className="font-normal text-white/60">· OC Audit format</span></h1>
             <p className="text-[11px] text-white/50">Drawings + photos → findings per the official defect matrix → audit report</p>
           </div>
           <div className="ml-auto flex gap-2">
