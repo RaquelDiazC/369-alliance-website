@@ -18,12 +18,15 @@ import {
   ChevronDown,
   CircleAlert,
   Landmark,
+  LayoutTemplate,
   Loader2,
+  Menu,
   Paperclip,
   Scale,
   ScrollText,
   Send,
   ShieldCheck,
+  Users,
   X,
 } from "lucide-react";
 
@@ -50,12 +53,33 @@ interface StateProfile {
   variations: string[];
   watchouts: string[];
 }
+interface Persona {
+  key: string;
+  name: string;
+  subtitle: string;
+  section: string;
+  kind: "business" | "legislation";
+  expertise: string;
+  style: string;
+  whenToUse: string;
+  focus: string;
+}
+interface BrainTemplate {
+  key: string;
+  category: string;
+  title: string;
+  desc: string;
+  questions: string[];
+}
 interface BrainStatus {
   ai: boolean;
   model: string;
   counts: { vol1: number; hp: number; standards: number; topics: number; defects: number; editions: number; boards: number; stateBoards: number };
   variationBoards: Record<string, number>;
   states: StateProfile[];
+  personaSections: string[];
+  personas: Persona[];
+  templates: BrainTemplate[];
 }
 interface Citation {
   ref: string;
@@ -89,6 +113,7 @@ interface Msg {
   role: "user" | "assistant";
   state: string;
   content: string;
+  personaName?: string;
   image?: string;
   observation?: string;
   citations?: Citation[];
@@ -307,6 +332,185 @@ function StatePanel({ s }: { s: StateProfile }) {
   );
 }
 
+function BrainSidebar({
+  status, personaKey, onPick, panelMode, setPanelMode, panelSel, togglePanelSel,
+}: {
+  status: BrainStatus;
+  personaKey: string | null;
+  onPick: (k: string | null) => void;
+  panelMode: boolean;
+  setPanelMode: (b: boolean) => void;
+  panelSel: string[];
+  togglePanelSel: (k: string) => void;
+}) {
+  return (
+    <div className="flex h-full flex-col overflow-y-auto border-r border-gray-200 bg-white">
+      <div className="border-b border-gray-100 p-3">
+        <button
+          type="button"
+          onClick={() => onPick(null)}
+          className="w-full rounded-lg border px-3 py-2 text-left"
+          style={personaKey === null && !panelMode ? { borderColor: GOLD, background: "#faf7f2" } : { borderColor: "#e5e7eb" }}
+        >
+          <span className="block text-sm font-bold" style={{ color: NAVY }}>AUS Legislation Brain</span>
+          <span className="block text-[11px] text-gray-500">All-in-one legislation engine (state tabs + photo)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setPanelMode(!panelMode)}
+          className="mt-2 w-full rounded-lg border px-3 py-2 text-left"
+          style={panelMode ? { borderColor: NAVY, background: "#eef0f6" } : { borderColor: "#e5e7eb" }}
+        >
+          <span className="block text-sm font-bold" style={{ color: NAVY }}>Multi-Persona Consultation</span>
+          <span className="block text-[11px] text-gray-500">
+            {panelMode ? `Selecting panel — ${panelSel.length}/4 brains ticked` : "Convene 2-4 brains on one question"}
+          </span>
+        </button>
+      </div>
+      {status.personaSections.map(sec => {
+        const items = status.personas.filter(p => p.section === sec);
+        if (!items.length) return null;
+        return (
+          <div key={sec} className="px-3 pb-1 pt-3">
+            <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">{sec}</p>
+            {items.map(p => {
+              const active = panelMode ? panelSel.includes(p.key) : personaKey === p.key;
+              return (
+                <button
+                  key={p.key}
+                  type="button"
+                  onClick={() => (panelMode ? togglePanelSel(p.key) : onPick(p.key))}
+                  className="mb-0.5 flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-gray-50"
+                  style={active ? { background: "#faf7f2", boxShadow: `inset 2px 0 0 ${GOLD}` } : undefined}
+                >
+                  {panelMode && (
+                    <span
+                      className="mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border text-[9px] font-bold text-white"
+                      style={active ? { background: GOLD, borderColor: GOLD } : { borderColor: "#cbd5e1" }}
+                    >
+                      {active ? "✓" : ""}
+                    </span>
+                  )}
+                  <span className="min-w-0">
+                    <span className="block truncate text-[13px] font-semibold" style={{ color: NAVY }}>{p.name}</span>
+                    <span className="block truncate text-[11px] text-gray-500">{p.subtitle}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        );
+      })}
+      <div className="h-4" />
+    </div>
+  );
+}
+
+function PersonaIntroCard({ p }: { p: Persona }) {
+  const rows: [string, string][] = [
+    ["Expertise", p.expertise],
+    ["Communication Style", p.style],
+    ["When to Use", p.whenToUse],
+    ["Focus", p.focus],
+  ];
+  return (
+    <div className="mx-auto w-full max-w-2xl rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm">
+      <p className="text-lg font-bold" style={{ color: NAVY }}>{p.name}</p>
+      <p className="text-sm" style={{ color: GOLD }}>{p.subtitle}</p>
+      {rows.map(([h, t]) => (
+        <div key={h} className="mt-3">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{h}</p>
+          <p className="mt-0.5 text-sm text-gray-700">{t}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TemplateModal({
+  templates, onClose, onStart,
+}: {
+  templates: BrainTemplate[];
+  onClose: () => void;
+  onStart: (composed: string) => void;
+}) {
+  const [tpl, setTpl] = useState<BrainTemplate | null>(null);
+  const [answers, setAnswers] = useState<string[]>([]);
+  const categories = Array.from(new Set(templates.map(t => t.category)));
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {!tpl ? (
+          <>
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-base font-bold" style={{ color: NAVY }}>Conversation Templates</p>
+                <p className="text-xs text-gray-500">Choose a pre-built template to start a structured conversation</p>
+              </div>
+              <button type="button" onClick={onClose} className="rounded-full bg-gray-100 p-1.5 text-gray-500 hover:bg-gray-200"><X size={15} /></button>
+            </div>
+            {categories.map(cat => (
+              <div key={cat} className="mb-3">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">{cat}</p>
+                {templates.filter(t => t.category === cat).map(t => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => { setTpl(t); setAnswers(t.questions.map(() => "")); }}
+                    className="mb-1.5 block w-full rounded-lg border border-gray-200 px-3 py-2 text-left hover:border-transparent hover:shadow"
+                  >
+                    <span className="block text-sm font-semibold" style={{ color: NAVY }}>{t.title}</span>
+                    <span className="block text-xs text-gray-500">{t.desc} · {t.questions.length} questions</span>
+                  </button>
+                ))}
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-base font-bold" style={{ color: NAVY }}>{tpl.title}</p>
+                <p className="text-xs text-gray-500">Answer what you can — blanks are fine, the brain will ask.</p>
+              </div>
+              <button type="button" onClick={() => setTpl(null)} className="text-xs font-semibold" style={{ color: GOLD }}>← Templates</button>
+            </div>
+            {tpl.questions.map((q, i) => (
+              <div key={i} className="mb-2.5">
+                <p className="mb-1 text-xs font-semibold text-gray-700">{i + 1}. {q}</p>
+                <textarea
+                  value={answers[i]}
+                  onChange={e => setAnswers(a => a.map((v, j) => (j === i ? e.target.value : v)))}
+                  rows={2}
+                  className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm outline-none focus:ring-2"
+                  style={{ "--tw-ring-color": GOLD } as React.CSSProperties}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                const body = tpl.questions
+                  .map((q, i) => `**${i + 1}. ${q}**\n${answers[i].trim() || "_(not provided)_"}`)
+                  .join("\n\n");
+                onStart(`**Template: ${tpl.title}**\n\n${body}`);
+                onClose();
+              }}
+              className="mt-1 w-full rounded-xl py-2.5 text-sm font-bold text-white"
+              style={{ background: NAVY }}
+            >
+              Start structured conversation
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- page
 export default function LegislationBrain() {
   const [status, setStatus] = useState<BrainStatus | null>(null);
@@ -316,6 +520,11 @@ export default function LegislationBrain() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
+  const [personaKey, setPersonaKey] = useState<string | null>(null);
+  const [panelMode, setPanelMode] = useState(false);
+  const [panelSel, setPanelSel] = useState<string[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [tplOpen, setTplOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const threadRef = useRef<Msg[]>([]);
@@ -340,6 +549,21 @@ export default function LegislationBrain() {
     () => [...(STATE_SUGGESTIONS[stateCode] || []), ...GENERIC_SUGGESTIONS].slice(0, 4),
     [stateCode],
   );
+  const activePersona = useMemo(
+    () => status?.personas.find(p => p.key === personaKey) || null,
+    [status, personaKey],
+  );
+  const panelActive = panelMode && panelSel.length >= 2;
+
+  function pickPersona(k: string | null) {
+    setPersonaKey(k);
+    setPanelMode(false);
+    setSidebarOpen(false);
+  }
+
+  function togglePanelSel(k: string) {
+    setPanelSel(sel => (sel.includes(k) ? sel.filter(x => x !== k) : sel.length >= 4 ? sel : [...sel, k]));
+  }
 
   function flash(msg: string) {
     setToast(msg);
@@ -361,7 +585,11 @@ export default function LegislationBrain() {
     const image = photo;
     if ((!question && !image) || busy) return;
     if (!status?.ai) return flash("AI is not configured — set ANTHROPIC_API_KEY in .env and restart.");
+    if (panelMode && panelSel.length < 2) return flash("Tick at least 2 brains in the sidebar for a panel consultation.");
 
+    const personaName = panelActive
+      ? `Panel of ${panelSel.length}`
+      : activePersona?.name || "Expert Brain";
     const userMsg: Msg = { role: "user", state: stateCode, content: question || "(photo)", image: image || undefined };
     setThread(t => [...t, userMsg]);
     setInput("");
@@ -374,8 +602,14 @@ export default function LegislationBrain() {
         .map(m => ({ role: m.role, content: m.content }));
       const endpoint = image ? "/api/brain/photo" : "/api/brain/ask";
       const body = image
-        ? { state: stateCode, image, question }
-        : { state: stateCode, question, history };
+        ? { state: stateCode, image, question, persona: !panelActive ? personaKey || undefined : undefined }
+        : {
+            state: stateCode,
+            question,
+            history,
+            persona: !panelActive ? personaKey || undefined : undefined,
+            personas: panelActive ? panelSel : undefined,
+          };
       const r = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -388,6 +622,7 @@ export default function LegislationBrain() {
         {
           role: "assistant",
           state: stateCode,
+          personaName,
           content: data.answer || "No answer returned.",
           observation: data.observation || undefined,
           citations: data.citations || [],
@@ -398,7 +633,7 @@ export default function LegislationBrain() {
     } catch (err: any) {
       setThread(t => [
         ...t,
-        { role: "assistant", state: stateCode, content: `The brain could not answer: ${err?.message || err}`, error: true },
+        { role: "assistant", state: stateCode, personaName, content: `The brain could not answer: ${err?.message || err}`, error: true },
       ]);
     } finally {
       setBusy(false);
@@ -411,25 +646,42 @@ export default function LegislationBrain() {
     <div className="flex min-h-screen flex-col" style={{ background: "#f4f2ee" }}>
       {/* Header */}
       <header className="sticky top-0 z-20 text-white shadow-md" style={{ background: NAVY }}>
-        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3">
           <Link href="/system" className="flex items-center gap-1 text-sm text-white/70 hover:text-white">
             <ArrowLeft size={16} />
           </Link>
-          <Brain size={22} style={{ color: GOLD }} />
+          <button type="button" onClick={() => setSidebarOpen(o => !o)} className="text-white/70 hover:text-white lg:hidden" title="Expert brains">
+            <Menu size={19} />
+          </button>
+          {panelActive ? <Users size={22} style={{ color: GOLD }} /> : <Brain size={22} style={{ color: GOLD }} />}
           <div className="min-w-0">
             <h1 className="truncate text-base font-bold leading-tight">
-              AUS Expert Brain <span className="font-normal text-white/60">· Building Legislation</span>
+              {panelActive
+                ? `Multi-Persona Consultation (${panelSel.length})`
+                : activePersona
+                  ? activePersona.name
+                  : "AUS Expert Brains"}{" "}
+              <span className="hidden font-normal text-white/60 sm:inline">
+                · {panelActive ? "Combined perspectives + synthesis" : activePersona ? activePersona.subtitle : "Construction & Design"}
+              </span>
             </h1>
             <p className="truncate text-[11px] text-white/50">
               {status
-                ? `${status.counts.vol1} NCC clauses · ${status.counts.hp} Housing Provisions · ${status.counts.standards} AS · ${status.counts.defects} defects` +
+                ? `${status.personas.length + 1} brains · ${status.counts.vol1} NCC clauses · ${status.counts.standards} AS · ${status.counts.defects} defects` +
                   (status.counts.boards ? ` · ${status.counts.boards + status.counts.stateBoards} evidence boards` : "") +
                   ` · ${status.states.length} jurisdictions`
                 : "Loading knowledge base…"}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setTplOpen(true)}
+            className="ml-auto flex items-center gap-1.5 rounded-full border border-white/25 px-2.5 py-1 text-[11px] font-semibold text-white/80 hover:border-white/60 hover:text-white"
+          >
+            <LayoutTemplate size={13} /> Templates
+          </button>
           <span
-            className="ml-auto flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+            className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
             style={{ background: status?.ai ? "#14532d" : "#7f1d1d" }}
           >
             <span className={`h-1.5 w-1.5 rounded-full ${status?.ai ? "bg-green-400" : "bg-red-400"} ${status?.ai ? "animate-pulse" : ""}`} />
@@ -437,7 +689,7 @@ export default function LegislationBrain() {
           </span>
         </div>
         {/* State tabs */}
-        <div className="mx-auto max-w-5xl overflow-x-auto px-4 pb-2.5">
+        <div className="mx-auto max-w-7xl overflow-x-auto px-4 pb-2.5">
           <div className="flex gap-1.5">
             {(status?.states || []).map(s => {
               const active = s.code === stateCode;
@@ -463,7 +715,39 @@ export default function LegislationBrain() {
       </header>
 
       {/* Body */}
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-3 px-4 py-3">
+      <div className="mx-auto flex w-full max-w-7xl flex-1 items-start">
+        {status && (
+          <>
+            <aside className="sticky top-[104px] hidden max-h-[calc(100vh-104px)] w-72 shrink-0 overflow-y-auto lg:block">
+              <BrainSidebar
+                status={status}
+                personaKey={personaKey}
+                onPick={pickPersona}
+                panelMode={panelMode}
+                setPanelMode={setPanelMode}
+                panelSel={panelSel}
+                togglePanelSel={togglePanelSel}
+              />
+            </aside>
+            {sidebarOpen && (
+              <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setSidebarOpen(false)}>
+                <div className="absolute inset-0 bg-black/40" />
+                <div className="absolute inset-y-0 left-0 w-72 bg-white shadow-xl" onClick={e => e.stopPropagation()}>
+                  <BrainSidebar
+                    status={status}
+                    personaKey={personaKey}
+                    onPick={pickPersona}
+                    panelMode={panelMode}
+                    setPanelMode={setPanelMode}
+                    panelSel={panelSel}
+                    togglePanelSel={togglePanelSel}
+                  />
+                </div>
+              </div>
+            )}
+          </>
+        )}
+        <main className="flex w-full min-w-0 flex-1 flex-col gap-3 px-4 py-3">
         {state && <StatePanel s={state} />}
         {status && !status.ai && (
           <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -475,34 +759,53 @@ export default function LegislationBrain() {
         {/* Thread */}
         <div className="flex flex-1 flex-col gap-4 pb-4">
           {thread.length === 0 && (
-            <div className="mt-6 flex flex-col items-center gap-4 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl shadow" style={{ background: NAVY }}>
-                <BookOpenText size={26} style={{ color: GOLD }} />
-              </div>
-              <div>
-                <p className="text-sm font-semibold" style={{ color: NAVY }}>
-                  Ask anything about building legislation in {state?.name || "Australia"}
-                </p>
-                <p className="mx-auto mt-1 max-w-md text-xs text-gray-500">
-                  NCC 2022 clause-level answers, Australian Standards, state acts, licensing, insurance and dispute pathways —
-                  or attach a site photo to get the legislation that applies to what you see.
-                </p>
-              </div>
-              <div className="flex max-w-xl flex-wrap justify-center gap-2">
-                {suggestions.map(q => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => send(q)}
-                    className="rounded-full border bg-white px-3 py-1.5 text-xs text-gray-700 shadow-sm transition-colors hover:border-transparent hover:text-white"
-                    style={{ borderColor: "#ddd" }}
-                    onMouseEnter={e => (e.currentTarget.style.background = NAVY)}
-                    onMouseLeave={e => (e.currentTarget.style.background = "white")}
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
+            <div className="mt-4 flex flex-col items-center gap-4 text-center">
+              {panelActive ? (
+                <div className="mx-auto w-full max-w-2xl rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm">
+                  <p className="flex items-center gap-2 text-lg font-bold" style={{ color: NAVY }}>
+                    <Users size={19} style={{ color: GOLD }} /> Multi-Persona Consultation
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600">
+                    One question, {panelSel.length} perspectives + a synthesis. Panel:{" "}
+                    {status?.personas.filter(p => panelSel.includes(p.key)).map(p => p.name).join(" · ")}
+                  </p>
+                </div>
+              ) : activePersona ? (
+                <PersonaIntroCard p={activePersona} />
+              ) : (
+                <>
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl shadow" style={{ background: NAVY }}>
+                    <BookOpenText size={26} style={{ color: GOLD }} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: NAVY }}>
+                      Ask anything about building legislation in {state?.name || "Australia"}
+                    </p>
+                    <p className="mx-auto mt-1 max-w-md text-xs text-gray-500">
+                      NCC 2022 clause-level answers, Australian Standards, state acts, licensing, insurance and dispute pathways —
+                      or attach a site photo to get the legislation that applies to what you see. Pick a specialist brain in the
+                      sidebar, or convene a multi-persona panel.
+                    </p>
+                  </div>
+                </>
+              )}
+              {!panelActive && !activePersona && (
+                <div className="flex max-w-xl flex-wrap justify-center gap-2">
+                  {suggestions.map(q => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => send(q)}
+                      className="rounded-full border bg-white px-3 py-1.5 text-xs text-gray-700 shadow-sm transition-colors hover:border-transparent hover:text-white"
+                      style={{ borderColor: "#ddd" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = NAVY)}
+                      onMouseLeave={e => (e.currentTarget.style.background = "white")}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -510,7 +813,7 @@ export default function LegislationBrain() {
             <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[92%] md:max-w-[80%] ${m.role === "user" ? "text-right" : "text-left"}`}>
                 <p className="mb-0.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                  {m.role === "user" ? `You · ${m.state}` : `Expert Brain · ${m.state}`}
+                  {m.role === "user" ? `You · ${m.state}` : `${m.personaName || "Expert Brain"} · ${m.state}`}
                 </p>
                 {m.role === "user" ? (
                   <div className="inline-block rounded-2xl rounded-tr-sm px-4 py-2.5 text-left text-sm text-white shadow" style={{ background: NAVY }}>
@@ -570,7 +873,8 @@ export default function LegislationBrain() {
           )}
           <div ref={bottomRef} />
         </div>
-      </main>
+        </main>
+      </div>
 
       {/* Composer */}
       <div className="sticky bottom-0 border-t border-gray-200 bg-white/95 backdrop-blur">
@@ -615,7 +919,13 @@ export default function LegislationBrain() {
                 }
               }}
               rows={1}
-              placeholder={`Ask the ${stateCode} brain — any act, NCC clause, standard, licence or defect…`}
+              placeholder={
+                panelActive
+                  ? `Ask the ${panelSel.length}-brain panel (${stateCode} context)…`
+                  : activePersona
+                    ? `Ask ${activePersona.name} (${stateCode} context)…`
+                    : `Ask the ${stateCode} brain — any act, NCC clause, standard, licence or defect…`
+              }
               className="max-h-36 min-h-10 flex-1 resize-y rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-transparent focus:ring-2"
               style={{ "--tw-ring-color": GOLD } as React.CSSProperties}
             />
@@ -640,6 +950,10 @@ export default function LegislationBrain() {
         <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-xs text-white shadow-lg" style={{ background: NAVY }}>
           {toast}
         </div>
+      )}
+
+      {tplOpen && status && (
+        <TemplateModal templates={status.templates} onClose={() => setTplOpen(false)} onStart={composed => send(composed)} />
       )}
     </div>
   );

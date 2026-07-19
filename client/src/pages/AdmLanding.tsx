@@ -119,9 +119,9 @@ export default function AdmLanding() {
           <path d="M28 15v22M22.5 22c2 .8 3.5 0 5.5-1.5M33.5 22c-2 .8-3.5 0-5.5-1.5M22 29c2.2 1 4 .5 6-1M34 29c-2.2 1-4 .5-6-1" stroke="#fff" strokeOpacity="0.7" strokeWidth="1.6" strokeLinecap="round" fill="none" />
         </svg>
       ),
-      title: "AUS Expert Brain",
-      desc: "Ask any Australian building-legislation question or drop a site photo — NCC 2022 clause answers, AS references and the right state acts for NSW, VIC, QLD, WA, SA, TAS, ACT and NT.",
-      cta: "Open Brain →",
+      title: "AUS Expert Brains",
+      desc: "29 expert brains — CEO, CFO, legal, sales, marketing plus NCC and state legislation specialists for NSW, VIC, QLD, WA, SA, TAS, ACT and NT. Ask anything, drop a site photo, run templates, or convene a multi-persona panel.",
+      cta: "Open Brains →",
       path: "/brain",
       accent: "linear-gradient(135deg,#1a1a2e,#A68A64)",
       border: "#A68A64",

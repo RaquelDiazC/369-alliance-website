@@ -47,6 +47,7 @@ function Router() {
       <Route path="/drawing-analyser" component={DrawingAnalyser} />
       <Route path="/field" component={FieldInspector} />
       <Route path="/brain" component={LegislationBrain} />
+      <Route path="/brains" component={LegislationBrain} />
       <Route path="/apartment-design-guide" component={ApartmentDesignGuide} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/portal/:role" component={RolePortal} />

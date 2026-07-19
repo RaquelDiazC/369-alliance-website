@@ -19,6 +19,8 @@ import topicsPack from "../brain/topics.json";
 import boardsPack from "../brain/boards.json";
 import defectLibraryJson from "../defect-library.json";
 import { NATIONAL, STATES, STATE_BY_CODE, stateProfileText } from "../brain/states.js";
+import { PERSONAS, PERSONA_BY_KEY, PERSONA_SECTIONS, TEMPLATES, personaText, Persona } from "../brain/personas.js";
+import type { StateProfile } from "../brain/states.js";
 
 const router = Router();
 const MODEL = "claude-sonnet-5";
@@ -188,6 +190,35 @@ function contextBlock(question: string): string {
 }
 
 // ---------------------------------------------------------------- prompts
+const OUTPUT_SPEC = `OUTPUT FORMAT — reply with exactly these tags, nothing outside them:
+<answer>
+The full answer in Markdown (## headings, bullet lists, **bold** codes).
+</answer>
+<citations>
+one per line as ref|kind|note — e.g.
+F1D7|ncc|DtS clause requiring the membrane to AS 4654.1/.2
+Home Building Act 1989 (NSW) s18B|state|statutory warranties for residential work
+kinds: ncc (Vol 1 2022 code) | hp (Housing Provisions clause) | as (Australian Standard) | state (state act/regulation) | other. 3-8 lines, most load-bearing first (omit lines you cannot fill honestly).
+</citations>
+<followups>
+up to 3 short suggested follow-up questions, one per line
+</followups>`;
+
+const BUSINESS_RULES = `You are one of the 369 Alliance Expert Brains — a panel of specialist advisers for Australian construction and design businesses. Answer strictly in the ACTIVE PERSONA's voice, priorities and communication style given below.
+
+RULES
+1. Be practical and construction-industry fluent; give concrete, actionable advice, not generic business platitudes.
+2. Use the selected jurisdiction for regulatory colour (licensing, contracts, insurance, market), but defer deep legislation analysis to the legislation brains — say so when a question needs one.
+3. Dollar figures and thresholds: flag "verify current" when threshold-sensitive.
+4. If the question is outside the persona's lane, answer briefly and name the better-suited brain.
+
+${OUTPUT_SPEC}`;
+
+const PANEL_RULES = `MULTI-PERSONA CONSULTATION MODE
+The user has convened a panel of the personas listed below. In <answer>:
+- Each persona speaks under a "## <Persona Name>" heading — concise (2-3 short paragraphs or bullets), unmistakably in its own voice and priorities. Personas may disagree.
+- Close with "## Panel Synthesis" — the combined recommendation, trade-offs and next actions.`;
+
 const PERSONA = `You are the 369 Alliance AUS Construction Expert Brain — a senior Australian building-legislation adviser (NCC, Australian Standards, and every state/territory building act). You answer questions from builders, certifiers, designers, inspectors and owners.
 
 RULES
@@ -199,19 +230,7 @@ RULES
 6. Be practical: classification first (building class, jurisdiction, work type), then requirement, then compliance pathway (DtS / Performance Solution), then who is responsible.
 7. If the question is outside building legislation (e.g. tax, migration), say so briefly.
 
-OUTPUT FORMAT — reply with exactly these tags, nothing outside them:
-<answer>
-The full answer in Markdown (## headings, bullet lists, **bold** codes).
-</answer>
-<citations>
-one per line as ref|kind|note — e.g.
-F1D7|ncc|DtS clause requiring the membrane to AS 4654.1/.2
-Home Building Act 1989 (NSW) s18B|state|statutory warranties for residential work
-kinds: ncc (Vol 1 2022 code) | hp (Housing Provisions clause) | as (Australian Standard) | state (state act/regulation) | other. 3-8 lines, most load-bearing first.
-</citations>
-<followups>
-up to 3 short suggested follow-up questions, one per line
-</followups>`;
+${OUTPUT_SPEC}`;
 
 const CLAUSE_INDEX_BLOCK = `NCC 2022 VOLUME ONE CLAUSE INDEX (code|title):
 ${VOL1_INDEX}
@@ -432,6 +451,9 @@ router.get("/status", (_req: Request, res: Response) => {
     variationBoards: Object.fromEntries(Object.entries(BOARDS_STATE).map(([st, m]) => [st, Object.keys(m).length])),
     national: NATIONAL,
     states: STATES,
+    personaSections: PERSONA_SECTIONS,
+    personas: PERSONAS,
+    templates: TEMPLATES,
   });
 });
 
@@ -461,23 +483,68 @@ router.post("/ask", async (req: Request, res: Response) => {
   const question = String(req.body?.question || "").trim().slice(0, 4000);
   if (!question) return res.status(400).json({ error: "question required" });
 
-  const context = contextBlock(question);
-  const userText = `${context ? context + "\n\n" : ""}QUESTION (${state.name}): ${question}\n\nReply in the OUTPUT FORMAT tags exactly.`;
+  // Persona modes: none (base brain) | single persona | multi-persona panel.
+  const personaKey = typeof req.body?.persona === "string" ? req.body.persona : "";
+  const single: Persona | null = personaKey ? PERSONA_BY_KEY[personaKey] || null : null;
+  if (personaKey && !single) return res.status(400).json({ error: `unknown persona '${personaKey}'` });
+  const panel: Persona[] = (Array.isArray(req.body?.personas) ? req.body.personas : [])
+    .map((k: any) => PERSONA_BY_KEY[String(k)])
+    .filter(Boolean)
+    .slice(0, 4);
+
+  const shortState = (s: StateProfile) =>
+    `SELECTED JURISDICTION: ${s.name} (${s.code}). Regulator: ${s.regulator}. Licensing: ${s.licensing}. Consumer cover: ${s.warranty}.`;
+
+  let system: { type: "text"; text: string; cache_control?: { type: "ephemeral" } }[];
+  let userText: string;
+  let maxTokens = 3000;
+
+  if (panel.length >= 2) {
+    const cards = panel.map(personaText).join("\n\n---\n\n");
+    const hasLeg = panel.some(p => p.kind === "legislation");
+    maxTokens = 4000;
+    if (hasLeg) {
+      const context = contextBlock(question);
+      system = [
+        { type: "text", text: PERSONA + "\n\n" + CLAUSE_INDEX_BLOCK, cache_control: { type: "ephemeral" } },
+        { type: "text", text: PANEL_RULES + "\n\n" + cards + "\n\n" + stateProfileText(state) + variationNote(state.code) },
+      ];
+      userText = `${context ? context + "\n\n" : ""}PANEL QUESTION (${state.name}): ${question}\n\nReply in the OUTPUT FORMAT tags exactly.`;
+    } else {
+      system = [
+        { type: "text", text: BUSINESS_RULES, cache_control: { type: "ephemeral" } },
+        { type: "text", text: PANEL_RULES + "\n\n" + cards + "\n\n" + shortState(state) },
+      ];
+      userText = `PANEL QUESTION (${state.name}): ${question}\n\nReply in the OUTPUT FORMAT tags exactly.`;
+    }
+  } else if (single && single.kind === "business") {
+    system = [
+      { type: "text", text: BUSINESS_RULES, cache_control: { type: "ephemeral" } },
+      { type: "text", text: personaText(single) + "\n\n" + shortState(state) },
+    ];
+    userText = `QUESTION (${state.name}): ${question}\n\nReply in the OUTPUT FORMAT tags exactly.`;
+  } else {
+    const context = contextBlock(question);
+    system = [
+      { type: "text", text: PERSONA + "\n\n" + CLAUSE_INDEX_BLOCK, cache_control: { type: "ephemeral" } },
+      { type: "text", text: (single ? personaText(single) + "\n\n" : "") + stateProfileText(state) + variationNote(state.code) },
+    ];
+    userText = `${context ? context + "\n\n" : ""}QUESTION (${state.name}): ${question}\n\nReply in the OUTPUT FORMAT tags exactly.`;
+  }
 
   try {
     const message = await client.messages.create({
       model: MODEL,
-      max_tokens: 3000,
-      system: [
-        { type: "text", text: PERSONA + "\n\n" + CLAUSE_INDEX_BLOCK, cache_control: { type: "ephemeral" } },
-        { type: "text", text: stateProfileText(state) + variationNote(state.code) },
-      ],
+      max_tokens: maxTokens,
+      system,
       messages: [...historyMessages(req.body?.history), { role: "user", content: userText }],
     });
     const text = message.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
     const answer = (extractTag(text, "answer") || fallbackAnswer(text)).slice(0, 20000);
     return res.json({
       state: state.code,
+      persona: single?.key,
+      personas: panel.length >= 2 ? panel.map(p => p.key) : undefined,
       answer,
       citations: enrichCitations(parseCitationLines(extractTag(text, "citations")), answer, state.code),
       followups: parseLines(extractTag(text, "followups"), 3).map(f => f.slice(0, 160)),
@@ -501,6 +568,9 @@ router.post("/photo", async (req: Request, res: Response) => {
   const image = raw.replace(/^data:[^;]+;base64,/, "");
   if (!image) return res.status(400).json({ error: "image (base64) required" });
   const question = String(req.body?.question || "").trim().slice(0, 2000);
+  const personaKey = typeof req.body?.persona === "string" ? req.body.persona : "";
+  const persona: Persona | null = personaKey ? PERSONA_BY_KEY[personaKey] || null : null;
+  if (personaKey && !persona) return res.status(400).json({ error: `unknown persona '${personaKey}'` });
 
   try {
     const message = await client.messages.create({
@@ -508,7 +578,7 @@ router.post("/photo", async (req: Request, res: Response) => {
       max_tokens: 3000,
       system: [
         { type: "text", text: PHOTO_PERSONA, cache_control: { type: "ephemeral" } },
-        { type: "text", text: stateProfileText(state) + variationNote(state.code) },
+        { type: "text", text: (persona ? personaText(persona) + "\n\n" : "") + stateProfileText(state) + variationNote(state.code) },
       ],
       messages: [
         {
