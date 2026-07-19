@@ -18,6 +18,7 @@ import DrawingAnalyser from "./pages/DrawingAnalyser";
 import ApartmentDesignGuide from "./pages/ApartmentDesignGuide";
 import FieldInspector from "./pages/FieldInspector";
 import LegislationBrain from "./pages/LegislationBrain";
+import ReportStudio from "./pages/ReportStudio";
 
 // Marketing website pages
 import WebsiteHome from "./pages/website/WebsiteHome";
@@ -48,6 +49,7 @@ function Router() {
       <Route path="/field" component={FieldInspector} />
       <Route path="/brain" component={LegislationBrain} />
       <Route path="/brains" component={LegislationBrain} />
+      <Route path="/report-studio" component={ReportStudio} />
       <Route path="/apartment-design-guide" component={ApartmentDesignGuide} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/portal/:role" component={RolePortal} />

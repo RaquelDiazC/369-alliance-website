@@ -128,6 +128,32 @@ export default function AdmLanding() {
       external: false,
     },
     {
+      key: "report-studio",
+      icon: (
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="56" height="56" rx="14" fill="url(#rs-grad)" />
+          <rect x="16" y="12" width="24" height="32" rx="3" fill="#fff" fillOpacity="0.15" stroke="#fff" strokeOpacity="0.8" strokeWidth="2" />
+          <rect x="20" y="18" width="16" height="2.6" rx="1.3" fill="#fff" fillOpacity="0.85" />
+          <rect x="20" y="24" width="12" height="2.6" rx="1.3" fill="#ef4444" />
+          <rect x="20" y="30" width="14" height="2.6" rx="1.3" fill="#f59e0b" />
+          <rect x="20" y="36" width="10" height="2.6" rx="1.3" fill="#22c55e" />
+          <defs>
+            <linearGradient id="rs-grad" x1="0" y1="0" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#7A4A2E" />
+              <stop offset="1" stopColor="#1a1a2e" />
+            </linearGradient>
+          </defs>
+        </svg>
+      ),
+      title: "Report Studio",
+      desc: "Upload drawing sets and inspection photos per discipline (e.g. Basement 2: Architectural, Structural, Fire, Waterproofing) — AI finds the defects and builds an official-format OC Audit report with the Red/Amber/Green defect matrix.",
+      cta: "Open Studio →",
+      path: "/report-studio",
+      accent: "linear-gradient(135deg,#7A4A2E,#1a1a2e)",
+      border: "#C07040",
+      external: false,
+    },
+    {
       key: "dashboard",
       icon: (
         <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">

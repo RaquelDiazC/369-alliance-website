@@ -5,6 +5,7 @@ import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from "vite";
 import express from "express";
 import fieldRoute from "./server/routes/field";
 import brainRoute from "./server/routes/brain";
+import reportRoute from "./server/routes/report";
 
 // Exposes the field-inspector + legislation-brain APIs during `pnpm dev`
 // (prod mounts them in server/index.ts).
@@ -22,6 +23,7 @@ function fieldApiPlugin(): Plugin {
       app.use(express.json({ limit: "10mb" }));
       app.use("/api/field", fieldRoute);
       app.use("/api/brain", brainRoute);
+      app.use("/api/report", reportRoute);
       server.middlewares.use(app);
     },
   };
