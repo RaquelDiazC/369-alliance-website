@@ -53,7 +53,8 @@ interface StateProfile {
 interface BrainStatus {
   ai: boolean;
   model: string;
-  counts: { vol1: number; hp: number; standards: number; topics: number; defects: number; editions: number };
+  counts: { vol1: number; hp: number; standards: number; topics: number; defects: number; editions: number; boards: number; stateBoards: number };
+  variationBoards: Record<string, number>;
   states: StateProfile[];
 }
 interface Citation {
@@ -71,6 +72,9 @@ interface Citation {
   legacy2019?: string;
   volume?: string;
   standardTitle?: string;
+  board?: boolean;
+  stateBoard?: boolean;
+  variations?: string[];
 }
 interface DefectHit {
   id: string;
@@ -142,10 +146,35 @@ async function downscaleImage(file: File, maxDim = 1400): Promise<string> {
 }
 
 // ---------------------------------------------------------------- sub-components
-function CitationCard({ c }: { c: Citation }) {
+function BoardImg({ src, label }: { src: string; label: string }) {
+  const [failed, setFailed] = useState(false);
+  const [zoom, setZoom] = useState(false);
+  if (failed) return null;
+  return (
+    <div className="mt-2">
+      <p className="mb-1 text-[10px] font-bold uppercase tracking-wide" style={{ color: GOLD }}>{label}</p>
+      <img
+        src={src}
+        alt={label}
+        loading="lazy"
+        onError={() => setFailed(true)}
+        onClick={() => setZoom(z => !z)}
+        className="w-full cursor-zoom-in rounded-lg border border-gray-200"
+        title="Click to enlarge"
+      />
+      {zoom && (
+        <div className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/80 p-4" onClick={() => setZoom(false)}>
+          <img src={src} alt={label} className="max-h-full max-w-full rounded-lg" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CitationCard({ c, stateCode }: { c: Citation; stateCode: string }) {
   const [open, setOpen] = useState(false);
   const meta = KIND_META[c.kind] || KIND_META.other;
-  const expandable = !!(c.text || c.as || c.asClauses);
+  const expandable = !!(c.text || c.as || c.asClauses || c.board || c.stateBoard);
   return (
     <div className="rounded-lg border bg-white text-left shadow-sm" style={{ borderColor: `${meta.color}55` }}>
       <button
@@ -186,6 +215,15 @@ function CitationCard({ c }: { c: Citation }) {
             </p>
           )}
           {typeof c.page === "number" && <p className="mt-1 text-gray-400">NCC 2022 PDF p.{c.page}</p>}
+          {c.board && <BoardImg src={`/api/brain/board/${encodeURIComponent(c.ref)}`} label={`Evidence board — ${c.ref}`} />}
+          {c.stateBoard && (
+            <BoardImg src={`/api/brain/board/${stateCode}/${encodeURIComponent(c.ref)}`} label={`${stateCode} variation board — ${c.ref}`} />
+          )}
+          {!!c.variations?.length && (
+            <p className="mt-2 text-[11px] text-gray-500">
+              <span className="font-semibold" style={{ color: NAVY }}>State variations exist:</span> {c.variations.join(" · ")}
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -384,7 +422,9 @@ export default function LegislationBrain() {
             </h1>
             <p className="truncate text-[11px] text-white/50">
               {status
-                ? `${status.counts.vol1} NCC clauses · ${status.counts.hp} Housing Provisions · ${status.counts.standards} AS · ${status.counts.defects} defects · ${status.states.length} jurisdictions`
+                ? `${status.counts.vol1} NCC clauses · ${status.counts.hp} Housing Provisions · ${status.counts.standards} AS · ${status.counts.defects} defects` +
+                  (status.counts.boards ? ` · ${status.counts.boards + status.counts.stateBoards} evidence boards` : "") +
+                  ` · ${status.states.length} jurisdictions`
                 : "Loading knowledge base…"}
             </p>
           </div>
@@ -497,7 +537,7 @@ export default function LegislationBrain() {
                     )}
                     {!!m.citations?.length && (
                       <div className="mt-3 grid gap-2 md:grid-cols-2">
-                        {m.citations.map((c, j) => <CitationCard key={c.kind + c.ref + j} c={c} />)}
+                        {m.citations.map((c, j) => <CitationCard key={c.kind + c.ref + j} c={c} stateCode={m.state} />)}
                       </div>
                     )}
                   </div>

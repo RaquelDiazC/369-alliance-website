@@ -11,14 +11,32 @@
  */
 import { Router, Request, Response } from "express";
 import Anthropic from "@anthropic-ai/sdk";
+import fs from "fs";
+import path from "path";
 import nccPack from "../brain/ncc2022.json";
 import referencePack from "../brain/reference.json";
 import topicsPack from "../brain/topics.json";
+import boardsPack from "../brain/boards.json";
 import defectLibraryJson from "../defect-library.json";
 import { NATIONAL, STATES, STATE_BY_CODE, stateProfileText } from "../brain/states.js";
 
 const router = Router();
 const MODEL = "claude-sonnet-5";
+
+// Clause "evidence board" PNGs live outside the repo (OneDrive). boards.json is
+// the committed index; images are served from disk when the folder is present.
+const BOARDS_DIR =
+  process.env.BRAIN_BOARDS_DIR ||
+  "C:/Users/raque/OneDrive/3. Working/0. For review/2. Legislation";
+const BOARDS_MAIN = (boardsPack as any).main as Record<string, string>;
+const BOARDS_STATE = (boardsPack as any).state as Record<string, Record<string, string>>;
+const BOARDS_AVAILABLE = fs.existsSync(BOARDS_DIR);
+
+function boardFile(rel: string | undefined): string | null {
+  if (!rel || !BOARDS_AVAILABLE) return null;
+  const abs = path.join(BOARDS_DIR, rel.replace(/\\/g, path.sep));
+  return fs.existsSync(abs) ? abs : null;
+}
 
 // ---------------------------------------------------------------- knowledge
 interface Vol1Clause {
@@ -310,9 +328,21 @@ interface Citation {
   legacy2019?: string;
   volume?: string;
   standardTitle?: string;
+  board?: boolean; // evidence-board PNG available for this clause
+  stateBoard?: boolean; // selected state has a variation board for this clause
+  variations?: string[]; // all states with a variation board for this clause
 }
 
-function enrichCitations(raw: any[], answerMd: string): Citation[] {
+function boardFlags(ref: string, stateCode: string) {
+  const variations = Object.keys(BOARDS_STATE).filter(st => BOARDS_STATE[st][ref]);
+  return {
+    board: BOARDS_AVAILABLE && !!BOARDS_MAIN[ref],
+    stateBoard: BOARDS_AVAILABLE && !!BOARDS_STATE[stateCode]?.[ref],
+    variations: variations.length ? variations : undefined,
+  };
+}
+
+function enrichCitations(raw: any[], answerMd: string, stateCode: string): Citation[] {
   const seen = new Set<string>();
   const out: Citation[] = [];
   const push = (c: Citation) => {
@@ -331,6 +361,7 @@ function enrichCitations(raw: any[], answerMd: string): Citation[] {
       ref, kind: "ncc", note, title: c.t, section: `${c.s} — ${SECTIONS[c.s] || ""}`,
       part: c.pt || c.p, clauseType: c.k, text: c.x.slice(0, 1500), as: c.as,
       asClauses: c.asc.slice(0, 400), page: c.pg, legacy2019: c.l19, volume: "Volume One",
+      ...boardFlags(ref, stateCode),
     };
   };
 
@@ -366,6 +397,13 @@ function enrichCitations(raw: any[], answerMd: string): Citation[] {
   return out;
 }
 
+/** Extra system line telling the model which clauses have NCC state variations for the selected state. */
+function variationNote(stateCode: string): string {
+  const codes = Object.keys(BOARDS_STATE[stateCode] || {});
+  if (!codes.length) return "";
+  return `\n\nNCC STATE VARIATIONS (${stateCode}): the state appendix varies these NCC 2022 clauses — when citing one of them, flag that a ${stateCode} variation applies and answer per the variation: ${codes.sort().join(", ")}`;
+}
+
 function historyMessages(history: any): { role: "user" | "assistant"; content: string }[] {
   if (!Array.isArray(history)) return [];
   return history
@@ -386,10 +424,31 @@ router.get("/status", (_req: Request, res: Response) => {
       topics: TOPICS.length,
       defects: Object.keys(DEFECTS).length,
       editions: EDITIONS.length,
+      boards: BOARDS_AVAILABLE ? Object.keys(BOARDS_MAIN).length : 0,
+      stateBoards: BOARDS_AVAILABLE
+        ? Object.values(BOARDS_STATE).reduce((n, m) => n + Object.keys(m).length, 0)
+        : 0,
     },
+    variationBoards: Object.fromEntries(Object.entries(BOARDS_STATE).map(([st, m]) => [st, Object.keys(m).length])),
     national: NATIONAL,
     states: STATES,
   });
+});
+
+// Clause evidence-board PNGs (served from the local boards folder when present).
+router.get("/board/:code", (req: Request, res: Response) => {
+  const abs = boardFile(BOARDS_MAIN[String(req.params.code).toUpperCase()]);
+  if (!abs) return res.status(404).json({ error: "no board" });
+  res.set("Cache-Control", "public, max-age=86400");
+  return res.sendFile(abs);
+});
+
+router.get("/board/:state/:code", (req: Request, res: Response) => {
+  const st = String(req.params.state).toUpperCase();
+  const abs = boardFile(BOARDS_STATE[st]?.[String(req.params.code).toUpperCase()]);
+  if (!abs) return res.status(404).json({ error: "no board" });
+  res.set("Cache-Control", "public, max-age=86400");
+  return res.sendFile(abs);
 });
 
 router.post("/ask", async (req: Request, res: Response) => {
@@ -411,7 +470,7 @@ router.post("/ask", async (req: Request, res: Response) => {
       max_tokens: 3000,
       system: [
         { type: "text", text: PERSONA + "\n\n" + CLAUSE_INDEX_BLOCK, cache_control: { type: "ephemeral" } },
-        { type: "text", text: stateProfileText(state) },
+        { type: "text", text: stateProfileText(state) + variationNote(state.code) },
       ],
       messages: [...historyMessages(req.body?.history), { role: "user", content: userText }],
     });
@@ -420,7 +479,7 @@ router.post("/ask", async (req: Request, res: Response) => {
     return res.json({
       state: state.code,
       answer,
-      citations: enrichCitations(parseCitationLines(extractTag(text, "citations")), answer),
+      citations: enrichCitations(parseCitationLines(extractTag(text, "citations")), answer, state.code),
       followups: parseLines(extractTag(text, "followups"), 3).map(f => f.slice(0, 160)),
     });
   } catch (err: any) {
@@ -449,7 +508,7 @@ router.post("/photo", async (req: Request, res: Response) => {
       max_tokens: 3000,
       system: [
         { type: "text", text: PHOTO_PERSONA, cache_control: { type: "ephemeral" } },
-        { type: "text", text: stateProfileText(state) },
+        { type: "text", text: stateProfileText(state) + variationNote(state.code) },
       ],
       messages: [
         {
@@ -476,7 +535,7 @@ router.post("/photo", async (req: Request, res: Response) => {
         const d = DEFECTS[id];
         return { id, regime: d.regime, subcategory: d.subcategory, description: d.description, ncc2022: d.ncc2022, ncc2019: d.ncc2019, pathway: d.section_choice };
       }),
-      citations: enrichCitations(parseCitationLines(extractTag(text, "citations")), answer),
+      citations: enrichCitations(parseCitationLines(extractTag(text, "citations")), answer, state.code),
       followups: parseLines(extractTag(text, "followups"), 3).map(f => f.slice(0, 160)),
     });
   } catch (err: any) {
