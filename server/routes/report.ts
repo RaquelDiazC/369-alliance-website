@@ -18,6 +18,7 @@ import { Router, Request, Response } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import multer from "multer";
 import fs from "fs";
+import os from "os";
 import path from "path";
 import defectLibraryJson from "../defect-library.json";
 import { STATE_BY_CODE, stateProfileText } from "../brain/states.js";
@@ -26,7 +27,7 @@ const router = Router();
 const MODEL = "claude-sonnet-5";
 
 const upload = multer({
-  dest: path.join(process.cwd(), "tmp_uploads"),
+  dest: os.tmpdir(),
   limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = [".pdf", ".png", ".jpg", ".jpeg", ".webp"];

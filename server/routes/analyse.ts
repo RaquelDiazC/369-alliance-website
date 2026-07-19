@@ -10,13 +10,14 @@ import { Router, Request, Response } from "express";
 import multer from "multer";
 import Anthropic from "@anthropic-ai/sdk";
 import fs from "fs";
+import os from "os";
 import path from "path";
 
 const router = Router();
 
-// Store uploads in temp directory
+// Store uploads in the OS temp directory (writable locally and on Vercel)
 const upload = multer({
-  dest: path.join(process.cwd(), "tmp_uploads"),
+  dest: os.tmpdir(),
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB per file
   fileFilter: (_req, file, cb) => {
     const allowed = [".pdf", ".png", ".jpg", ".jpeg"];
