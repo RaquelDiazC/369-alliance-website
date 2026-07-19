@@ -103,6 +103,31 @@ export default function AdmLanding() {
       external: false,
     },
     {
+      key: "brain",
+      icon: (
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="56" height="56" rx="14" fill="url(#br-grad)" />
+          {/* brain outline */}
+          <path
+            d="M28 14c-3 0-5 2-5.5 4-2.5 0-4.5 2-4.5 4.5 0 1-1.5 1.8-1.5 4 0 2 1 3.2 2 3.8-.3 3 1.8 5.7 5 5.7 1.2 1.6 2.8 2 4.5 2s3.3-.4 4.5-2c3.2 0 5.3-2.7 5-5.7 1-.6 2-1.8 2-3.8 0-2.2-1.5-3-1.5-4 0-2.5-2-4.5-4.5-4.5C33 16 31 14 28 14z"
+            fill="#fff"
+            fillOpacity="0.15"
+            stroke="#fff"
+            strokeOpacity="0.85"
+            strokeWidth="2"
+          />
+          <path d="M28 15v22M22.5 22c2 .8 3.5 0 5.5-1.5M33.5 22c-2 .8-3.5 0-5.5-1.5M22 29c2.2 1 4 .5 6-1M34 29c-2.2 1-4 .5-6-1" stroke="#fff" strokeOpacity="0.7" strokeWidth="1.6" strokeLinecap="round" fill="none" />
+        </svg>
+      ),
+      title: "AUS Expert Brain",
+      desc: "Ask any Australian building-legislation question or drop a site photo — NCC 2022 clause answers, AS references and the right state acts for NSW, VIC, QLD, WA, SA, TAS, ACT and NT.",
+      cta: "Open Brain →",
+      path: "/brain",
+      accent: "linear-gradient(135deg,#1a1a2e,#A68A64)",
+      border: "#A68A64",
+      external: false,
+    },
+    {
       key: "dashboard",
       icon: (
         <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">

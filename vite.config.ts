@@ -4,8 +4,10 @@ import path from "node:path";
 import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from "vite";
 import express from "express";
 import fieldRoute from "./server/routes/field";
+import brainRoute from "./server/routes/brain";
 
-// Exposes the field-inspector API during `pnpm dev` (prod mounts it in server/index.ts).
+// Exposes the field-inspector + legislation-brain APIs during `pnpm dev`
+// (prod mounts them in server/index.ts).
 function fieldApiPlugin(): Plugin {
   return {
     name: "field-api",
@@ -19,6 +21,7 @@ function fieldApiPlugin(): Plugin {
       const app = express();
       app.use(express.json({ limit: "10mb" }));
       app.use("/api/field", fieldRoute);
+      app.use("/api/brain", brainRoute);
       server.middlewares.use(app);
     },
   };

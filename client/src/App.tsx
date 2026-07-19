@@ -17,6 +17,7 @@ import DbpAuditor from "./pages/DbpAuditor";
 import DrawingAnalyser from "./pages/DrawingAnalyser";
 import ApartmentDesignGuide from "./pages/ApartmentDesignGuide";
 import FieldInspector from "./pages/FieldInspector";
+import LegislationBrain from "./pages/LegislationBrain";
 
 // Marketing website pages
 import WebsiteHome from "./pages/website/WebsiteHome";
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/dbp-auditor" component={DbpAuditor} />
       <Route path="/drawing-analyser" component={DrawingAnalyser} />
       <Route path="/field" component={FieldInspector} />
+      <Route path="/brain" component={LegislationBrain} />
       <Route path="/apartment-design-guide" component={ApartmentDesignGuide} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/portal/:role" component={RolePortal} />
