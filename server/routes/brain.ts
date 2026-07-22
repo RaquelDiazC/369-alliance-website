@@ -417,6 +417,61 @@ function enrichCitations(raw: any[], answerMd: string, stateCode: string): Citat
   return out;
 }
 
+interface AskConfig {
+  system: { type: "text"; text: string; cache_control?: { type: "ephemeral" } }[];
+  userText: string;
+  maxTokens: number;
+}
+
+/** Shared prompt assembly for /ask and /ask-stream — persona modes: base | business | legislation | panel. */
+function buildAskConfig(state: StateProfile, question: string, single: Persona | null, panel: Persona[]): AskConfig {
+  const shortState = (s: StateProfile) =>
+    `SELECTED JURISDICTION: ${s.name} (${s.code}). Regulator: ${s.regulator}. Licensing: ${s.licensing}. Consumer cover: ${s.warranty}.`;
+
+  if (panel.length >= 2) {
+    const cards = panel.map(personaText).join("\n\n---\n\n");
+    const hasLeg = panel.some(p => p.kind === "legislation");
+    if (hasLeg) {
+      const context = contextBlock(question);
+      return {
+        system: [
+          { type: "text", text: PERSONA + "\n\n" + CLAUSE_INDEX_BLOCK, cache_control: { type: "ephemeral" } },
+          { type: "text", text: PANEL_RULES + "\n\n" + cards + "\n\n" + stateProfileText(state) + variationNote(state.code) },
+        ],
+        userText: `${context ? context + "\n\n" : ""}PANEL QUESTION (${state.name}): ${question}\n\nReply in the OUTPUT FORMAT tags exactly.`,
+        maxTokens: 4000,
+      };
+    }
+    return {
+      system: [
+        { type: "text", text: BUSINESS_RULES, cache_control: { type: "ephemeral" } },
+        { type: "text", text: PANEL_RULES + "\n\n" + cards + "\n\n" + shortState(state) },
+      ],
+      userText: `PANEL QUESTION (${state.name}): ${question}\n\nReply in the OUTPUT FORMAT tags exactly.`,
+      maxTokens: 4000,
+    };
+  }
+  if (single && single.kind === "business") {
+    return {
+      system: [
+        { type: "text", text: BUSINESS_RULES, cache_control: { type: "ephemeral" } },
+        { type: "text", text: personaText(single) + "\n\n" + shortState(state) },
+      ],
+      userText: `QUESTION (${state.name}): ${question}\n\nReply in the OUTPUT FORMAT tags exactly.`,
+      maxTokens: 3000,
+    };
+  }
+  const context = contextBlock(question);
+  return {
+    system: [
+      { type: "text", text: PERSONA + "\n\n" + CLAUSE_INDEX_BLOCK, cache_control: { type: "ephemeral" } },
+      { type: "text", text: (single ? personaText(single) + "\n\n" : "") + stateProfileText(state) + variationNote(state.code) },
+    ],
+    userText: `${context ? context + "\n\n" : ""}QUESTION (${state.name}): ${question}\n\nReply in the OUTPUT FORMAT tags exactly.`,
+    maxTokens: 3000,
+  };
+}
+
 /** Extra system line telling the model which clauses have NCC state variations for the selected state. */
 function variationNote(stateCode: string): string {
   const codes = Object.keys(BOARDS_STATE[stateCode] || {});
@@ -556,45 +611,8 @@ router.post("/ask", async (req: Request, res: Response) => {
     .filter(Boolean)
     .slice(0, 4);
 
-  const shortState = (s: StateProfile) =>
-    `SELECTED JURISDICTION: ${s.name} (${s.code}). Regulator: ${s.regulator}. Licensing: ${s.licensing}. Consumer cover: ${s.warranty}.`;
-
-  let system: { type: "text"; text: string; cache_control?: { type: "ephemeral" } }[];
-  let userText: string;
-  let maxTokens = 3000;
-
-  if (panel.length >= 2) {
-    const cards = panel.map(personaText).join("\n\n---\n\n");
-    const hasLeg = panel.some(p => p.kind === "legislation");
-    maxTokens = 4000;
-    if (hasLeg) {
-      const context = contextBlock(question);
-      system = [
-        { type: "text", text: PERSONA + "\n\n" + CLAUSE_INDEX_BLOCK, cache_control: { type: "ephemeral" } },
-        { type: "text", text: PANEL_RULES + "\n\n" + cards + "\n\n" + stateProfileText(state) + variationNote(state.code) },
-      ];
-      userText = `${context ? context + "\n\n" : ""}PANEL QUESTION (${state.name}): ${question}\n\nReply in the OUTPUT FORMAT tags exactly.`;
-    } else {
-      system = [
-        { type: "text", text: BUSINESS_RULES, cache_control: { type: "ephemeral" } },
-        { type: "text", text: PANEL_RULES + "\n\n" + cards + "\n\n" + shortState(state) },
-      ];
-      userText = `PANEL QUESTION (${state.name}): ${question}\n\nReply in the OUTPUT FORMAT tags exactly.`;
-    }
-  } else if (single && single.kind === "business") {
-    system = [
-      { type: "text", text: BUSINESS_RULES, cache_control: { type: "ephemeral" } },
-      { type: "text", text: personaText(single) + "\n\n" + shortState(state) },
-    ];
-    userText = `QUESTION (${state.name}): ${question}\n\nReply in the OUTPUT FORMAT tags exactly.`;
-  } else {
-    const context = contextBlock(question);
-    system = [
-      { type: "text", text: PERSONA + "\n\n" + CLAUSE_INDEX_BLOCK, cache_control: { type: "ephemeral" } },
-      { type: "text", text: (single ? personaText(single) + "\n\n" : "") + stateProfileText(state) + variationNote(state.code) },
-    ];
-    userText = `${context ? context + "\n\n" : ""}QUESTION (${state.name}): ${question}\n\nReply in the OUTPUT FORMAT tags exactly.`;
-  }
+  const cfg = buildAskConfig(state, question, single, panel);
+  const { system, userText, maxTokens } = cfg;
 
   try {
     const message = await client.messages.create({
@@ -615,6 +633,65 @@ router.post("/ask", async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     return res.status(502).json({ error: "ask failed", message: apiErrorMessage(err) });
+  }
+});
+
+/**
+ * Streaming variant of /ask — Server-Sent Events.
+ * Events: {t:"delta",text} raw model text · {t:"meta",...} enriched citations/followups · {t:"done"} · {t:"error",message}.
+ * The client renders the <answer> portion live and falls back to POST /ask on failure.
+ */
+router.post("/ask-stream", async (req: Request, res: Response) => {
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("X-Accel-Buffering", "no");
+  const emit = (obj: unknown) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+
+  const client = anthropicOrNull();
+  if (!client) {
+    emit({ t: "error", message: "ANTHROPIC_API_KEY not configured" });
+    return res.end();
+  }
+  const stateCode = String(req.body?.state || "NSW").toUpperCase();
+  const state = STATE_BY_CODE[stateCode];
+  const question = String(req.body?.question || "").trim().slice(0, 4000);
+  const personaKey = typeof req.body?.persona === "string" ? req.body.persona : "";
+  const single: Persona | null = personaKey ? PERSONA_BY_KEY[personaKey] || null : null;
+  const panel: Persona[] = (Array.isArray(req.body?.personas) ? req.body.personas : [])
+    .map((k: any) => PERSONA_BY_KEY[String(k)])
+    .filter(Boolean)
+    .slice(0, 4);
+  if (!state || !question || (personaKey && !single)) {
+    emit({ t: "error", message: !state ? `unknown state '${stateCode}'` : !question ? "question required" : `unknown persona '${personaKey}'` });
+    return res.end();
+  }
+
+  const { system, userText, maxTokens } = buildAskConfig(state, question, single, panel);
+  try {
+    const stream = client.messages.stream({
+      model: MODEL,
+      max_tokens: maxTokens,
+      system,
+      messages: [...historyMessages(req.body?.history), { role: "user", content: userText }],
+    });
+    stream.on("text", (delta: string) => emit({ t: "delta", text: delta }));
+    const final = await stream.finalMessage();
+    const text = final.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
+    const answer = (extractTag(text, "answer") || fallbackAnswer(text)).slice(0, 20000);
+    emit({
+      t: "meta",
+      state: state.code,
+      persona: single?.key,
+      personas: panel.length >= 2 ? panel.map(p => p.key) : undefined,
+      answer,
+      citations: enrichCitations(parseCitationLines(extractTag(text, "citations")), answer, state.code),
+      followups: parseLines(extractTag(text, "followups"), 3).map(f => f.slice(0, 160)),
+    });
+    emit({ t: "done" });
+    return res.end();
+  } catch (err: any) {
+    emit({ t: "error", message: apiErrorMessage(err) });
+    return res.end();
   }
 });
 
