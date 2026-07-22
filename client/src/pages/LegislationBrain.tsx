@@ -120,6 +120,20 @@ interface Msg {
   defects?: DefectHit[];
   followups?: string[];
   error?: boolean;
+  streaming?: boolean;
+}
+
+const LS_THREAD = "brain369_thread";
+const LS_STATE = "brain369_state";
+const LS_PERSONA = "brain369_persona";
+
+function loadThread(): Msg[] {
+  try {
+    const t = JSON.parse(localStorage.getItem(LS_THREAD) || "[]");
+    return Array.isArray(t) ? t.filter(m => m && m.role && !m.streaming) : [];
+  } catch {
+    return [];
+  }
 }
 
 // ---------------------------------------------------------------- suggestions
@@ -514,13 +528,13 @@ function TemplateModal({
 // ---------------------------------------------------------------- page
 export default function LegislationBrain() {
   const [status, setStatus] = useState<BrainStatus | null>(null);
-  const [stateCode, setStateCode] = useState("NSW");
-  const [thread, setThread] = useState<Msg[]>([]);
+  const [stateCode, setStateCode] = useState(() => localStorage.getItem(LS_STATE) || "NSW");
+  const [thread, setThread] = useState<Msg[]>(loadThread);
   const [input, setInput] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
-  const [personaKey, setPersonaKey] = useState<string | null>(null);
+  const [personaKey, setPersonaKey] = useState<string | null>(() => localStorage.getItem(LS_PERSONA) || null);
   const [panelMode, setPanelMode] = useState(false);
   const [panelSel, setPanelSel] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -540,6 +554,20 @@ export default function LegislationBrain() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [thread, busy]);
+
+  // Persist conversation (images stripped — localStorage budget), state and persona.
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_THREAD, JSON.stringify(thread.slice(-40).map(m => ({ ...m, image: undefined, streaming: undefined }))));
+    } catch {}
+  }, [thread]);
+  useEffect(() => {
+    localStorage.setItem(LS_STATE, stateCode);
+  }, [stateCode]);
+  useEffect(() => {
+    if (personaKey) localStorage.setItem(LS_PERSONA, personaKey);
+    else localStorage.removeItem(LS_PERSONA);
+  }, [personaKey]);
 
   const state = useMemo(
     () => status?.states.find(s => s.code === stateCode),
@@ -580,6 +608,16 @@ export default function LegislationBrain() {
     }
   }
 
+  /** Visible portion of the raw tag-protocol stream: content inside <answer>, partial tags trimmed. */
+  function visibleAnswer(raw: string): string {
+    const start = raw.indexOf("<answer>");
+    if (start === -1) return "";
+    let s = raw.slice(start + 8);
+    const end = s.indexOf("</answer>");
+    if (end !== -1) s = s.slice(0, end);
+    return s.replace(/<\/?[a-z]*$/i, "").trimStart();
+  }
+
   async function send(text?: string) {
     const question = (text ?? input).trim();
     const image = photo;
@@ -595,21 +633,24 @@ export default function LegislationBrain() {
     setInput("");
     setPhoto(null);
     setBusy(true);
-    try {
-      const history = threadRef.current
-        .filter(m => !m.error && !m.image)
-        .slice(-6)
-        .map(m => ({ role: m.role, content: m.content }));
-      const endpoint = image ? "/api/brain/photo" : "/api/brain/ask";
-      const body = image
-        ? { state: stateCode, image, question, persona: !panelActive ? personaKey || undefined : undefined }
-        : {
-            state: stateCode,
-            question,
-            history,
-            persona: !panelActive ? personaKey || undefined : undefined,
-            personas: panelActive ? panelSel : undefined,
-          };
+
+    const history = threadRef.current
+      .filter(m => !m.error && !m.image)
+      .slice(-6)
+      .map(m => ({ role: m.role, content: m.content }));
+    const askBody = {
+      state: stateCode,
+      question,
+      history,
+      persona: !panelActive ? personaKey || undefined : undefined,
+      personas: panelActive ? panelSel : undefined,
+    };
+
+    const patchLast = (patch: Partial<Msg>) =>
+      setThread(t => t.map((m, i) => (i === t.length - 1 && m.role === "assistant" ? { ...m, ...patch } : m)));
+
+    async function jsonFallback(endpoint: string, body: unknown, placeholderUp: boolean) {
+      if (placeholderUp) setThread(t => t.slice(0, -1));
       const r = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -630,6 +671,74 @@ export default function LegislationBrain() {
           followups: data.followups || [],
         },
       ]);
+    }
+
+    try {
+      if (image) {
+        await jsonFallback("/api/brain/photo", { state: stateCode, image, question, persona: !panelActive ? personaKey || undefined : undefined }, false);
+        return;
+      }
+
+      // Streaming path with automatic fallback to POST /ask.
+      let placeholderUp = false;
+      let streamedAny = false;
+      try {
+        const r = await fetch("/api/brain/ask-stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(askBody),
+        });
+        if (!r.ok || !r.body) throw new Error(`stream HTTP ${r.status}`);
+        setThread(t => [...t, { role: "assistant", state: stateCode, personaName, content: "", streaming: true }]);
+        placeholderUp = true;
+
+        const reader = r.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let raw = "";
+        let finished = false;
+        while (!finished) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() || "";
+          for (const ev of events) {
+            const line = ev.split("\n").find(l => l.startsWith("data: "));
+            if (!line) continue;
+            let msg: any;
+            try {
+              msg = JSON.parse(line.slice(6));
+            } catch {
+              continue;
+            }
+            if (msg.t === "delta") {
+              raw += msg.text;
+              streamedAny = true;
+              patchLast({ content: visibleAnswer(raw) });
+            } else if (msg.t === "meta") {
+              patchLast({
+                content: msg.answer || visibleAnswer(raw),
+                citations: msg.citations || [],
+                followups: msg.followups || [],
+                streaming: false,
+              });
+            } else if (msg.t === "done") {
+              patchLast({ streaming: false });
+              finished = true;
+            } else if (msg.t === "error") {
+              throw new Error(msg.message || "stream error");
+            }
+          }
+        }
+        patchLast({ streaming: false });
+      } catch (streamErr: any) {
+        if (streamedAny) {
+          patchLast({ streaming: false, content: `The brain could not finish: ${streamErr?.message || streamErr}`, error: true });
+        } else {
+          await jsonFallback("/api/brain/ask", askBody, placeholderUp);
+        }
+      }
     } catch (err: any) {
       setThread(t => [
         ...t,
@@ -675,8 +784,19 @@ export default function LegislationBrain() {
           </div>
           <button
             type="button"
-            onClick={() => setTplOpen(true)}
+            onClick={() => {
+              setThread([]);
+              localStorage.removeItem(LS_THREAD);
+            }}
             className="ml-auto flex items-center gap-1.5 rounded-full border border-white/25 px-2.5 py-1 text-[11px] font-semibold text-white/80 hover:border-white/60 hover:text-white"
+            title="Start a fresh conversation (history is kept on this device until cleared)"
+          >
+            <X size={13} /> New chat
+          </button>
+          <button
+            type="button"
+            onClick={() => setTplOpen(true)}
+            className="flex items-center gap-1.5 rounded-full border border-white/25 px-2.5 py-1 text-[11px] font-semibold text-white/80 hover:border-white/60 hover:text-white"
           >
             <LayoutTemplate size={13} /> Templates
           </button>
@@ -790,21 +910,50 @@ export default function LegislationBrain() {
                 </>
               )}
               {!panelActive && !activePersona && (
-                <div className="flex max-w-xl flex-wrap justify-center gap-2">
-                  {suggestions.map(q => (
-                    <button
-                      key={q}
-                      type="button"
-                      onClick={() => send(q)}
-                      className="rounded-full border bg-white px-3 py-1.5 text-xs text-gray-700 shadow-sm transition-colors hover:border-transparent hover:text-white"
-                      style={{ borderColor: "#ddd" }}
-                      onMouseEnter={e => (e.currentTarget.style.background = NAVY)}
-                      onMouseLeave={e => (e.currentTarget.style.background = "white")}
-                    >
-                      {q}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <div className="flex max-w-xl flex-wrap justify-center gap-2">
+                    {suggestions.map(q => (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => send(q)}
+                        className="rounded-full border bg-white px-3 py-1.5 text-xs text-gray-700 shadow-sm transition-colors hover:border-transparent hover:text-white"
+                        style={{ borderColor: "#ddd" }}
+                        onMouseEnter={e => (e.currentTarget.style.background = NAVY)}
+                        onMouseLeave={e => (e.currentTarget.style.background = "white")}
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Brains hub — every specialist at a glance (Manus-style welcome, all-Australia) */}
+                  {status && (
+                    <div className="mt-2 w-full max-w-4xl text-left">
+                      {status.personaSections.map(sec => {
+                        const items = status.personas.filter(p => p.section === sec);
+                        if (!items.length) return null;
+                        return (
+                          <div key={sec} className="mb-3">
+                            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400">{sec}</p>
+                            <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                              {items.map(p => (
+                                <button
+                                  key={p.key}
+                                  type="button"
+                                  onClick={() => pickPersona(p.key)}
+                                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow"
+                                >
+                                  <span className="block truncate text-xs font-bold" style={{ color: NAVY }}>{p.name}</span>
+                                  <span className="block truncate text-[11px] text-gray-500">{p.subtitle}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -831,7 +980,8 @@ export default function LegislationBrain() {
                       </p>
                     )}
                     <div className="prose prose-sm max-w-none text-sm [&_h2]:mt-3 [&_h2]:text-base [&_h3]:mt-2 [&_h3]:text-sm">
-                      <Streamdown>{m.content}</Streamdown>
+                      <Streamdown>{m.content || (m.streaming ? "…" : "")}</Streamdown>
+                      {m.streaming && <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-sm align-middle" style={{ background: GOLD }} />}
                     </div>
                     {!!m.defects?.length && (
                       <div className="mt-3 grid gap-2">
