@@ -162,6 +162,13 @@ const KIND_META: Record<string, { label: string; color: string }> = {
 };
 
 // ---------------------------------------------------------------- helpers
+/** NCC clause codes (F5D2, B1P1, S1C1 …) → blue clickable links that drive the board panel. */
+const CLAUSE_CODE_RE = /\b([A-Z]{1,2}\d{1,3}[A-Z]\d{1,3})\b/g;
+
+function linkifyClauses(md: string): string {
+  return md.replace(CLAUSE_CODE_RE, "[$1](#board-$1)");
+}
+
 async function downscaleImage(file: File, maxDim = 1400): Promise<string> {
   const dataUrl: string = await new Promise((resolve, reject) => {
     const fr = new FileReader();
@@ -668,15 +675,44 @@ export default function LegislationBrain() {
     else localStorage.removeItem(LS_PERSONA);
   }, [personaKey]);
 
-  // Auto-show the first cited clause board of the latest completed answer.
+  // Auto-show a board for the latest answer: first cited clause once citations
+  // arrive, or the first clause code seen in the text while still streaming.
+  // A manual pick (chip / card / blue link) is respected until the next answer.
+  const boardMsgRef = useRef(-1);
+  const boardPinRef = useRef(false);
+
+  function pickBoard(sel: BoardSel) {
+    boardPinRef.current = true;
+    setBoardSel(sel);
+  }
+
   useEffect(() => {
-    const last = [...thread].reverse().find(m => m.role === "assistant" && !m.error && !m.streaming);
-    if (!last) {
+    let idx = -1;
+    for (let i = thread.length - 1; i >= 0; i--) {
+      if (thread[i].role === "assistant" && !thread[i].error) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx === -1) {
       setBoardSel(null);
+      boardMsgRef.current = -1;
+      boardPinRef.current = false;
       return;
     }
-    const c = last.citations?.find(x => x.board || x.stateBoard);
-    if (c) setBoardSel({ ref: c.ref, state: c.board ? null : last.state });
+    if (idx !== boardMsgRef.current) {
+      boardMsgRef.current = idx;
+      boardPinRef.current = false;
+    }
+    if (boardPinRef.current) return;
+    const m = thread[idx];
+    const c = m.citations?.find(x => x.board || x.stateBoard);
+    if (c) {
+      setBoardSel({ ref: c.ref, state: c.board ? null : m.state });
+    } else {
+      const match = m.content.match(/\b[A-Z]{1,2}\d{1,3}[A-Z]\d{1,3}\b/);
+      if (match) setBoardSel({ ref: match[0], state: null });
+    }
   }, [thread]);
 
   const state = useMemo(
@@ -1089,8 +1125,18 @@ export default function LegislationBrain() {
                         {m.observation}
                       </p>
                     )}
-                    <div className="prose prose-sm max-w-none text-sm [&_h2]:mt-3 [&_h2]:text-base [&_h3]:mt-2 [&_h3]:text-sm">
-                      <Streamdown>{m.content || (m.streaming ? "…" : "")}</Streamdown>
+                    <div
+                      className="prose prose-sm max-w-none text-sm [&_h2]:mt-3 [&_h2]:text-base [&_h3]:mt-2 [&_h3]:text-sm [&_a[href^='#board-']]:cursor-pointer [&_a[href^='#board-']]:font-semibold [&_a[href^='#board-']]:text-blue-600 [&_a[href^='#board-']]:no-underline [&_a[href^='#board-']:hover]:underline"
+                      onClick={e => {
+                        const a = (e.target as HTMLElement).closest("a");
+                        const href = a?.getAttribute("href") || "";
+                        if (href.startsWith("#board-")) {
+                          e.preventDefault();
+                          pickBoard({ ref: href.slice(7), state: null });
+                        }
+                      }}
+                    >
+                      <Streamdown>{linkifyClauses(m.content) || (m.streaming ? "…" : "")}</Streamdown>
                       {m.streaming && <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-sm align-middle" style={{ background: GOLD }} />}
                     </div>
                     {!!m.defects?.length && (
@@ -1107,7 +1153,7 @@ export default function LegislationBrain() {
                             stateCode={m.state}
                             onView={
                               c.board || c.stateBoard
-                                ? () => setBoardSel({ ref: c.ref, state: c.board ? null : m.state })
+                                ? () => pickBoard({ ref: c.ref, state: c.board ? null : m.state })
                                 : undefined
                             }
                           />
@@ -1148,7 +1194,7 @@ export default function LegislationBrain() {
         {status && status.counts.boards > 0 && (
           <aside className="sticky top-[104px] hidden w-[30rem] shrink-0 py-3 pr-4 xl:block">
             <div style={{ height: "calc(100vh - 130px)" }}>
-              <BoardViewer msg={lastAssistant} sel={boardSel} onSel={setBoardSel} />
+              <BoardViewer msg={lastAssistant} sel={boardSel} onSel={pickBoard} />
             </div>
           </aside>
         )}
