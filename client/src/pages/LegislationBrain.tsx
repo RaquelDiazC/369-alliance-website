@@ -210,7 +210,7 @@ function BoardImg({ src, label }: { src: string; label: string }) {
   );
 }
 
-function CitationCard({ c, stateCode }: { c: Citation; stateCode: string }) {
+function CitationCard({ c, stateCode, onView }: { c: Citation; stateCode: string; onView?: () => void }) {
   const [open, setOpen] = useState(false);
   const meta = KIND_META[c.kind] || KIND_META.other;
   const expandable = !!(c.text || c.as || c.asClauses || c.board || c.stateBoard);
@@ -218,7 +218,10 @@ function CitationCard({ c, stateCode }: { c: Citation; stateCode: string }) {
     <div className="rounded-lg border bg-white text-left shadow-sm" style={{ borderColor: `${meta.color}55` }}>
       <button
         type="button"
-        onClick={() => expandable && setOpen(o => !o)}
+        onClick={() => {
+          if (expandable) setOpen(o => !o);
+          onView?.();
+        }}
         className={`flex w-full items-start gap-2 p-2.5 ${expandable ? "cursor-pointer" : "cursor-default"}`}
       >
         <span
@@ -525,6 +528,101 @@ function TemplateModal({
   );
 }
 
+interface BoardSel {
+  ref: string;
+  state: string | null; // null = national board; state code = variation board
+}
+
+/** Right-hand evidence-board viewer — shows the board for the clause under
+ *  discussion; chips switch between all boards cited in the latest answer. */
+function BoardViewer({ msg, sel, onSel }: { msg?: Msg; sel: BoardSel | null; onSel: (s: BoardSel) => void }) {
+  const [zoom, setZoom] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const cites = (msg?.citations || []).filter(c => c.board || c.stateBoard);
+  const src = sel
+    ? sel.state
+      ? `/api/brain/board/${sel.state}/${encodeURIComponent(sel.ref)}`
+      : `/api/brain/board/${encodeURIComponent(sel.ref)}`
+    : null;
+  const activeCite = sel ? msg?.citations?.find(c => c.ref === sel.ref) : undefined;
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  return (
+    <div className="flex h-full flex-col rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="border-b border-gray-100 px-3 py-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: GOLD }}>
+          Clause evidence board
+        </p>
+        <p className="truncate text-sm font-bold" style={{ color: NAVY }}>
+          {sel ? `${sel.ref}${sel.state ? ` · ${sel.state} variation` : ""}${activeCite?.title ? ` — ${activeCite.title}` : ""}` : "No clause selected"}
+        </p>
+      </div>
+      {cites.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 border-b border-gray-100 px-3 py-2">
+          {cites.map(c => (
+            <span key={c.ref} className="flex gap-1">
+              {c.board && (
+                <button
+                  type="button"
+                  onClick={() => onSel({ ref: c.ref, state: null })}
+                  className="rounded-full border px-2.5 py-0.5 text-[11px] font-bold"
+                  style={
+                    sel?.ref === c.ref && !sel?.state
+                      ? { background: NAVY, borderColor: NAVY, color: "#fff" }
+                      : { borderColor: `${GOLD}88`, color: NAVY }
+                  }
+                >
+                  {c.ref}
+                </button>
+              )}
+              {c.stateBoard && msg && (
+                <button
+                  type="button"
+                  onClick={() => onSel({ ref: c.ref, state: msg.state })}
+                  className="rounded-full border px-2.5 py-0.5 text-[11px] font-bold"
+                  style={
+                    sel?.ref === c.ref && sel?.state
+                      ? { background: "#0d9488", borderColor: "#0d9488", color: "#fff" }
+                      : { borderColor: "#0d948888", color: "#0d9488" }
+                  }
+                >
+                  {c.ref} · {msg.state}
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="flex-1 overflow-y-auto p-2">
+        {src && !failed ? (
+          <img
+            key={src}
+            src={src}
+            alt={sel?.ref}
+            onError={() => setFailed(true)}
+            onClick={() => setZoom(true)}
+            className="w-full cursor-zoom-in rounded-lg border border-gray-100"
+            title="Click to enlarge"
+          />
+        ) : (
+          <div className="flex h-full min-h-48 items-center justify-center rounded-lg border border-dashed border-gray-300 p-6 text-center text-xs text-gray-500">
+            {failed
+              ? `No board image found for ${sel?.ref}.`
+              : "Ask a question — the evidence board for each cited clause appears here. Click the clause chips or citation cards to switch."}
+          </div>
+        )}
+      </div>
+      {zoom && src && (
+        <div className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/85 p-4" onClick={() => setZoom(false)}>
+          <img src={src} alt={sel?.ref} className="max-h-full max-w-full rounded-lg" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- page
 export default function LegislationBrain() {
   const [status, setStatus] = useState<BrainStatus | null>(null);
@@ -539,6 +637,7 @@ export default function LegislationBrain() {
   const [panelSel, setPanelSel] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tplOpen, setTplOpen] = useState(false);
+  const [boardSel, setBoardSel] = useState<BoardSel | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const threadRef = useRef<Msg[]>([]);
@@ -568,6 +667,17 @@ export default function LegislationBrain() {
     if (personaKey) localStorage.setItem(LS_PERSONA, personaKey);
     else localStorage.removeItem(LS_PERSONA);
   }, [personaKey]);
+
+  // Auto-show the first cited clause board of the latest completed answer.
+  useEffect(() => {
+    const last = [...thread].reverse().find(m => m.role === "assistant" && !m.error && !m.streaming);
+    if (!last) {
+      setBoardSel(null);
+      return;
+    }
+    const c = last.citations?.find(x => x.board || x.stateBoard);
+    if (c) setBoardSel({ ref: c.ref, state: c.board ? null : last.state });
+  }, [thread]);
 
   const state = useMemo(
     () => status?.states.find(s => s.code === stateCode),
@@ -755,7 +865,7 @@ export default function LegislationBrain() {
     <div className="flex min-h-screen flex-col" style={{ background: "#f4f2ee" }}>
       {/* Header */}
       <header className="sticky top-0 z-20 text-white shadow-md" style={{ background: NAVY }}>
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-[1900px] items-center gap-3 px-4 py-3">
           <Link href="/system" className="flex items-center gap-1 text-sm text-white/70 hover:text-white">
             <ArrowLeft size={16} />
           </Link>
@@ -809,7 +919,7 @@ export default function LegislationBrain() {
           </span>
         </div>
         {/* State tabs */}
-        <div className="mx-auto max-w-7xl overflow-x-auto px-4 pb-2.5">
+        <div className="mx-auto max-w-[1900px] overflow-x-auto px-4 pb-2.5">
           <div className="flex gap-1.5">
             {(status?.states || []).map(s => {
               const active = s.code === stateCode;
@@ -835,7 +945,7 @@ export default function LegislationBrain() {
       </header>
 
       {/* Body */}
-      <div className="mx-auto flex w-full max-w-7xl flex-1 items-start">
+      <div className="mx-auto flex w-full max-w-[1900px] flex-1 items-start">
         {status && (
           <>
             <aside className="sticky top-[104px] hidden max-h-[calc(100vh-104px)] w-72 shrink-0 overflow-y-auto lg:block">
@@ -990,7 +1100,18 @@ export default function LegislationBrain() {
                     )}
                     {!!m.citations?.length && (
                       <div className="mt-3 grid gap-2 md:grid-cols-2">
-                        {m.citations.map((c, j) => <CitationCard key={c.kind + c.ref + j} c={c} stateCode={m.state} />)}
+                        {m.citations.map((c, j) => (
+                          <CitationCard
+                            key={c.kind + c.ref + j}
+                            c={c}
+                            stateCode={m.state}
+                            onView={
+                              c.board || c.stateBoard
+                                ? () => setBoardSel({ ref: c.ref, state: c.board ? null : m.state })
+                                : undefined
+                            }
+                          />
+                        ))}
                       </div>
                     )}
                   </div>
@@ -1024,6 +1145,13 @@ export default function LegislationBrain() {
           <div ref={bottomRef} />
         </div>
         </main>
+        {status && status.counts.boards > 0 && (
+          <aside className="sticky top-[104px] hidden w-[30rem] shrink-0 py-3 pr-4 xl:block">
+            <div style={{ height: "calc(100vh - 130px)" }}>
+              <BoardViewer msg={lastAssistant} sel={boardSel} onSel={setBoardSel} />
+            </div>
+          </aside>
+        )}
       </div>
 
       {/* Composer */}

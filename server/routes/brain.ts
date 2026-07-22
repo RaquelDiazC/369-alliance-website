@@ -16,7 +16,6 @@ import path from "path";
 import nccPack from "../brain/ncc2022.json" with { type: "json" };
 import referencePack from "../brain/reference.json" with { type: "json" };
 import topicsPack from "../brain/topics.json" with { type: "json" };
-import boardsPack from "../brain/boards.json" with { type: "json" };
 import defectLibraryJson from "../defect-library.json" with { type: "json" };
 import { NATIONAL, STATES, STATE_BY_CODE, stateProfileText } from "../brain/states.js";
 import { PERSONAS, PERSONA_BY_KEY, PERSONA_SECTIONS, TEMPLATES, personaText, Persona } from "../brain/personas.js";
@@ -25,19 +24,85 @@ import type { StateProfile } from "../brain/states.js";
 const router = Router();
 const MODEL = "claude-sonnet-5";
 
-// Clause "evidence board" PNGs live outside the repo (OneDrive). boards.json is
-// the committed index; images are served from disk when the folder is present.
+// Clause "evidence board" PNGs live outside the repo (OneDrive) and are
+// indexed at RUNTIME so replaced/updated images (same clause name) are picked
+// up automatically. Primary root = the permanent "never delete" folder; the
+// original review folder fills gaps (e.g. plain 3D images not yet copied).
 const BOARDS_DIR =
   process.env.BRAIN_BOARDS_DIR ||
-  "C:/Users/raque/OneDrive/3. Working/0. For review/2. Legislation";
-const BOARDS_MAIN = (boardsPack as any).main as Record<string, string>;
-const BOARDS_STATE = (boardsPack as any).state as Record<string, Record<string, string>>;
-const BOARDS_PLAIN = ((boardsPack as any).plain || {}) as Record<string, string>;
-const BOARDS_AVAILABLE = fs.existsSync(BOARDS_DIR);
+  "C:/Users/raque/OneDrive/3. Working/2. Legislation/1. Images never delete_using in Brain system";
+const BOARDS_DIR_LEGACY = "C:/Users/raque/OneDrive/3. Working/0. For review/2. Legislation";
 
-function boardFile(rel: string | undefined): string | null {
-  if (!rel || !BOARDS_AVAILABLE) return null;
-  const abs = path.join(BOARDS_DIR, rel.replace(/\\/g, path.sep));
+interface BoardMaps {
+  main: Record<string, string>;
+  state: Record<string, Record<string, string>>;
+  plain: Record<string, string>;
+}
+let BOARDS: BoardMaps = { main: {}, state: {}, plain: {} };
+let BOARDS_AVAILABLE = false;
+let boardsScannedAt = 0;
+const BOARDS_SCAN_TTL = 5 * 60 * 1000;
+
+const BOARD_CODE = "[A-Z]{1,2}\\d{1,3}[A-Z]\\d{1,3}[a-z]?";
+const BOARD_STATES = "NSW|VIC|QLD|WA|SA|TAS|ACT|NT";
+const RE_MAIN = new RegExp(`^(${BOARD_CODE})[_ .]`);
+const RE_ST_PREFIX = new RegExp(`^(${BOARD_STATES})_(${BOARD_CODE})[_ ]`);
+const RE_ST_SUFFIX = new RegExp(`^(${BOARD_CODE})_(${BOARD_STATES})[_ ]`);
+
+function scanBoardsRoot(root: string, maps: BoardMaps, ssFallback: Record<string, string>) {
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(root, { withFileTypes: true, recursive: true });
+  } catch {
+    return;
+  }
+  for (const e of entries) {
+    if (!e.isFile() || !/\.png$/i.test(e.name)) continue;
+    const abs = path.join(e.parentPath, e.name);
+    const isSS = /[\\/]SS([\\/]|$)/i.test(e.parentPath);
+    const isPlain = /plain_images/i.test(abs) || /plain 3D image/i.test(e.name);
+    let m = e.name.match(RE_ST_PREFIX);
+    if (m) {
+      (maps.state[m[1]] ||= {})[m[2]] ||= abs;
+      continue;
+    }
+    m = e.name.match(RE_ST_SUFFIX);
+    if (m) {
+      (maps.state[m[2]] ||= {})[m[1]] ||= abs;
+      continue;
+    }
+    m = e.name.match(RE_MAIN);
+    if (!m) continue;
+    const code = m[1];
+    if (isSS) {
+      ssFallback[code] ||= abs;
+    } else if (isPlain) {
+      maps.plain[code] ||= abs;
+      if (!maps.main[code]) maps.main[code] = abs;
+    } else if (!maps.main[code] || /plain/i.test(maps.main[code])) {
+      maps.main[code] = abs;
+    }
+  }
+}
+
+function scanBoards() {
+  const maps: BoardMaps = { main: {}, state: {}, plain: {} };
+  const ssFallback: Record<string, string> = {};
+  scanBoardsRoot(BOARDS_DIR, maps, ssFallback); // permanent folder wins
+  scanBoardsRoot(BOARDS_DIR_LEGACY, maps, ssFallback); // fills gaps only
+  for (const [code, abs] of Object.entries(ssFallback)) maps.main[code] ||= abs;
+  BOARDS = maps;
+  BOARDS_AVAILABLE = Object.keys(maps.main).length > 0;
+  boardsScannedAt = Date.now();
+}
+scanBoards();
+
+function boardsFresh() {
+  if (Date.now() - boardsScannedAt > BOARDS_SCAN_TTL) scanBoards();
+}
+
+function boardFile(abs: string | undefined): string | null {
+  if (!abs) return null;
   return fs.existsSync(abs) ? abs : null;
 }
 
@@ -354,10 +419,10 @@ interface Citation {
 }
 
 function boardFlags(ref: string, stateCode: string) {
-  const variations = Object.keys(BOARDS_STATE).filter(st => BOARDS_STATE[st][ref]);
+  const variations = Object.keys(BOARDS.state).filter(st => BOARDS.state[st][ref]);
   return {
-    board: BOARDS_AVAILABLE && !!BOARDS_MAIN[ref],
-    stateBoard: BOARDS_AVAILABLE && !!BOARDS_STATE[stateCode]?.[ref],
+    board: BOARDS_AVAILABLE && !!BOARDS.main[ref],
+    stateBoard: BOARDS_AVAILABLE && !!BOARDS.state[stateCode]?.[ref],
     variations: variations.length ? variations : undefined,
   };
 }
@@ -474,7 +539,7 @@ function buildAskConfig(state: StateProfile, question: string, single: Persona |
 
 /** Extra system line telling the model which clauses have NCC state variations for the selected state. */
 function variationNote(stateCode: string): string {
-  const codes = Object.keys(BOARDS_STATE[stateCode] || {});
+  const codes = Object.keys(BOARDS.state[stateCode] || {});
   if (!codes.length) return "";
   return `\n\nNCC STATE VARIATIONS (${stateCode}): the state appendix varies these NCC 2022 clauses — when citing one of them, flag that a ${stateCode} variation applies and answer per the variation: ${codes.sort().join(", ")}`;
 }
@@ -499,12 +564,12 @@ router.get("/status", (_req: Request, res: Response) => {
       topics: TOPICS.length,
       defects: Object.keys(DEFECTS).length,
       editions: EDITIONS.length,
-      boards: BOARDS_AVAILABLE ? Object.keys(BOARDS_MAIN).length : 0,
+      boards: BOARDS_AVAILABLE ? Object.keys(BOARDS.main).length : 0,
       stateBoards: BOARDS_AVAILABLE
-        ? Object.values(BOARDS_STATE).reduce((n, m) => n + Object.keys(m).length, 0)
+        ? Object.values(BOARDS.state).reduce((n, m) => n + Object.keys(m).length, 0)
         : 0,
     },
-    variationBoards: Object.fromEntries(Object.entries(BOARDS_STATE).map(([st, m]) => [st, Object.keys(m).length])),
+    variationBoards: Object.fromEntries(Object.entries(BOARDS.state).map(([st, m]) => [st, Object.keys(m).length])),
     national: NATIONAL,
     states: STATES,
     personaSections: PERSONA_SECTIONS,
@@ -513,27 +578,41 @@ router.get("/status", (_req: Request, res: Response) => {
   });
 });
 
-// Clause evidence-board PNGs (served from the local boards folder when present).
+// Clause evidence-board PNGs (served from the permanent boards folder;
+// index refreshes automatically every 5 minutes so replaced images appear).
 router.get("/board/:code", (req: Request, res: Response) => {
-  const abs = boardFile(BOARDS_MAIN[String(req.params.code).toUpperCase()]);
+  boardsFresh();
+  const abs = boardFile(BOARDS.main[String(req.params.code).toUpperCase()]);
   if (!abs) return res.status(404).json({ error: "no board" });
-  res.set("Cache-Control", "public, max-age=86400");
+  res.set("Cache-Control", "public, max-age=300");
   return res.sendFile(abs);
 });
 
 router.get("/board/:state/:code", (req: Request, res: Response) => {
+  boardsFresh();
   const st = String(req.params.state).toUpperCase();
-  const abs = boardFile(BOARDS_STATE[st]?.[String(req.params.code).toUpperCase()]);
+  const abs = boardFile(BOARDS.state[st]?.[String(req.params.code).toUpperCase()]);
   if (!abs) return res.status(404).json({ error: "no board" });
-  res.set("Cache-Control", "public, max-age=86400");
+  res.set("Cache-Control", "public, max-age=300");
   return res.sendFile(abs);
 });
 
 router.get("/plainboard/:code", (req: Request, res: Response) => {
-  const abs = boardFile(BOARDS_PLAIN[String(req.params.code).toUpperCase()]);
+  boardsFresh();
+  const abs = boardFile(BOARDS.plain[String(req.params.code).toUpperCase()]);
   if (!abs) return res.status(404).json({ error: "no plain board" });
-  res.set("Cache-Control", "public, max-age=86400");
+  res.set("Cache-Control", "public, max-age=300");
   return res.sendFile(abs);
+});
+
+// Manual re-index (e.g. right after replacing images in the boards folder).
+router.post("/boards/refresh", (_req: Request, res: Response) => {
+  scanBoards();
+  res.json({
+    boards: Object.keys(BOARDS.main).length,
+    plain: Object.keys(BOARDS.plain).length,
+    stateBoards: Object.values(BOARDS.state).reduce((n, m) => n + Object.keys(m).length, 0),
+  });
 });
 
 // ---------------------------------------------------------------- training support
@@ -584,9 +663,9 @@ router.get("/clause/:code", (req: Request, res: Response) => {
     as: c.as,
     asClauses: c.asc,
     defectIds: c.d,
-    board: BOARDS_AVAILABLE && !!BOARDS_MAIN[code],
-    plain: BOARDS_AVAILABLE && !!BOARDS_PLAIN[code],
-    variations: Object.keys(BOARDS_STATE).filter(st => BOARDS_STATE[st][code]),
+    board: BOARDS_AVAILABLE && !!BOARDS.main[code],
+    plain: BOARDS_AVAILABLE && !!BOARDS.plain[code],
+    variations: Object.keys(BOARDS.state).filter(st => BOARDS.state[st][code]),
     prev: idx > 0 ? CLAUSE_ORDER[idx - 1] : null,
     next: idx >= 0 && idx < CLAUSE_ORDER.length - 1 ? CLAUSE_ORDER[idx + 1] : null,
   });
