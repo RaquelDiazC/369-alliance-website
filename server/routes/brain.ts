@@ -16,6 +16,7 @@ import path from "path";
 import nccPack from "../brain/ncc2022.json" with { type: "json" };
 import referencePack from "../brain/reference.json" with { type: "json" };
 import topicsPack from "../brain/topics.json" with { type: "json" };
+import boardsManifest from "../brain/boards-manifest.json" with { type: "json" };
 import defectLibraryJson from "../defect-library.json" with { type: "json" };
 import { NATIONAL, STATES, STATE_BY_CODE, stateProfileText } from "../brain/states.js";
 import { PERSONAS, PERSONA_BY_KEY, PERSONA_SECTIONS, TEMPLATES, personaText, Persona } from "../brain/personas.js";
@@ -104,6 +105,27 @@ function boardsFresh() {
 function boardFile(abs: string | undefined): string | null {
   if (!abs) return null;
   return fs.existsSync(abs) ? abs : null;
+}
+
+// CDN fallback for deployed environments (no OneDrive folders): compressed
+// WebP copies live in Vercel Blob; boards-manifest.json lists the codes.
+const BOARDS_CDN = (process.env.BOARDS_BASE_URL || "").replace(/\/+$/, "");
+const MF = boardsManifest as { main: string[]; plain: string[]; state: Record<string, string[]> };
+const CDN_MAIN = new Set(MF.main);
+const CDN_PLAIN = new Set(MF.plain);
+const CDN_STATE: Record<string, Set<string>> = Object.fromEntries(
+  Object.entries(MF.state).map(([st, codes]) => [st, new Set(codes)]),
+);
+const cdnOn = () => !!BOARDS_CDN && !BOARDS_AVAILABLE;
+
+const hasMainBoard = (code: string) => (BOARDS_AVAILABLE ? !!BOARDS.main[code] : cdnOn() && CDN_MAIN.has(code));
+const hasPlainBoard = (code: string) => (BOARDS_AVAILABLE ? !!BOARDS.plain[code] : cdnOn() && CDN_PLAIN.has(code));
+const hasStateBoard = (st: string, code: string) =>
+  BOARDS_AVAILABLE ? !!BOARDS.state[st]?.[code] : cdnOn() && !!CDN_STATE[st]?.has(code);
+function stateBoardStates(code: string): string[] {
+  if (BOARDS_AVAILABLE) return Object.keys(BOARDS.state).filter(st => BOARDS.state[st][code]);
+  if (!cdnOn()) return [];
+  return Object.keys(CDN_STATE).filter(st => CDN_STATE[st].has(code));
 }
 
 // ---------------------------------------------------------------- knowledge
@@ -419,10 +441,10 @@ interface Citation {
 }
 
 function boardFlags(ref: string, stateCode: string) {
-  const variations = Object.keys(BOARDS.state).filter(st => BOARDS.state[st][ref]);
+  const variations = stateBoardStates(ref);
   return {
-    board: BOARDS_AVAILABLE && !!BOARDS.main[ref],
-    stateBoard: BOARDS_AVAILABLE && !!BOARDS.state[stateCode]?.[ref],
+    board: hasMainBoard(ref),
+    stateBoard: hasStateBoard(stateCode, ref),
     variations: variations.length ? variations : undefined,
   };
 }
@@ -539,7 +561,7 @@ function buildAskConfig(state: StateProfile, question: string, single: Persona |
 
 /** Extra system line telling the model which clauses have NCC state variations for the selected state. */
 function variationNote(stateCode: string): string {
-  const codes = Object.keys(BOARDS.state[stateCode] || {});
+  const codes = BOARDS_AVAILABLE ? Object.keys(BOARDS.state[stateCode] || {}) : MF.state[stateCode] || [];
   if (!codes.length) return "";
   return `\n\nNCC STATE VARIATIONS (${stateCode}): the state appendix varies these NCC 2022 clauses — when citing one of them, flag that a ${stateCode} variation applies and answer per the variation: ${codes.sort().join(", ")}`;
 }
@@ -564,12 +586,16 @@ router.get("/status", (_req: Request, res: Response) => {
       topics: TOPICS.length,
       defects: Object.keys(DEFECTS).length,
       editions: EDITIONS.length,
-      boards: BOARDS_AVAILABLE ? Object.keys(BOARDS.main).length : 0,
+      boards: BOARDS_AVAILABLE ? Object.keys(BOARDS.main).length : cdnOn() ? MF.main.length : 0,
       stateBoards: BOARDS_AVAILABLE
         ? Object.values(BOARDS.state).reduce((n, m) => n + Object.keys(m).length, 0)
-        : 0,
+        : cdnOn()
+          ? Object.values(MF.state).reduce((n, a) => n + a.length, 0)
+          : 0,
     },
-    variationBoards: Object.fromEntries(Object.entries(BOARDS.state).map(([st, m]) => [st, Object.keys(m).length])),
+    variationBoards: BOARDS_AVAILABLE
+      ? Object.fromEntries(Object.entries(BOARDS.state).map(([st, m]) => [st, Object.keys(m).length]))
+      : Object.fromEntries(Object.entries(MF.state).map(([st, a]) => [st, a.length])),
     national: NATIONAL,
     states: STATES,
     personaSections: PERSONA_SECTIONS,
@@ -582,27 +608,39 @@ router.get("/status", (_req: Request, res: Response) => {
 // index refreshes automatically every 5 minutes so replaced images appear).
 router.get("/board/:code", (req: Request, res: Response) => {
   boardsFresh();
-  const abs = boardFile(BOARDS.main[String(req.params.code).toUpperCase()]);
-  if (!abs) return res.status(404).json({ error: "no board" });
-  res.set("Cache-Control", "public, max-age=300");
-  return res.sendFile(abs);
+  const code = String(req.params.code).toUpperCase();
+  const abs = boardFile(BOARDS.main[code]);
+  if (abs) {
+    res.set("Cache-Control", "public, max-age=300");
+    return res.sendFile(abs);
+  }
+  if (cdnOn() && CDN_MAIN.has(code)) return res.redirect(302, `${BOARDS_CDN}/main/${code}.webp`);
+  return res.status(404).json({ error: "no board" });
 });
 
 router.get("/board/:state/:code", (req: Request, res: Response) => {
   boardsFresh();
   const st = String(req.params.state).toUpperCase();
-  const abs = boardFile(BOARDS.state[st]?.[String(req.params.code).toUpperCase()]);
-  if (!abs) return res.status(404).json({ error: "no board" });
-  res.set("Cache-Control", "public, max-age=300");
-  return res.sendFile(abs);
+  const code = String(req.params.code).toUpperCase();
+  const abs = boardFile(BOARDS.state[st]?.[code]);
+  if (abs) {
+    res.set("Cache-Control", "public, max-age=300");
+    return res.sendFile(abs);
+  }
+  if (cdnOn() && CDN_STATE[st]?.has(code)) return res.redirect(302, `${BOARDS_CDN}/state/${st}/${code}.webp`);
+  return res.status(404).json({ error: "no board" });
 });
 
 router.get("/plainboard/:code", (req: Request, res: Response) => {
   boardsFresh();
-  const abs = boardFile(BOARDS.plain[String(req.params.code).toUpperCase()]);
-  if (!abs) return res.status(404).json({ error: "no plain board" });
-  res.set("Cache-Control", "public, max-age=300");
-  return res.sendFile(abs);
+  const code = String(req.params.code).toUpperCase();
+  const abs = boardFile(BOARDS.plain[code]);
+  if (abs) {
+    res.set("Cache-Control", "public, max-age=300");
+    return res.sendFile(abs);
+  }
+  if (cdnOn() && CDN_PLAIN.has(code)) return res.redirect(302, `${BOARDS_CDN}/plain/${code}.webp`);
+  return res.status(404).json({ error: "no plain board" });
 });
 
 // Manual re-index (e.g. right after replacing images in the boards folder).
@@ -663,9 +701,9 @@ router.get("/clause/:code", (req: Request, res: Response) => {
     as: c.as,
     asClauses: c.asc,
     defectIds: c.d,
-    board: BOARDS_AVAILABLE && !!BOARDS.main[code],
-    plain: BOARDS_AVAILABLE && !!BOARDS.plain[code],
-    variations: Object.keys(BOARDS.state).filter(st => BOARDS.state[st][code]),
+    board: hasMainBoard(code),
+    plain: hasPlainBoard(code),
+    variations: stateBoardStates(code),
     prev: idx > 0 ? CLAUSE_ORDER[idx - 1] : null,
     next: idx >= 0 && idx < CLAUSE_ORDER.length - 1 ? CLAUSE_ORDER[idx + 1] : null,
   });
