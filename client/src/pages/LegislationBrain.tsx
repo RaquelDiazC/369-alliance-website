@@ -20,12 +20,14 @@ import {
   Landmark,
   LayoutTemplate,
   Loader2,
+  Lock,
   Menu,
   Paperclip,
   Scale,
   ScrollText,
   Send,
   ShieldCheck,
+  Sparkles,
   Users,
   X,
 } from "lucide-react";
@@ -80,6 +82,7 @@ interface BrainStatus {
   personaSections: string[];
   personas: Persona[];
   templates: BrainTemplate[];
+  freeLimit?: number;
 }
 interface Citation {
   ref: string;
@@ -121,11 +124,15 @@ interface Msg {
   followups?: string[];
   error?: boolean;
   streaming?: boolean;
+  divider?: boolean; // "now talking to X" separator, not a real message
 }
 
 const LS_THREAD = "brain369_thread";
 const LS_STATE = "brain369_state";
 const LS_PERSONA = "brain369_persona";
+const LS_PLAN = "brain369_plan";
+const LS_CODE = "brain369_code";
+const FREE_LIMIT = 5;
 
 function loadThread(): Msg[] {
   try {
@@ -134,6 +141,20 @@ function loadThread(): Msg[] {
   } catch {
     return [];
   }
+}
+
+function usageKey(): string {
+  return "brain369_usage_" + new Date().toISOString().slice(0, 10);
+}
+function todayCount(): number {
+  return Number(localStorage.getItem(usageKey()) || "0");
+}
+
+/** Heuristic: does this question belong to the legislation engine rather than a business brain? */
+function looksLegislation(q: string): boolean {
+  if (!q.trim()) return false;
+  if (/\b[A-Z]{1,2}\d{1,3}[A-Z]\d{1,3}\b/.test(q)) return true;
+  return /\b(ncc|bca|clause|deemed[- ]to[- ]satisfy|\bdts\b|frl|waterproof|fire rating|fire[- ]rated|sprinkler|balustrade|egress|as\s?\d|section\s[a-j]\b|part\s[a-j]\d|building code|housing provisions|australian standard)\b/i.test(q);
 }
 
 // ---------------------------------------------------------------- suggestions
@@ -357,7 +378,7 @@ function StatePanel({ s }: { s: StateProfile }) {
 }
 
 function BrainSidebar({
-  status, personaKey, onPick, panelMode, setPanelMode, panelSel, togglePanelSel,
+  status, personaKey, onPick, panelMode, setPanelMode, panelSel, togglePanelSel, locked, onLocked,
 }: {
   status: BrainStatus;
   personaKey: string | null;
@@ -366,6 +387,8 @@ function BrainSidebar({
   setPanelMode: (b: boolean) => void;
   panelSel: string[];
   togglePanelSel: (k: string) => void;
+  locked: boolean;
+  onLocked: () => void;
 }) {
   return (
     <div className="flex h-full flex-col overflow-y-auto border-r border-gray-200 bg-white">
@@ -381,14 +404,17 @@ function BrainSidebar({
         </button>
         <button
           type="button"
-          onClick={() => setPanelMode(!panelMode)}
-          className="mt-2 w-full rounded-lg border px-3 py-2 text-left"
+          onClick={() => (locked ? onLocked() : setPanelMode(!panelMode))}
+          className="mt-2 flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left"
           style={panelMode ? { borderColor: NAVY, background: "#eef0f6" } : { borderColor: "#e5e7eb" }}
         >
-          <span className="block text-sm font-bold" style={{ color: NAVY }}>Multi-Persona Consultation</span>
-          <span className="block text-[11px] text-gray-500">
-            {panelMode ? `Selecting panel — ${panelSel.length}/4 brains ticked` : "Convene 2-4 brains on one question"}
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold" style={{ color: NAVY }}>Multi-Persona Consultation</span>
+            <span className="block text-[11px] text-gray-500">
+              {panelMode ? `Selecting panel — ${panelSel.length}/4 brains ticked` : "Convene 2-4 brains on one question"}
+            </span>
           </span>
+          {locked && <Lock size={13} className="shrink-0 text-gray-400" />}
         </button>
       </div>
       {status.personaSections.map(sec => {
@@ -403,11 +429,11 @@ function BrainSidebar({
                 <button
                   key={p.key}
                   type="button"
-                  onClick={() => (panelMode ? togglePanelSel(p.key) : onPick(p.key))}
+                  onClick={() => (locked ? onLocked() : panelMode ? togglePanelSel(p.key) : onPick(p.key))}
                   className="mb-0.5 flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-gray-50"
                   style={active ? { background: "#faf7f2", boxShadow: `inset 2px 0 0 ${GOLD}` } : undefined}
                 >
-                  {panelMode && (
+                  {panelMode && !locked && (
                     <span
                       className="mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border text-[9px] font-bold text-white"
                       style={active ? { background: GOLD, borderColor: GOLD } : { borderColor: "#cbd5e1" }}
@@ -415,10 +441,11 @@ function BrainSidebar({
                       {active ? "✓" : ""}
                     </span>
                   )}
-                  <span className="min-w-0">
+                  <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13px] font-semibold" style={{ color: NAVY }}>{p.name}</span>
                     <span className="block truncate text-[11px] text-gray-500">{p.subtitle}</span>
                   </span>
+                  {locked && <Lock size={12} className="mt-0.5 shrink-0 text-gray-300" />}
                 </button>
               );
             })}
@@ -630,6 +657,60 @@ function BoardViewer({ msg, sel, onSel }: { msg?: Msg; sel: BoardSel | null; onS
   );
 }
 
+function UnlockModal({ onClose, onUnlock }: { onClose: () => void; onUnlock: (code: string) => Promise<boolean> }) {
+  const [code, setCode] = useState("");
+  const [err, setErr] = useState(false);
+  const [busy, setBusy] = useState(false);
+  async function submit() {
+    if (!code.trim() || busy) return;
+    setBusy(true);
+    setErr(false);
+    const ok = await onUnlock(code.trim());
+    if (!ok) setErr(true);
+    setBusy(false);
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="mb-3 flex items-center gap-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: NAVY }}>
+            <Sparkles size={20} style={{ color: GOLD }} />
+          </div>
+          <div>
+            <p className="text-base font-bold" style={{ color: NAVY }}>Unlock full access</p>
+            <p className="text-xs text-gray-500">All 29 brains · site photos · multi-persona · Report Studio · Training</p>
+          </div>
+          <button type="button" onClick={onClose} className="ml-auto rounded-full bg-gray-100 p-1.5 text-gray-500 hover:bg-gray-200"><X size={15} /></button>
+        </div>
+        <p className="mb-3 text-sm text-gray-600">
+          The <span className="font-semibold" style={{ color: NAVY }}>AUS Legislation Brain</span> is free — clause answers, boards and all 8 state tabs.
+          Enter your access code to unlock the specialist brains, photo assessment and the full toolset.
+        </p>
+        <input
+          value={code}
+          onChange={e => setCode(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && submit()}
+          placeholder="Access code"
+          autoFocus
+          className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
+          style={{ borderColor: err ? "#dc2626" : "#d1d5db", "--tw-ring-color": GOLD } as React.CSSProperties}
+        />
+        {err && <p className="mt-1.5 text-xs text-red-600">That code didn't work — check with 369 Alliance.</p>}
+        <button
+          type="button"
+          onClick={submit}
+          disabled={busy || !code.trim()}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-50"
+          style={{ background: NAVY }}
+        >
+          {busy ? <Loader2 size={16} className="animate-spin" /> : <Lock size={15} />} Unlock
+        </button>
+        <p className="mt-2 text-center text-[11px] text-gray-400">Don't have a code? Contact 369 Alliance for full access.</p>
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- page
 export default function LegislationBrain() {
   const [status, setStatus] = useState<BrainStatus | null>(null);
@@ -645,6 +726,10 @@ export default function LegislationBrain() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tplOpen, setTplOpen] = useState(false);
   const [boardSel, setBoardSel] = useState<BoardSel | null>(null);
+  const [plan, setPlan] = useState<"free" | "full">(() => (localStorage.getItem(LS_PLAN) === "full" ? "full" : "free"));
+  const [accessCode, setAccessCode] = useState(() => localStorage.getItem(LS_CODE) || "");
+  const [unlockOpen, setUnlockOpen] = useState(false);
+  const isFree = plan === "free";
   const fileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const threadRef = useRef<Msg[]>([]);
@@ -674,6 +759,50 @@ export default function LegislationBrain() {
     if (personaKey) localStorage.setItem(LS_PERSONA, personaKey);
     else localStorage.removeItem(LS_PERSONA);
   }, [personaKey]);
+  useEffect(() => {
+    localStorage.setItem(LS_PLAN, plan);
+  }, [plan]);
+  useEffect(() => {
+    if (accessCode) localStorage.setItem(LS_CODE, accessCode);
+    else localStorage.removeItem(LS_CODE);
+  }, [accessCode]);
+  // Free tier can only use the base AUS Legislation Brain — force it on load.
+  useEffect(() => {
+    if (plan === "free") {
+      setPersonaKey(null);
+      setPanelMode(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan]);
+
+  async function unlock(code: string): Promise<boolean> {
+    try {
+      const r = await fetch("/api/brain/unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.ok) {
+        setAccessCode(code);
+        setPlan("full");
+        setUnlockOpen(false);
+        flash("Full access unlocked — all brains, photos & tools enabled.");
+        return true;
+      }
+    } catch {}
+    return false;
+  }
+
+  const authHeaders = (): Record<string, string> => ({
+    "Content-Type": "application/json",
+    ...(accessCode ? { "x-brain-code": accessCode } : {}),
+  });
+
+  function labelForPersona(k: string | null): string {
+    if (!k) return "AUS Legislation Brain";
+    return status?.personas.find(p => p.key === k)?.name || k;
+  }
 
   // Auto-show a board for the latest answer: first cited clause once citations
   // arrive, or the first clause code seen in the text while still streaming.
@@ -689,7 +818,7 @@ export default function LegislationBrain() {
   useEffect(() => {
     let idx = -1;
     for (let i = thread.length - 1; i >= 0; i--) {
-      if (thread[i].role === "assistant" && !thread[i].error) {
+      if (thread[i].role === "assistant" && !thread[i].error && !thread[i].divider) {
         idx = i;
         break;
       }
@@ -728,14 +857,31 @@ export default function LegislationBrain() {
     [status, personaKey],
   );
   const panelActive = panelMode && panelSel.length >= 2;
+  const legHint = !!activePersona && activePersona.kind === "business" && looksLegislation(input);
+
+  function pushDivider(label: string) {
+    setThread(t => (t.length ? [...t, { role: "assistant", state: stateCode, content: label, divider: true } as Msg] : t));
+  }
 
   function pickPersona(k: string | null) {
+    if (k && isFree) return setUnlockOpen(true);
+    if (k !== personaKey && threadRef.current.length) pushDivider(labelForPersona(k));
     setPersonaKey(k);
     setPanelMode(false);
     setSidebarOpen(false);
+    // State legislation specialists also switch the jurisdiction tab (Opção A spirit).
+    const m = k?.match(/^(nsw|vic|qld|wa|sa|tas|act|nt)-legislation$/);
+    if (m) setStateCode(m[1].toUpperCase());
+  }
+
+  function handleSetPanelMode(b: boolean) {
+    if (b && isFree) return setUnlockOpen(true);
+    if (b && threadRef.current.length) pushDivider(`Multi-Persona panel`);
+    setPanelMode(b);
   }
 
   function togglePanelSel(k: string) {
+    if (isFree) return setUnlockOpen(true);
     setPanelSel(sel => (sel.includes(k) ? sel.filter(x => x !== k) : sel.length >= 4 ? sel : [...sel, k]));
   }
 
@@ -764,32 +910,46 @@ export default function LegislationBrain() {
     return s.replace(/<\/?[a-z]*$/i, "").trimStart();
   }
 
-  async function send(text?: string) {
+  async function send(text?: string, forceBase = false) {
     const question = (text ?? input).trim();
     const image = photo;
     if ((!question && !image) || busy) return;
     if (!status?.ai) return flash("AI is not configured — set ANTHROPIC_API_KEY in .env and restart.");
-    if (panelMode && panelSel.length < 2) return flash("Tick at least 2 brains in the sidebar for a panel consultation.");
 
-    const personaName = panelActive
+    const usingPersona = forceBase ? null : personaKey;
+    const usingPanel = forceBase ? false : panelActive;
+    if (!forceBase && panelMode && panelSel.length < 2) return flash("Tick at least 2 brains in the sidebar for a panel consultation.");
+
+    if (isFree) {
+      const limit = status?.freeLimit ?? FREE_LIMIT;
+      if (todayCount() >= limit) {
+        setUnlockOpen(true);
+        return flash(`Free daily limit reached (${limit}/day). Unlock for unlimited questions.`);
+      }
+    }
+
+    const personaName = usingPanel
       ? `Panel of ${panelSel.length}`
-      : activePersona?.name || "AUS Legislation Brain";
+      : forceBase
+        ? "AUS Legislation Brain"
+        : activePersona?.name || "AUS Legislation Brain";
     const userMsg: Msg = { role: "user", state: stateCode, content: question || "(photo)", image: image || undefined };
     setThread(t => [...t, userMsg]);
     setInput("");
     setPhoto(null);
     setBusy(true);
+    if (isFree) localStorage.setItem(usageKey(), String(todayCount() + 1));
 
     const history = threadRef.current
-      .filter(m => !m.error && !m.image)
+      .filter(m => !m.error && !m.image && !m.divider)
       .slice(-6)
       .map(m => ({ role: m.role, content: m.content }));
     const askBody = {
       state: stateCode,
       question,
       history,
-      persona: !panelActive ? personaKey || undefined : undefined,
-      personas: panelActive ? panelSel : undefined,
+      persona: !usingPanel ? usingPersona || undefined : undefined,
+      personas: usingPanel ? panelSel : undefined,
     };
 
     const patchLast = (patch: Partial<Msg>) =>
@@ -799,7 +959,7 @@ export default function LegislationBrain() {
       if (placeholderUp) setThread(t => t.slice(0, -1));
       const r = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify(body),
       });
       const data = await r.json().catch(() => ({}));
@@ -821,7 +981,7 @@ export default function LegislationBrain() {
 
     try {
       if (image) {
-        await jsonFallback("/api/brain/photo", { state: stateCode, image, question, persona: !panelActive ? personaKey || undefined : undefined }, false);
+        await jsonFallback("/api/brain/photo", { state: stateCode, image, question, persona: !usingPanel ? usingPersona || undefined : undefined }, false);
         return;
       }
 
@@ -831,7 +991,7 @@ export default function LegislationBrain() {
       try {
         const r = await fetch("/api/brain/ask-stream", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders(),
           body: JSON.stringify(askBody),
         });
         if (!r.ok || !r.body) throw new Error(`stream HTTP ${r.status}`);
@@ -886,16 +1046,18 @@ export default function LegislationBrain() {
         }
       }
     } catch (err: any) {
+      const msg = String(err?.message || err);
+      if (/full access|locked/i.test(msg)) setUnlockOpen(true);
       setThread(t => [
         ...t,
-        { role: "assistant", state: stateCode, personaName, content: `The brain could not answer: ${err?.message || err}`, error: true },
+        { role: "assistant", state: stateCode, personaName, content: `The brain could not answer: ${msg}`, error: true },
       ]);
     } finally {
       setBusy(false);
     }
   }
 
-  const lastAssistant = [...thread].reverse().find(m => m.role === "assistant" && !m.error);
+  const lastAssistant = [...thread].reverse().find(m => m.role === "assistant" && !m.error && !m.divider);
 
   return (
     <div className="flex min-h-screen flex-col" style={{ background: "#f4f2ee" }}>
@@ -946,6 +1108,21 @@ export default function LegislationBrain() {
           >
             <LayoutTemplate size={13} /> Templates
           </button>
+          {status && (isFree ? (
+            <button
+              type="button"
+              onClick={() => setUnlockOpen(true)}
+              className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold"
+              style={{ background: GOLD, color: NAVY }}
+              title="Unlock all 29 brains, photos and tools"
+            >
+              <Lock size={12} /> Free · Unlock
+            </button>
+          ) : (
+            <span className="flex items-center gap-1.5 rounded-full border border-white/25 px-2.5 py-1 text-[11px] font-semibold text-white/80">
+              <Sparkles size={12} style={{ color: GOLD }} /> Full access
+            </span>
+          ))}
           <span
             className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
             style={{ background: status?.ai ? "#14532d" : "#7f1d1d" }}
@@ -990,9 +1167,11 @@ export default function LegislationBrain() {
                 personaKey={personaKey}
                 onPick={pickPersona}
                 panelMode={panelMode}
-                setPanelMode={setPanelMode}
+                setPanelMode={handleSetPanelMode}
                 panelSel={panelSel}
                 togglePanelSel={togglePanelSel}
+                locked={isFree}
+                onLocked={() => setUnlockOpen(true)}
               />
             </aside>
             {sidebarOpen && (
@@ -1004,9 +1183,11 @@ export default function LegislationBrain() {
                     personaKey={personaKey}
                     onPick={pickPersona}
                     panelMode={panelMode}
-                    setPanelMode={setPanelMode}
+                    setPanelMode={handleSetPanelMode}
                     panelSel={panelSel}
                     togglePanelSel={togglePanelSel}
+                    locked={isFree}
+                    onLocked={() => setUnlockOpen(true)}
                   />
                 </div>
               </div>
@@ -1104,7 +1285,19 @@ export default function LegislationBrain() {
             </div>
           )}
 
-          {thread.map((m, i) => (
+          {thread.map((m, i) => {
+            if (m.divider) {
+              return (
+                <div key={i} className="my-1 flex items-center justify-center gap-2">
+                  <span className="h-px w-6 bg-gray-300" />
+                  <span className="rounded-full bg-gray-100 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                    Now talking to {m.content}
+                  </span>
+                  <span className="h-px w-6 bg-gray-300" />
+                </div>
+              );
+            }
+            return (
             <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[92%] md:max-w-[80%] ${m.role === "user" ? "text-right" : "text-left"}`}>
                 <p className="mb-0.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
@@ -1164,7 +1357,8 @@ export default function LegislationBrain() {
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
 
           {busy && (
             <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -1203,6 +1397,20 @@ export default function LegislationBrain() {
       {/* Composer */}
       <div className="sticky bottom-0 border-t border-gray-200 bg-white/95 backdrop-blur">
         <div className="mx-auto max-w-5xl px-4 py-3">
+          {legHint && (
+            <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+              <CircleAlert size={14} className="shrink-0" />
+              <span className="min-w-0 flex-1">This looks like a legislation question — {activePersona?.name} answers from general knowledge, not the clause register.</span>
+              <button
+                type="button"
+                onClick={() => { const q = input; pickPersona(null); send(q, true); }}
+                className="rounded-full px-2.5 py-1 font-semibold text-white"
+                style={{ background: "#2563eb" }}
+              >
+                Ask the AUS Legislation Brain
+              </button>
+            </div>
+          )}
           {photo && (
             <div className="mb-2 flex items-center gap-2">
               <img src={photo} alt="to send" className="h-14 w-14 rounded-lg border object-cover" style={{ borderColor: GOLD }} />
@@ -1225,13 +1433,13 @@ export default function LegislationBrain() {
             />
             <button
               type="button"
-              onClick={() => fileRef.current?.click()}
+              onClick={() => (isFree ? setUnlockOpen(true) : fileRef.current?.click())}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-300 text-gray-500 transition-colors hover:border-transparent hover:text-white"
               onMouseEnter={e => (e.currentTarget.style.background = GOLD)}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-              title="Attach a site photo"
+              title={isFree ? "Site photo assessment — unlock full access" : "Attach a site photo"}
             >
-              <Paperclip size={17} />
+              {isFree ? <Lock size={16} /> : <Paperclip size={17} />}
             </button>
             <textarea
               value={input}
@@ -1279,6 +1487,7 @@ export default function LegislationBrain() {
       {tplOpen && status && (
         <TemplateModal templates={status.templates} onClose={() => setTplOpen(false)} onStart={composed => send(composed)} />
       )}
+      {unlockOpen && <UnlockModal onClose={() => setUnlockOpen(false)} onUnlock={unlock} />}
     </div>
   );
 }
