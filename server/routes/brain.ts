@@ -25,6 +25,13 @@ import type { StateProfile } from "../brain/states.js";
 const router = Router();
 const MODEL = "claude-sonnet-5";
 
+// Freemium: the base AUS Legislation Brain is free; personas, multi-persona
+// panel and photo assessment need the access code (mirrors the Field Inspector
+// gate). Free tier is also soft-limited per day, enforced client-side.
+const FULL_CODE = process.env.BRAIN_ACCESS_CODE || "369ALLIANCE";
+const FREE_LIMIT = 5;
+const isFull = (req: Request) => String(req.headers["x-brain-code"] || "") === FULL_CODE;
+
 // Clause "evidence board" PNGs live outside the repo (OneDrive) and are
 // indexed at RUNTIME so replaced/updated images (same clause name) are picked
 // up automatically. Primary root = the permanent "never delete" folder; the
@@ -508,12 +515,22 @@ interface AskConfig {
   system: { type: "text"; text: string; cache_control?: { type: "ephemeral" } }[];
   userText: string;
   maxTokens: number;
+  tools?: any[];
 }
 
 /** Shared prompt assembly for /ask and /ask-stream — persona modes: base | business | legislation | panel. */
 function buildAskConfig(state: StateProfile, question: string, single: Persona | null, panel: Persona[]): AskConfig {
   const shortState = (s: StateProfile) =>
     `SELECTED JURISDICTION: ${s.name} (${s.code}). Regulator: ${s.regulator}. Licensing: ${s.licensing}. Consumer cover: ${s.warranty}.`;
+
+  // The Web Search Brain gets a live web_search tool for current facts.
+  const webTools =
+    single?.key === "web-search"
+      ? [{ type: "web_search_20260209", name: "web_search", max_uses: 8 }]
+      : undefined;
+  const webNote = webTools
+    ? "\n\nYou have a live web_search tool. For anything time-sensitive (recent regulation changes, Building Commission news, current fees/dates, product recalls), search the web first and answer from what you find — cite the sources in the answer. Do not claim to have searched if you did not."
+    : "";
 
   if (panel.length >= 2) {
     const cards = panel.map(personaText).join("\n\n---\n\n");
@@ -541,11 +558,12 @@ function buildAskConfig(state: StateProfile, question: string, single: Persona |
   if (single && single.kind === "business") {
     return {
       system: [
-        { type: "text", text: BUSINESS_RULES, cache_control: { type: "ephemeral" } },
+        { type: "text", text: BUSINESS_RULES + webNote, cache_control: { type: "ephemeral" } },
         { type: "text", text: personaText(single) + "\n\n" + shortState(state) },
       ],
       userText: `QUESTION (${state.name}): ${question}\n\nReply in the OUTPUT FORMAT tags exactly.`,
       maxTokens: 3000,
+      tools: webTools,
     };
   }
   const context = contextBlock(question);
@@ -601,7 +619,16 @@ router.get("/status", (_req: Request, res: Response) => {
     personaSections: PERSONA_SECTIONS,
     personas: PERSONAS,
     templates: TEMPLATES,
+    freeLimit: FREE_LIMIT,
   });
+});
+
+// Freemium unlock — validates the access code. On success the client stores it
+// and sends it as x-brain-code on every request.
+router.post("/unlock", (req: Request, res: Response) => {
+  const code = String(req.body?.code || "").trim();
+  if (code && code === FULL_CODE) return res.json({ ok: true });
+  return res.status(401).json({ ok: false, error: "invalid code" });
 });
 
 // Clause evidence-board PNGs (served from the permanent boards folder;
@@ -728,14 +755,19 @@ router.post("/ask", async (req: Request, res: Response) => {
     .filter(Boolean)
     .slice(0, 4);
 
+  if (!isFull(req) && (single || panel.length >= 2)) {
+    return res.status(403).json({ error: "locked", message: "This brain needs full access — unlock with your access code." });
+  }
+
   const cfg = buildAskConfig(state, question, single, panel);
-  const { system, userText, maxTokens } = cfg;
+  const { system, userText, maxTokens, tools } = cfg;
 
   try {
     const message = await client.messages.create({
       model: MODEL,
       max_tokens: maxTokens,
       system,
+      ...(tools ? { tools } : {}),
       messages: [...historyMessages(req.body?.history), { role: "user", content: userText }],
     });
     const text = message.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
@@ -782,13 +814,18 @@ router.post("/ask-stream", async (req: Request, res: Response) => {
     emit({ t: "error", message: !state ? `unknown state '${stateCode}'` : !question ? "question required" : `unknown persona '${personaKey}'` });
     return res.end();
   }
+  if (!isFull(req) && (single || panel.length >= 2)) {
+    emit({ t: "error", message: "This brain needs full access — unlock with your access code." });
+    return res.end();
+  }
 
-  const { system, userText, maxTokens } = buildAskConfig(state, question, single, panel);
+  const { system, userText, maxTokens, tools } = buildAskConfig(state, question, single, panel);
   try {
     const stream = client.messages.stream({
       model: MODEL,
       max_tokens: maxTokens,
       system,
+      ...(tools ? { tools } : {}),
       messages: [...historyMessages(req.body?.history), { role: "user", content: userText }],
     });
     stream.on("text", (delta: string) => emit({ t: "delta", text: delta }));
@@ -815,6 +852,7 @@ router.post("/ask-stream", async (req: Request, res: Response) => {
 router.post("/photo", async (req: Request, res: Response) => {
   const client = anthropicOrNull();
   if (!client) return res.status(503).json({ error: "ANTHROPIC_API_KEY not configured" });
+  if (!isFull(req)) return res.status(403).json({ error: "locked", message: "Photo assessment needs full access — unlock with your access code." });
 
   const stateCode = String(req.body?.state || "NSW").toUpperCase();
   const state = STATE_BY_CODE[stateCode];
