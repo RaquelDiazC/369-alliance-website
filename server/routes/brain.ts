@@ -25,12 +25,87 @@ import type { StateProfile } from "../brain/states.js";
 const router = Router();
 const MODEL = "claude-sonnet-5";
 
-// Freemium: the base AUS Legislation Brain is free; personas, multi-persona
-// panel and photo assessment need the access code (mirrors the Field Inspector
-// gate). Free tier is also soft-limited per day, enforced client-side.
-const FULL_CODE = process.env.BRAIN_ACCESS_CODE || "369ALLIANCE";
-const FREE_LIMIT = 5;
-const isFull = (req: Request) => String(req.headers["x-brain-code"] || "") === FULL_CODE;
+// Freemium + à-la-carte entitlements. Free = base AUS Legislation Brain only,
+// 3 questions/day (client-enforced), no evidence-board images. Paid items each
+// grant an entitlement: legis (unlimited legislation + boards + photo), brains
+// (28 personas + multi-persona), report (Report Studio), training (Training).
+// An access code maps to one or more entitlements; a device may hold several
+// codes (comma-joined in x-brain-code) and the entitlements are unioned.
+const FREE_LIMIT = 3;
+const ALL_ENTS = ["legis", "brains", "report", "training"];
+
+const DEFAULT_CODES: Record<string, string[]> = {
+  "369ALLIANCE": ALL_ENTS,       // full (back-compat with the earlier single code)
+  "369FULL": ALL_ENTS,           // Complete Package
+  "369LEGIS": ["legis"],         // Legislation Pro
+  "369BRAINS": ["brains"],       // Expert Brains
+  "369REPORT": ["report"],       // Report Studio
+  "369TRAIN": ["training"],      // Training Platform
+};
+
+function loadCodes(): Record<string, string[]> {
+  const raw = process.env.BRAIN_ACCESS_CODES;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        const out: Record<string, string[]> = {};
+        for (const [k, v] of Object.entries(parsed)) {
+          if (Array.isArray(v)) out[k.toUpperCase()] = v.filter(e => ALL_ENTS.includes(String(e)));
+        }
+        if (Object.keys(out).length) return out;
+      }
+    } catch {}
+  }
+  return DEFAULT_CODES;
+}
+const ACCESS_CODES = loadCodes();
+
+// Monthly plan catalog (placeholder AUD prices — override via BRAIN_PLANS env
+// or edit here). Returned to the client for the paywall.
+interface Plan {
+  id: string;
+  entitlement: string;
+  name: string;
+  price: number;
+  blurb: string;
+  features: string[];
+}
+const DEFAULT_PLANS: Plan[] = [
+  { id: "legis", entitlement: "legis", name: "Legislation Pro", price: 29, blurb: "The core tool for inspectors & certifiers.", features: ["Unlimited legislation questions", "Evidence board images on every clause", "Site-photo AI defect assessment", "All 8 state jurisdictions"] },
+  { id: "brains", entitlement: "brains", name: "Expert Brains", price: 19, blurb: "29 specialist advisers.", features: ["RAB / DBP / Planning Portal specialists", "NCC + all state legislation brains", "CEO · CFO · Legal · Sales · Marketing", "Multi-persona consultation panel"] },
+  { id: "report", entitlement: "report", name: "Report Studio", price: 49, blurb: "OC Audit reports in minutes.", features: ["Drawings + photos → defects", "Official OC Audit defect matrix", "Editable findings register", "Export official-format PDF + Excel"] },
+  { id: "training", entitlement: "training", name: "Training Platform", price: 39, blurb: "Learn the NCC clause by clause.", features: ["824 clauses with full text", "Interactive 3D element explorer", "8-step procedures + checklists", "Knowledge checks with progress"] },
+];
+const FULL_PLAN = { id: "full", name: "Complete Package", price: 99, blurb: "Everything — best value.", entitlement: "full" };
+function loadPlans(): { plans: Plan[]; full: typeof FULL_PLAN; currency: string; contact: string; payInfo: string } {
+  let plans = DEFAULT_PLANS;
+  const raw = process.env.BRAIN_PLANS;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) plans = parsed;
+    } catch {}
+  }
+  return {
+    plans,
+    full: { ...FULL_PLAN, price: Number(process.env.BRAIN_FULL_PRICE) || FULL_PLAN.price },
+    currency: process.env.BRAIN_CURRENCY || "AUD",
+    contact: process.env.BRAIN_BUY_CONTACT || "mailto:info@369alliance.com.au",
+    payInfo: process.env.BRAIN_PAY_INFO || "Bank transfer · PayID · BPAY · card (small surcharge). After paying, email your receipt and we send your access code within 1 business day.",
+  };
+}
+
+function entsOf(req: Request): Set<string> {
+  const raw = String(req.headers["x-brain-code"] || "");
+  const set = new Set<string>();
+  for (const c of raw.split(",").map(s => s.trim()).filter(Boolean)) {
+    const ents = ACCESS_CODES[c] || ACCESS_CODES[c.toUpperCase()];
+    if (ents) for (const e of ents) set.add(e);
+  }
+  return set;
+}
+const hasEnt = (req: Request, e: string) => entsOf(req).has(e);
 
 // Clause "evidence board" PNGs live outside the repo (OneDrive) and are
 // indexed at RUNTIME so replaced/updated images (same clause name) are picked
@@ -620,14 +695,17 @@ router.get("/status", (_req: Request, res: Response) => {
     personas: PERSONAS,
     templates: TEMPLATES,
     freeLimit: FREE_LIMIT,
+    ...loadPlans(),
   });
 });
 
-// Freemium unlock — validates the access code. On success the client stores it
-// and sends it as x-brain-code on every request.
+// Unlock — validates an access code and returns the entitlements it grants.
+// The client stores the code + entitlements and sends the codes (comma-joined)
+// as x-brain-code on every request. Multiple codes stack (à-la-carte items).
 router.post("/unlock", (req: Request, res: Response) => {
   const code = String(req.body?.code || "").trim();
-  if (code && code === FULL_CODE) return res.json({ ok: true });
+  const ents = ACCESS_CODES[code] || ACCESS_CODES[code.toUpperCase()];
+  if (ents && ents.length) return res.json({ ok: true, code: code.toUpperCase(), entitlements: ents });
   return res.status(401).json({ ok: false, error: "invalid code" });
 });
 
@@ -755,8 +833,8 @@ router.post("/ask", async (req: Request, res: Response) => {
     .filter(Boolean)
     .slice(0, 4);
 
-  if (!isFull(req) && (single || panel.length >= 2)) {
-    return res.status(403).json({ error: "locked", message: "This brain needs full access — unlock with your access code." });
+  if ((single || panel.length >= 2) && !hasEnt(req, "brains")) {
+    return res.status(403).json({ error: "locked", need: "brains", message: "The Expert Brains are a paid item — unlock with your access code." });
   }
 
   const cfg = buildAskConfig(state, question, single, panel);
@@ -814,8 +892,8 @@ router.post("/ask-stream", async (req: Request, res: Response) => {
     emit({ t: "error", message: !state ? `unknown state '${stateCode}'` : !question ? "question required" : `unknown persona '${personaKey}'` });
     return res.end();
   }
-  if (!isFull(req) && (single || panel.length >= 2)) {
-    emit({ t: "error", message: "This brain needs full access — unlock with your access code." });
+  if ((single || panel.length >= 2) && !hasEnt(req, "brains")) {
+    emit({ t: "error", need: "brains", message: "The Expert Brains are a paid item — unlock with your access code." });
     return res.end();
   }
 
@@ -852,7 +930,7 @@ router.post("/ask-stream", async (req: Request, res: Response) => {
 router.post("/photo", async (req: Request, res: Response) => {
   const client = anthropicOrNull();
   if (!client) return res.status(503).json({ error: "ANTHROPIC_API_KEY not configured" });
-  if (!isFull(req)) return res.status(403).json({ error: "locked", message: "Photo assessment needs full access — unlock with your access code." });
+  if (!hasEnt(req, "legis")) return res.status(403).json({ error: "locked", need: "legis", message: "Site-photo assessment is part of Legislation Pro — unlock with your access code." });
 
   const stateCode = String(req.body?.state || "NSW").toUpperCase();
   const state = STATE_BY_CODE[stateCode];

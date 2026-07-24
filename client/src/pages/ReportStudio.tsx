@@ -17,7 +17,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { Logo369 } from "@/components/Logo369";
-import FullAccessGate, { isFullAccess } from "@/components/FullAccessGate";
+import FullAccessGate, { hasEntitlement } from "@/components/FullAccessGate";
 import {
   ArrowLeft,
   CircleAlert,
@@ -380,7 +380,7 @@ export default function ReportStudio() {
   const inputCls = "w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm outline-none focus:ring-2";
   const ringStyle = { "--tw-ring-color": GOLD } as React.CSSProperties;
 
-  if (!isFullAccess()) return <FullAccessGate title="Report Studio">{null}</FullAccessGate>;
+  if (!hasEntitlement("report")) return <FullAccessGate title="Report Studio" need="report">{null}</FullAccessGate>;
 
   return (
     <div className="min-h-screen pb-16" style={{ background: "#f4f2ee" }}>
