@@ -773,7 +773,7 @@ export default function LegislationBrain() {
 
     const personaName = panelActive
       ? `Panel of ${panelSel.length}`
-      : activePersona?.name || "Expert Brain";
+      : activePersona?.name || "AUS Legislation Brain";
     const userMsg: Msg = { role: "user", state: stateCode, content: question || "(photo)", image: image || undefined };
     setThread(t => [...t, userMsg]);
     setInput("");
@@ -1108,7 +1108,7 @@ export default function LegislationBrain() {
             <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[92%] md:max-w-[80%] ${m.role === "user" ? "text-right" : "text-left"}`}>
                 <p className="mb-0.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                  {m.role === "user" ? `You · ${m.state}` : `${m.personaName || "Expert Brain"} · ${m.state}`}
+                  {m.role === "user" ? `You · ${m.state}` : `${m.personaName || "AUS Legislation Brain"} · ${m.state}`}
                 </p>
                 {m.role === "user" ? (
                   <div className="inline-block rounded-2xl rounded-tr-sm px-4 py-2.5 text-left text-sm text-white shadow" style={{ background: NAVY }}>
