@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { Logo369 } from "@/components/Logo369";
-import FullAccessGate, { isFullAccess } from "@/components/FullAccessGate";
+import FullAccessGate, { hasEntitlement } from "@/components/FullAccessGate";
 import { TRAINING_MODULES, TrainingModule } from "@/lib/trainingContent";
 import {
   ArrowLeft,
@@ -252,7 +252,7 @@ export default function TrainingPlatform() {
     </div>
   );
 
-  if (!isFullAccess()) return <FullAccessGate title="NCC Training Platform">{null}</FullAccessGate>;
+  if (!hasEntitlement("training")) return <FullAccessGate title="NCC Training Platform" need="training">{null}</FullAccessGate>;
 
   return (
     <div className="flex min-h-screen flex-col text-gray-200" style={{ background: NAVY }}>

@@ -23,6 +23,7 @@ import {
   Lock,
   Menu,
   Paperclip,
+  PlayCircle,
   Scale,
   ScrollText,
   Send,
@@ -83,6 +84,19 @@ interface BrainStatus {
   personas: Persona[];
   templates: BrainTemplate[];
   freeLimit?: number;
+  plans?: Plan[];
+  full?: { id: string; name: string; price: number; blurb: string };
+  currency?: string;
+  contact?: string;
+  payInfo?: string;
+}
+interface Plan {
+  id: string;
+  entitlement: string;
+  name: string;
+  price: number;
+  blurb: string;
+  features: string[];
 }
 interface Citation {
   ref: string;
@@ -130,9 +144,27 @@ interface Msg {
 const LS_THREAD = "brain369_thread";
 const LS_STATE = "brain369_state";
 const LS_PERSONA = "brain369_persona";
-const LS_PLAN = "brain369_plan";
-const LS_CODE = "brain369_code";
-const FREE_LIMIT = 5;
+const LS_ENTS = "brain369_ents";
+const LS_CODES = "brain369_codes";
+const FREE_LIMIT = 3;
+const ALL_ENTS = ["legis", "brains", "report", "training"];
+
+function loadEnts(): string[] {
+  try {
+    const e = JSON.parse(localStorage.getItem(LS_ENTS) || "[]");
+    if (Array.isArray(e) && e.length) return e.filter(x => ALL_ENTS.includes(x));
+  } catch {}
+  if (localStorage.getItem("brain369_plan") === "full") return [...ALL_ENTS]; // migrate old binary plan
+  return [];
+}
+function loadCodes(): string[] {
+  try {
+    const c = JSON.parse(localStorage.getItem(LS_CODES) || "[]");
+    if (Array.isArray(c)) return c.filter(x => typeof x === "string");
+  } catch {}
+  const legacy = localStorage.getItem("brain369_code");
+  return legacy ? [legacy] : [];
+}
 
 function loadThread(): Msg[] {
   try {
@@ -213,31 +245,6 @@ async function downscaleImage(file: File, maxDim = 1400): Promise<string> {
 }
 
 // ---------------------------------------------------------------- sub-components
-function BoardImg({ src, label }: { src: string; label: string }) {
-  const [failed, setFailed] = useState(false);
-  const [zoom, setZoom] = useState(false);
-  if (failed) return null;
-  return (
-    <div className="mt-2">
-      <p className="mb-1 text-[10px] font-bold uppercase tracking-wide" style={{ color: GOLD }}>{label}</p>
-      <img
-        src={src}
-        alt={label}
-        loading="lazy"
-        onError={() => setFailed(true)}
-        onClick={() => setZoom(z => !z)}
-        className="w-full cursor-zoom-in rounded-lg border border-gray-200"
-        title="Click to enlarge"
-      />
-      {zoom && (
-        <div className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/80 p-4" onClick={() => setZoom(false)}>
-          <img src={src} alt={label} className="max-h-full max-w-full rounded-lg" />
-        </div>
-      )}
-    </div>
-  );
-}
-
 function CitationCard({ c, stateCode, onView }: { c: Citation; stateCode: string; onView?: () => void }) {
   const [open, setOpen] = useState(false);
   const meta = KIND_META[c.kind] || KIND_META.other;
@@ -285,9 +292,10 @@ function CitationCard({ c, stateCode, onView }: { c: Citation; stateCode: string
             </p>
           )}
           {typeof c.page === "number" && <p className="mt-1 text-gray-400">NCC 2022 PDF p.{c.page}</p>}
-          {c.board && <BoardImg src={`/api/brain/board/${encodeURIComponent(c.ref)}`} label={`Evidence board — ${c.ref}`} />}
-          {c.stateBoard && (
-            <BoardImg src={`/api/brain/board/${stateCode}/${encodeURIComponent(c.ref)}`} label={`${stateCode} variation board — ${c.ref}`} />
+          {(c.board || c.stateBoard) && (
+            <p className="mt-1.5 text-[11px] font-semibold" style={{ color: GOLD }}>
+              📌 Evidence board on the right — click this clause to view it.
+            </p>
           )}
           {!!c.variations?.length && (
             <p className="mt-2 text-[11px] text-gray-500">
@@ -570,7 +578,6 @@ interface BoardSel {
 /** Right-hand evidence-board viewer — shows the board for the clause under
  *  discussion; chips switch between all boards cited in the latest answer. */
 function BoardViewer({ msg, sel, onSel }: { msg?: Msg; sel: BoardSel | null; onSel: (s: BoardSel) => void }) {
-  const [zoom, setZoom] = useState(false);
   const [failed, setFailed] = useState(false);
   const cites = (msg?.citations || []).filter(c => c.board || c.stateBoard);
   const src = sel
@@ -579,6 +586,7 @@ function BoardViewer({ msg, sel, onSel }: { msg?: Msg; sel: BoardSel | null; onS
       : `/api/brain/board/${encodeURIComponent(sel.ref)}`
     : null;
   const activeCite = sel ? msg?.citations?.find(c => c.ref === sel.ref) : undefined;
+  const isClause = !!sel && /^[A-Z]{1,2}\d{1,3}[A-Z]\d{1,3}$/.test(sel.ref);
   useEffect(() => {
     setFailed(false);
   }, [src]);
@@ -631,15 +639,30 @@ function BoardViewer({ msg, sel, onSel }: { msg?: Msg; sel: BoardSel | null; onS
       )}
       <div className="flex-1 overflow-y-auto p-2">
         {src && !failed ? (
-          <img
-            key={src}
-            src={src}
-            alt={sel?.ref}
-            onError={() => setFailed(true)}
-            onClick={() => setZoom(true)}
-            className="w-full cursor-zoom-in rounded-lg border border-gray-100"
-            title="Click to enlarge"
-          />
+          <>
+            {/* Board image — view only: no zoom, no right-click, no drag (course material). */}
+            <div className="relative select-none">
+              <img
+                key={src}
+                src={src}
+                alt={sel?.ref}
+                onError={() => setFailed(true)}
+                draggable={false}
+                onContextMenu={e => e.preventDefault()}
+                className="pointer-events-none w-full select-none rounded-lg border border-gray-100"
+              />
+            </div>
+            {isClause && (
+              <Link
+                href={`/training/${sel!.ref}`}
+                className="mt-2 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-bold text-white"
+                style={{ background: NAVY }}
+                title="Open the interactive NCC course for this clause"
+              >
+                <PlayCircle size={16} style={{ color: GOLD }} /> Course — learn {sel!.ref}
+              </Link>
+            )}
+          </>
         ) : (
           <div className="flex h-full min-h-48 items-center justify-center rounded-lg border border-dashed border-gray-300 p-6 text-center text-xs text-gray-500">
             {failed
@@ -648,64 +671,181 @@ function BoardViewer({ msg, sel, onSel }: { msg?: Msg; sel: BoardSel | null; onS
           </div>
         )}
       </div>
-      {zoom && src && (
-        <div className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/85 p-4" onClick={() => setZoom(false)}>
-          <img src={src} alt={sel?.ref} className="max-h-full max-w-full rounded-lg" />
-        </div>
-      )}
     </div>
   );
 }
 
-function UnlockModal({ onClose, onUnlock }: { onClose: () => void; onUnlock: (code: string) => Promise<boolean> }) {
+const REASON_TITLE: Record<string, string> = {
+  limit: "You've used today's 3 free questions",
+  brains: "The Expert Brains are a paid item",
+  legis: "Evidence boards & photos are a paid item",
+  report: "Report Studio is a paid item",
+  training: "The Training Platform is a paid item",
+};
+
+function PaywallModal({
+  status, ents, reason, onClose, onUnlock,
+}: {
+  status: BrainStatus;
+  ents: string[];
+  reason: string | null;
+  onClose: () => void;
+  onUnlock: (code: string) => Promise<boolean>;
+}) {
+  const plans = status.plans || [];
+  const full = status.full;
+  const currency = status.currency || "AUD";
+  const [sel, setSel] = useState<string[]>(reason && reason !== "limit" ? [reason] : []);
+  const [full0, setFull0] = useState(false);
   const [code, setCode] = useState("");
   const [err, setErr] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const owned = (id: string) => ents.includes(id);
+  const toggle = (id: string) => {
+    setFull0(false);
+    setSel(s => (s.includes(id) ? s.filter(x => x !== id) : [...s, id]));
+  };
+  const selTotal = plans.filter(p => sel.includes(p.entitlement)).reduce((n, p) => n + p.price, 0);
+  const total = full0 ? full?.price || 0 : selTotal;
+  const chosenNames = full0 ? [full?.name || "Complete Package"] : plans.filter(p => sel.includes(p.entitlement)).map(p => p.name);
+
   async function submit() {
     if (!code.trim() || busy) return;
     setBusy(true);
     setErr(false);
     const ok = await onUnlock(code.trim());
     if (!ok) setErr(true);
+    else setCode("");
     setBusy(false);
   }
+  function buy() {
+    if (!chosenNames.length) return;
+    const body = `Hi 369 Alliance, I'd like to buy: ${chosenNames.join(", ")} — ${currency} ${total}/month.`;
+    const c = status.contact || "mailto:info@369alliance.com.au";
+    const url = c.startsWith("mailto:")
+      ? `${c}?subject=${encodeURIComponent("369 Alliance — plan purchase")}&body=${encodeURIComponent(body)}`
+      : `${c}${c.includes("?") ? "&" : "?"}text=${encodeURIComponent(body)}`;
+    window.open(url, "_blank");
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
-        <div className="mb-3 flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: NAVY }}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4" onClick={onClose}>
+      <div className="my-6 w-full max-w-3xl rounded-2xl bg-white shadow-xl" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center gap-3 rounded-t-2xl px-5 py-4" style={{ background: NAVY }}>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "rgba(255,255,255,0.1)" }}>
             <Sparkles size={20} style={{ color: GOLD }} />
           </div>
-          <div>
-            <p className="text-base font-bold" style={{ color: NAVY }}>Unlock full access</p>
-            <p className="text-xs text-gray-500">All 29 brains · site photos · multi-persona · Report Studio · Training</p>
+          <div className="min-w-0">
+            <p className="truncate text-base font-bold text-white">{reason ? REASON_TITLE[reason] || "Unlock 369 Alliance" : "Unlock 369 Alliance"}</p>
+            <p className="text-xs text-white/60">Pick one item, several, or the complete package — monthly.</p>
           </div>
-          <button type="button" onClick={onClose} className="ml-auto rounded-full bg-gray-100 p-1.5 text-gray-500 hover:bg-gray-200"><X size={15} /></button>
+          <button type="button" onClick={onClose} className="ml-auto rounded-full bg-white/10 p-1.5 text-white/80 hover:bg-white/20"><X size={16} /></button>
         </div>
-        <p className="mb-3 text-sm text-gray-600">
-          The <span className="font-semibold" style={{ color: NAVY }}>AUS Legislation Brain</span> is free — clause answers, boards and all 8 state tabs.
-          Enter your access code to unlock the specialist brains, photo assessment and the full toolset.
-        </p>
-        <input
-          value={code}
-          onChange={e => setCode(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && submit()}
-          placeholder="Access code"
-          autoFocus
-          className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
-          style={{ borderColor: err ? "#dc2626" : "#d1d5db", "--tw-ring-color": GOLD } as React.CSSProperties}
-        />
-        {err && <p className="mt-1.5 text-xs text-red-600">That code didn't work — check with 369 Alliance.</p>}
-        <button
-          type="button"
-          onClick={submit}
-          disabled={busy || !code.trim()}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-50"
-          style={{ background: NAVY }}
-        >
-          {busy ? <Loader2 size={16} className="animate-spin" /> : <Lock size={15} />} Unlock
-        </button>
-        <p className="mt-2 text-center text-[11px] text-gray-400">Don't have a code? Contact 369 Alliance for full access.</p>
+
+        <div className="grid gap-5 p-5 md:grid-cols-2">
+          {/* Left — teaser + what you get */}
+          <div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest" style={{ color: GOLD }}>What the paid plan looks like</p>
+            <div className="relative overflow-hidden rounded-lg border border-gray-200 select-none">
+              <img
+                src="/api/brain/board/F5D2"
+                alt="example evidence board"
+                draggable={false}
+                onContextMenu={e => e.preventDefault()}
+                className="pointer-events-none w-full select-none"
+              />
+              <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-semibold text-white">example · F5D2</span>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-gray-600">
+              Every answer shows the <span className="font-semibold" style={{ color: NAVY }}>evidence board</span> for each clause on the right,
+              plus a <span className="font-semibold" style={{ color: NAVY }}>Course</span> button that opens the NCC lesson for that clause — the same
+              boards power the certified NCC course. Free users get the written answers; the boards, photos and tools are paid.
+            </p>
+          </div>
+
+          {/* Right — plans */}
+          <div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest" style={{ color: GOLD }}>Choose your plan</p>
+            <div className="space-y-2">
+              {plans.map(p => {
+                const on = full0 || sel.includes(p.entitlement);
+                const have = owned(p.entitlement);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    disabled={have}
+                    onClick={() => toggle(p.entitlement)}
+                    className="flex w-full items-start gap-2 rounded-lg border p-2.5 text-left disabled:opacity-60"
+                    style={{ borderColor: on ? GOLD : "#e5e7eb", background: on ? "#faf7f2" : "#fff" }}
+                  >
+                    <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold text-white" style={on ? { background: GOLD, borderColor: GOLD } : { borderColor: "#cbd5e1" }}>{on ? "✓" : ""}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold" style={{ color: NAVY }}>{p.name}</span>
+                        {have && <span className="rounded bg-green-100 px-1 text-[9px] font-bold text-green-700">OWNED</span>}
+                      </span>
+                      <span className="block text-[11px] text-gray-500">{p.blurb}</span>
+                    </span>
+                    <span className="shrink-0 text-right text-sm font-bold" style={{ color: NAVY }}>{currency} {p.price}<span className="block text-[9px] font-normal text-gray-400">/month</span></span>
+                  </button>
+                );
+              })}
+              {full && (
+                <button
+                  type="button"
+                  onClick={() => { setFull0(f => !f); setSel([]); }}
+                  className="flex w-full items-center gap-2 rounded-lg border-2 p-2.5 text-left"
+                  style={{ borderColor: full0 ? NAVY : `${NAVY}66`, background: full0 ? "#eef0f6" : "#fff" }}
+                >
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold text-white" style={full0 ? { background: NAVY, borderColor: NAVY } : { borderColor: "#cbd5e1" }}>{full0 ? "✓" : ""}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="text-sm font-bold" style={{ color: NAVY }}>{full.name} <span className="rounded px-1 text-[9px] font-bold text-white" style={{ background: GOLD }}>BEST VALUE</span></span>
+                    <span className="block text-[11px] text-gray-500">{full.blurb}</span>
+                  </span>
+                  <span className="shrink-0 text-right text-sm font-bold" style={{ color: NAVY }}>{currency} {full.price}<span className="block text-[9px] font-normal text-gray-400">/month</span></span>
+                </button>
+              )}
+            </div>
+
+            <div className="mt-3 flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+              <span className="text-xs text-gray-500">Total</span>
+              <span className="text-lg font-bold" style={{ color: NAVY }}>{currency} {total}<span className="text-xs font-normal text-gray-400">/month</span></span>
+            </div>
+            <button
+              type="button"
+              onClick={buy}
+              disabled={!chosenNames.length}
+              className="mt-2 w-full rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-40"
+              style={{ background: NAVY }}
+            >
+              Buy {chosenNames.length ? `(${chosenNames.length === 1 ? chosenNames[0] : chosenNames.length + " items"})` : ""}
+            </button>
+            <p className="mt-1.5 text-[11px] leading-snug text-gray-500">{status.payInfo}</p>
+          </div>
+        </div>
+
+        {/* Footer — already paid */}
+        <div className="rounded-b-2xl border-t border-gray-100 bg-gray-50 px-5 py-3">
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-500">Already paid? Enter your access code(s)</p>
+          <div className="flex gap-2">
+            <input
+              value={code}
+              onChange={e => setCode(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && submit()}
+              placeholder="Access code"
+              className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2"
+              style={{ borderColor: err ? "#dc2626" : "#d1d5db", "--tw-ring-color": GOLD } as React.CSSProperties}
+            />
+            <button type="button" onClick={submit} disabled={busy || !code.trim()} className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-bold text-white disabled:opacity-50" style={{ background: NAVY }}>
+              {busy ? <Loader2 size={15} className="animate-spin" /> : <Lock size={14} />} Unlock
+            </button>
+          </div>
+          {err && <p className="mt-1 text-xs text-red-600">That code didn't work — check with 369 Alliance.</p>}
+          {ents.length > 0 && <p className="mt-1 text-[11px] text-green-700">Active: {ents.join(", ")}.</p>}
+        </div>
       </div>
     </div>
   );
@@ -726,10 +866,12 @@ export default function LegislationBrain() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tplOpen, setTplOpen] = useState(false);
   const [boardSel, setBoardSel] = useState<BoardSel | null>(null);
-  const [plan, setPlan] = useState<"free" | "full">(() => (localStorage.getItem(LS_PLAN) === "full" ? "full" : "free"));
-  const [accessCode, setAccessCode] = useState(() => localStorage.getItem(LS_CODE) || "");
+  const [ents, setEnts] = useState<string[]>(loadEnts);
+  const [codes, setCodes] = useState<string[]>(loadCodes);
   const [unlockOpen, setUnlockOpen] = useState(false);
-  const isFree = plan === "free";
+  const [payReason, setPayReason] = useState<string | null>(null);
+  const hasEnt = (e: string) => ents.includes(e);
+  const openPaywall = (reason: string | null = null) => { setPayReason(reason); setUnlockOpen(true); };
   const fileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const threadRef = useRef<Msg[]>([]);
@@ -760,20 +902,19 @@ export default function LegislationBrain() {
     else localStorage.removeItem(LS_PERSONA);
   }, [personaKey]);
   useEffect(() => {
-    localStorage.setItem(LS_PLAN, plan);
-  }, [plan]);
+    localStorage.setItem(LS_ENTS, JSON.stringify(ents));
+  }, [ents]);
   useEffect(() => {
-    if (accessCode) localStorage.setItem(LS_CODE, accessCode);
-    else localStorage.removeItem(LS_CODE);
-  }, [accessCode]);
-  // Free tier can only use the base AUS Legislation Brain — force it on load.
+    localStorage.setItem(LS_CODES, JSON.stringify(codes));
+  }, [codes]);
+  // Without the Expert Brains item, only the base legislation brain is usable.
   useEffect(() => {
-    if (plan === "free") {
+    if (!ents.includes("brains")) {
       setPersonaKey(null);
       setPanelMode(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan]);
+  }, [ents]);
 
   async function unlock(code: string): Promise<boolean> {
     try {
@@ -783,11 +924,10 @@ export default function LegislationBrain() {
         body: JSON.stringify({ code }),
       });
       const d = await r.json().catch(() => ({}));
-      if (r.ok && d.ok) {
-        setAccessCode(code);
-        setPlan("full");
-        setUnlockOpen(false);
-        flash("Full access unlocked — all brains, photos & tools enabled.");
+      if (r.ok && d.ok && Array.isArray(d.entitlements)) {
+        setEnts(prev => Array.from(new Set([...prev, ...d.entitlements])));
+        setCodes(prev => Array.from(new Set([...prev, String(d.code || code).toUpperCase()])));
+        flash("Unlocked: " + d.entitlements.join(", "));
         return true;
       }
     } catch {}
@@ -796,7 +936,7 @@ export default function LegislationBrain() {
 
   const authHeaders = (): Record<string, string> => ({
     "Content-Type": "application/json",
-    ...(accessCode ? { "x-brain-code": accessCode } : {}),
+    ...(codes.length ? { "x-brain-code": codes.join(",") } : {}),
   });
 
   function labelForPersona(k: string | null): string {
@@ -864,7 +1004,7 @@ export default function LegislationBrain() {
   }
 
   function pickPersona(k: string | null) {
-    if (k && isFree) return setUnlockOpen(true);
+    if (k && !hasEnt("brains")) return openPaywall("brains");
     if (k !== personaKey && threadRef.current.length) pushDivider(labelForPersona(k));
     setPersonaKey(k);
     setPanelMode(false);
@@ -875,13 +1015,13 @@ export default function LegislationBrain() {
   }
 
   function handleSetPanelMode(b: boolean) {
-    if (b && isFree) return setUnlockOpen(true);
+    if (b && !hasEnt("brains")) return openPaywall("brains");
     if (b && threadRef.current.length) pushDivider(`Multi-Persona panel`);
     setPanelMode(b);
   }
 
   function togglePanelSel(k: string) {
-    if (isFree) return setUnlockOpen(true);
+    if (!hasEnt("brains")) return openPaywall("brains");
     setPanelSel(sel => (sel.includes(k) ? sel.filter(x => x !== k) : sel.length >= 4 ? sel : [...sel, k]));
   }
 
@@ -920,11 +1060,11 @@ export default function LegislationBrain() {
     const usingPanel = forceBase ? false : panelActive;
     if (!forceBase && panelMode && panelSel.length < 2) return flash("Tick at least 2 brains in the sidebar for a panel consultation.");
 
-    if (isFree) {
+    if (!hasEnt("legis")) {
       const limit = status?.freeLimit ?? FREE_LIMIT;
       if (todayCount() >= limit) {
-        setUnlockOpen(true);
-        return flash(`Free daily limit reached (${limit}/day). Unlock for unlimited questions.`);
+        openPaywall("limit");
+        return;
       }
     }
 
@@ -938,7 +1078,7 @@ export default function LegislationBrain() {
     setInput("");
     setPhoto(null);
     setBusy(true);
-    if (isFree) localStorage.setItem(usageKey(), String(todayCount() + 1));
+    if (!hasEnt("legis")) localStorage.setItem(usageKey(), String(todayCount() + 1));
 
     const history = threadRef.current
       .filter(m => !m.error && !m.image && !m.divider)
@@ -1047,7 +1187,7 @@ export default function LegislationBrain() {
       }
     } catch (err: any) {
       const msg = String(err?.message || err);
-      if (/full access|locked/i.test(msg)) setUnlockOpen(true);
+      if (/full access|locked|paid item/i.test(msg)) openPaywall(/brains/i.test(msg) ? "brains" : /photo|legis/i.test(msg) ? "legis" : null);
       setThread(t => [
         ...t,
         { role: "assistant", state: stateCode, personaName, content: `The brain could not answer: ${msg}`, error: true },
@@ -1108,20 +1248,30 @@ export default function LegislationBrain() {
           >
             <LayoutTemplate size={13} /> Templates
           </button>
-          {status && (isFree ? (
+          {status && (ents.length === 0 ? (
             <button
               type="button"
-              onClick={() => setUnlockOpen(true)}
+              onClick={() => openPaywall(null)}
               className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold"
               style={{ background: GOLD, color: NAVY }}
-              title="Unlock all 29 brains, photos and tools"
+              title="See plans & unlock"
             >
-              <Lock size={12} /> Free · Unlock
+              <Lock size={12} /> Free · Plans
             </button>
-          ) : (
+          ) : ents.length >= 4 ? (
             <span className="flex items-center gap-1.5 rounded-full border border-white/25 px-2.5 py-1 text-[11px] font-semibold text-white/80">
               <Sparkles size={12} style={{ color: GOLD }} /> Full access
             </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => openPaywall(null)}
+              className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold"
+              style={{ background: GOLD, color: NAVY }}
+              title="Add more items"
+            >
+              <Sparkles size={12} /> {ents.length}/4 items
+            </button>
           ))}
           <span
             className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
@@ -1170,8 +1320,8 @@ export default function LegislationBrain() {
                 setPanelMode={handleSetPanelMode}
                 panelSel={panelSel}
                 togglePanelSel={togglePanelSel}
-                locked={isFree}
-                onLocked={() => setUnlockOpen(true)}
+                locked={!hasEnt("brains")}
+                onLocked={() => openPaywall("brains")}
               />
             </aside>
             {sidebarOpen && (
@@ -1186,8 +1336,8 @@ export default function LegislationBrain() {
                     setPanelMode={handleSetPanelMode}
                     panelSel={panelSel}
                     togglePanelSel={togglePanelSel}
-                    locked={isFree}
-                    onLocked={() => setUnlockOpen(true)}
+                    locked={!hasEnt("brains")}
+                    onLocked={() => openPaywall("brains")}
                   />
                 </div>
               </div>
@@ -1325,7 +1475,8 @@ export default function LegislationBrain() {
                         const href = a?.getAttribute("href") || "";
                         if (href.startsWith("#board-")) {
                           e.preventDefault();
-                          pickBoard({ ref: href.slice(7), state: null });
+                          if (!hasEnt("legis")) openPaywall("legis");
+                          else pickBoard({ ref: href.slice(7), state: null });
                         }
                       }}
                     >
@@ -1346,7 +1497,7 @@ export default function LegislationBrain() {
                             stateCode={m.state}
                             onView={
                               c.board || c.stateBoard
-                                ? () => pickBoard({ ref: c.ref, state: c.board ? null : m.state })
+                                ? () => (hasEnt("legis") ? pickBoard({ ref: c.ref, state: c.board ? null : m.state }) : openPaywall("legis"))
                                 : undefined
                             }
                           />
@@ -1385,7 +1536,7 @@ export default function LegislationBrain() {
           <div ref={bottomRef} />
         </div>
         </main>
-        {status && status.counts.boards > 0 && (
+        {status && status.counts.boards > 0 && hasEnt("legis") && (
           <aside className="sticky top-[104px] hidden w-[30rem] shrink-0 py-3 pr-4 xl:block">
             <div style={{ height: "calc(100vh - 130px)" }}>
               <BoardViewer msg={lastAssistant} sel={boardSel} onSel={pickBoard} />
@@ -1433,13 +1584,13 @@ export default function LegislationBrain() {
             />
             <button
               type="button"
-              onClick={() => (isFree ? setUnlockOpen(true) : fileRef.current?.click())}
+              onClick={() => (!hasEnt("legis") ? openPaywall("legis") : fileRef.current?.click())}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-300 text-gray-500 transition-colors hover:border-transparent hover:text-white"
               onMouseEnter={e => (e.currentTarget.style.background = GOLD)}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-              title={isFree ? "Site photo assessment — unlock full access" : "Attach a site photo"}
+              title={!hasEnt("legis") ? "Site-photo assessment — part of Legislation Pro" : "Attach a site photo"}
             >
-              {isFree ? <Lock size={16} /> : <Paperclip size={17} />}
+              {!hasEnt("legis") ? <Lock size={16} /> : <Paperclip size={17} />}
             </button>
             <textarea
               value={input}
@@ -1487,7 +1638,9 @@ export default function LegislationBrain() {
       {tplOpen && status && (
         <TemplateModal templates={status.templates} onClose={() => setTplOpen(false)} onStart={composed => send(composed)} />
       )}
-      {unlockOpen && <UnlockModal onClose={() => setUnlockOpen(false)} onUnlock={unlock} />}
+      {unlockOpen && status && (
+        <PaywallModal status={status} ents={ents} reason={payReason} onClose={() => setUnlockOpen(false)} onUnlock={unlock} />
+      )}
     </div>
   );
 }
