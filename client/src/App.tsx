@@ -29,19 +29,27 @@ import WebsiteServices from "./pages/website/WebsiteServices";
 import WebsiteAbout from "./pages/website/WebsiteAbout";
 import WebsiteContact from "./pages/website/WebsiteContact";
 
+// Build-time site split — keeps the corporate site and the product platform
+// as two separate deployments from one codebase (honours the corporate ≠
+// product separation constraint):
+//   VITE_SITE=platform → product-only site (Brain, Courses, DBP). Root opens
+//     the product hub; the corporate marketing pages are not mounted at all.
+//   unset (default)    → the corporate site, exactly as before (zero change).
+const PLATFORM_ONLY = import.meta.env.VITE_SITE === "platform";
+
 function Router() {
   return (
     <Switch>
-      {/* Marketing website – entry point */}
-      <Route path="/website" component={WebsiteHome} />
-      <Route path="/website/for/:role" component={WebsiteRolePage} />
-      <Route path="/website/services" component={WebsiteServices} />
-      <Route path="/website/services/:pillar" component={WebsiteServices} />
-      <Route path="/website/about" component={WebsiteAbout} />
-      <Route path="/website/contact" component={WebsiteContact} />
+      {/* Marketing website – only mounted on the corporate build */}
+      {!PLATFORM_ONLY && <Route path="/website" component={WebsiteHome} />}
+      {!PLATFORM_ONLY && <Route path="/website/for/:role" component={WebsiteRolePage} />}
+      {!PLATFORM_ONLY && <Route path="/website/services" component={WebsiteServices} />}
+      {!PLATFORM_ONLY && <Route path="/website/services/:pillar" component={WebsiteServices} />}
+      {!PLATFORM_ONLY && <Route path="/website/about" component={WebsiteAbout} />}
+      {!PLATFORM_ONLY && <Route path="/website/contact" component={WebsiteContact} />}
 
-      {/* Internal system */}
-      <Route path="/" component={WebsiteHome} />
+      {/* Front door: corporate → marketing home; platform → product hub */}
+      <Route path="/" component={PLATFORM_ONLY ? PlatformHome : WebsiteHome} />
       {/* Product-only front door — courses, Brain and DBP drawings audit */}
       <Route path="/home" component={PlatformHome} />
       <Route path="/system" component={LandingPage} />
