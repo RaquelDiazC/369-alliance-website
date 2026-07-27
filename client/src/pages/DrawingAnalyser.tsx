@@ -4,6 +4,8 @@
  * Brand: Navy #1a1a2e · Gold #A68A64 · Amber #C07040
  */
 import { useState, useCallback } from "react";
+import { Link } from "wouter";
+import { House as HomeIcon } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -882,9 +884,19 @@ export default function DrawingAnalyser() {
       <div style={S.page}>
         {/* Header */}
         <div style={S.header}>
-          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-            <div style={{ fontSize: 22, fontWeight: 800 }}>Drawing Compliance Analyser</div>
-            <div style={{ fontSize: 13, color: C.goldLight, marginTop: 4 }}>AI-powered NCC & DBP Act compliance checking</div>
+          <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", gap: 14 }}>
+            <Link
+              href="/home"
+              title="Home — 369 Alliance platform"
+              aria-label="Go to home"
+              style={{ display: "flex", padding: 6, borderRadius: 8, color: C.goldLight, background: "rgba(255,255,255,.08)" }}
+            >
+              <HomeIcon size={18} />
+            </Link>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 800 }}>Drawing Compliance Analyser</div>
+              <div style={{ fontSize: 13, color: C.goldLight, marginTop: 4 }}>AI-powered NCC &amp; DBP Act compliance checking</div>
+            </div>
           </div>
         </div>
 
