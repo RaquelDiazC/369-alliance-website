@@ -17,6 +17,7 @@ import {
   Camera,
   ChevronDown,
   CircleAlert,
+  History as HistoryIcon,
   Landmark,
   LayoutTemplate,
   Loader2,
@@ -165,6 +166,25 @@ function loadCodes(): string[] {
   const legacy = localStorage.getItem("brain369_code");
   return legacy ? [legacy] : [];
 }
+
+const LS_HISTORY = "brain369_history";
+interface Conversation {
+  id: string;
+  ts: number;
+  title: string;
+  msgs: Msg[];
+}
+function loadHistory(): Conversation[] {
+  try {
+    const h = JSON.parse(localStorage.getItem(LS_HISTORY) || "[]");
+    return Array.isArray(h) ? h.filter(c => c && Array.isArray(c.msgs)) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Business sections live at the BOTTOM of the sidebar, collapsed by default.
+const BUSINESS_SECTIONS = ["CORE BUSINESS LEADERSHIP", "SPECIALIZED BUSINESS FUNCTIONS", "MARKETING & CONTENT", "TECHNICAL & SUPPORT"];
 
 function loadThread(): Msg[] {
   try {
@@ -398,6 +418,11 @@ function BrainSidebar({
   locked: boolean;
   onLocked: () => void;
 }) {
+  // Legislation sections first (expanded); business sections at the bottom (collapsed).
+  const legisSecs = status.personaSections.filter(s => !BUSINESS_SECTIONS.includes(s));
+  const bizSecs = status.personaSections.filter(s => BUSINESS_SECTIONS.includes(s));
+  const orderedSecs = [...legisSecs, ...bizSecs];
+  const [openSecs, setOpenSecs] = useState<Record<string, boolean>>({});
   return (
     <div className="flex h-full flex-col overflow-y-auto border-r border-gray-200 bg-white">
       <div className="border-b border-gray-100 p-3">
@@ -425,13 +450,23 @@ function BrainSidebar({
           {locked && <Lock size={13} className="shrink-0 text-gray-400" />}
         </button>
       </div>
-      {status.personaSections.map(sec => {
+      {orderedSecs.map(sec => {
         const items = status.personas.filter(p => p.section === sec);
         if (!items.length) return null;
+        const isBiz = BUSINESS_SECTIONS.includes(sec);
+        const open = openSecs[sec] ?? !isBiz;
         return (
-          <div key={sec} className="px-3 pb-1 pt-3">
-            <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">{sec}</p>
-            {items.map(p => {
+          <div key={sec} className="px-3 pb-1 pt-2">
+            <button
+              type="button"
+              onClick={() => setOpenSecs(o => ({ ...o, [sec]: !open }))}
+              className="mb-1 flex w-full items-center gap-1 px-1 py-1 text-left"
+            >
+              <ChevronDown size={12} className={`shrink-0 text-gray-400 transition-transform ${open ? "" : "-rotate-90"}`} />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{sec}</span>
+              <span className="ml-auto rounded bg-gray-100 px-1 text-[9px] font-semibold text-gray-400">{items.length}</span>
+            </button>
+            {open && items.map(p => {
               const active = panelMode ? panelSel.includes(p.key) : personaKey === p.key;
               return (
                 <button
@@ -851,11 +886,58 @@ function PaywallModal({
   );
 }
 
+function HistoryModal({
+  history, onClose, onOpen, onClear,
+}: {
+  history: Conversation[];
+  onClose: () => void;
+  onOpen: (c: Conversation) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4" onClick={onClose}>
+      <div className="my-8 w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="mb-3 flex items-center gap-2">
+          <HistoryIcon size={18} style={{ color: GOLD }} />
+          <p className="text-base font-bold" style={{ color: NAVY }}>Your history</p>
+          <span className="text-xs text-gray-400">{history.length} saved</span>
+          <button type="button" onClick={onClose} className="ml-auto rounded-full bg-gray-100 p-1.5 text-gray-500 hover:bg-gray-200"><X size={15} /></button>
+        </div>
+        {history.length === 0 ? (
+          <p className="py-6 text-center text-sm text-gray-500">No saved conversations yet. Your questions & answers are kept here after you start a New chat.</p>
+        ) : (
+          <div className="max-h-[60vh] space-y-1.5 overflow-y-auto">
+            {history.map(c => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => onOpen(c)}
+                className="flex w-full items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-left hover:border-transparent hover:shadow"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold" style={{ color: NAVY }}>{c.title}</span>
+                  <span className="block text-[11px] text-gray-400">{new Date(c.ts).toLocaleString("en-AU")} · {c.msgs.filter(m => m.role === "assistant").length} answer(s)</span>
+                </span>
+                <ChevronDown size={15} className="shrink-0 -rotate-90 text-gray-400" />
+              </button>
+            ))}
+          </div>
+        )}
+        {history.length > 0 && (
+          <button type="button" onClick={onClear} className="mt-3 text-xs font-semibold text-red-500 hover:underline">Clear all history</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- page
 export default function LegislationBrain() {
   const [status, setStatus] = useState<BrainStatus | null>(null);
   const [stateCode, setStateCode] = useState(() => localStorage.getItem(LS_STATE) || "NSW");
-  const [thread, setThread] = useState<Msg[]>(loadThread);
+  const [thread, setThread] = useState<Msg[]>([]); // always open on a fresh New chat
+  const [history, setHistory] = useState<Conversation[]>(loadHistory);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [input, setInput] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -888,12 +970,45 @@ export default function LegislationBrain() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [thread, busy]);
 
-  // Persist conversation (images stripped — localStorage budget), state and persona.
+  function archiveThread(msgs: Msg[]) {
+    const real = msgs.filter(m => !m.divider && !m.error);
+    if (real.filter(m => m.role === "assistant").length < 1) return; // need at least one answer
+    const firstQ = real.find(m => m.role === "user");
+    const conv: Conversation = {
+      id: String(Date.now()),
+      ts: Date.now(),
+      title: (firstQ?.content || "Conversation").slice(0, 80),
+      msgs: real.map(m => ({ ...m, image: undefined, streaming: undefined })),
+    };
+    setHistory(h => [conv, ...h].slice(0, 30));
+  }
+
+  // Always open on a fresh New chat. Archive the previous session to history
+  // (paid users only) so nothing is lost, then clear it.
+  useEffect(() => {
+    const prev = loadThread();
+    if (prev.length && loadEnts().length) archiveThread(prev);
+    localStorage.removeItem(LS_THREAD);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist the active conversation ONLY for paid users (so a reload archives
+  // it to history). Free users always start fresh — nothing is stored.
   useEffect(() => {
     try {
-      localStorage.setItem(LS_THREAD, JSON.stringify(thread.slice(-40).map(m => ({ ...m, image: undefined, streaming: undefined }))));
+      if (ents.length) localStorage.setItem(LS_THREAD, JSON.stringify(thread.slice(-40).map(m => ({ ...m, image: undefined, streaming: undefined }))));
+      else localStorage.removeItem(LS_THREAD);
     } catch {}
-  }, [thread]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thread, ents]);
+
+  // Persist history (paid only).
+  useEffect(() => {
+    try {
+      if (ents.length) localStorage.setItem(LS_HISTORY, JSON.stringify(history));
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history]);
   useEffect(() => {
     localStorage.setItem(LS_STATE, stateCode);
   }, [stateCode]);
@@ -1233,14 +1348,25 @@ export default function LegislationBrain() {
           <button
             type="button"
             onClick={() => {
+              if (ents.length) archiveThread(threadRef.current);
               setThread([]);
               localStorage.removeItem(LS_THREAD);
             }}
             className="ml-auto flex items-center gap-1.5 rounded-full border border-white/25 px-2.5 py-1 text-[11px] font-semibold text-white/80 hover:border-white/60 hover:text-white"
-            title="Start a fresh conversation (history is kept on this device until cleared)"
+            title="Start a fresh conversation"
           >
             <X size={13} /> New chat
           </button>
+          {ents.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="flex items-center gap-1.5 rounded-full border border-white/25 px-2.5 py-1 text-[11px] font-semibold text-white/80 hover:border-white/60 hover:text-white"
+              title="Your saved questions & answers"
+            >
+              <HistoryIcon size={13} /> History{history.length ? ` (${history.length})` : ""}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setTplOpen(true)}
@@ -1640,6 +1766,21 @@ export default function LegislationBrain() {
       )}
       {unlockOpen && status && (
         <PaywallModal status={status} ents={ents} reason={payReason} onClose={() => setUnlockOpen(false)} onUnlock={unlock} />
+      )}
+      {historyOpen && (
+        <HistoryModal
+          history={history}
+          onClose={() => setHistoryOpen(false)}
+          onOpen={c => {
+            if (ents.length) archiveThread(threadRef.current);
+            setThread(c.msgs);
+            setHistoryOpen(false);
+          }}
+          onClear={() => {
+            setHistory([]);
+            localStorage.removeItem(LS_HISTORY);
+          }}
+        />
       )}
     </div>
   );
