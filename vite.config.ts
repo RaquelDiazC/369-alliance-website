@@ -6,6 +6,7 @@ import express from "express";
 import fieldRoute from "./server/routes/field";
 import brainRoute from "./server/routes/brain";
 import reportRoute from "./server/routes/report";
+import analyseRoute from "./server/routes/analyse";
 
 // Exposes the field-inspector + legislation-brain APIs during `pnpm dev`
 // (prod mounts them in server/index.ts).
@@ -24,6 +25,7 @@ function fieldApiPlugin(): Plugin {
       app.use("/api/field", fieldRoute);
       app.use("/api/brain", brainRoute);
       app.use("/api/report", reportRoute);
+      app.use("/api/analyse-drawing", analyseRoute);
       server.middlewares.use(app);
     },
   };

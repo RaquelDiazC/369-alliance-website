@@ -1,0 +1,108 @@
+{
+  "source": "NSW Building Commission DBP audit finding decks — ‘DBP Common defect examples’ (issued 15 March 2022) and the accompanying regime packs (Building Enclosure — Sill Flashing; External Waterproofing — Balcony Detail; Structural Integration; Mechanical Design Scenarios).",
+  "format": {
+    "note": "Every finding written by a DBP auditor follows this four-part structure. The analyser must produce findings in the same shape so they can be pasted straight into an audit report without rewriting.",
+    "fields": [
+      { "key": "regime", "label": "Regime / sub-category", "guide": "e.g. ‘Regulated Design Waterproofing’, ‘Stormwater drainage — Design Detail’, ‘Mechanical — Duct Specification’." },
+      { "key": "finding", "label": "What is the audit finding?", "guide": "One sentence naming the deficiency, in the auditor's voice. Not a description of the drawing." },
+      { "key": "issue", "label": "Describe the issue", "guide": "Why it fails: what the practitioner did or did not do, and against which requirement. Name the practitioner class where relevant (‘Stormwater design practitioner did not specify…’)." },
+      { "key": "action", "label": "What action is required? Include any relevant Standards", "guide": "The corrective action, with the operative clause quoted — NCC/BCA clause, Australian Standard clause, DBP Act section or DBP Regulation clause. Where the requirement is a list (subsill flashing, bond breakers, falls…), enumerate it." },
+      { "key": "captions", "label": "Photo captions", "guide": "Upper = the non-compliant extract from the design. Lower = the compliant benchmark (a figure from the Standard, or the corrected detail)." }
+    ]
+  },
+  "recurringCauses": [
+    "Detail drawn at 1:10 (or single-line, or unscaled) where the Regulated Design Guidance Material requires 1:5 — the detail cannot be used to carry out the work.",
+    "Vague cross-references such as ‘refer to drawings of others’ instead of a specific drawing number and revision.",
+    "Integration against a superseded revision of another practitioner’s regulated design.",
+    "A design declared that is not marked ‘Issue for Construction’, or that defers the real content to workshop drawings (workshop drawings of a regulated design must themselves be declared).",
+    "A product or system specified by generic name only, so a non-compliant product can lawfully be selected on site.",
+    "Falls, gradients and set-out dimensions omitted — the most common single cause across waterproofing, stormwater and mechanical.",
+    "Construction-issued regulated design not lodged on the NSW Planning Portal with the ‘Declare Design’ checkbox ticked."
+  ],
+  "workedExamples": [
+    {
+      "regime": "Waterproofing — external",
+      "finding": "Incorrect external waterproofing door threshold detail.",
+      "issue": "The detail does not demonstrate compliance with AS 4654.2-2012 or the Regulated Design Guidance Material, and does not satisfy the definition of a construction issued regulated design because it cannot be used by a building practitioner to carry out the work. The detail is also drawn at 1:10 in lieu of the 1:5 required by the Regulated Design Guidance Material.",
+      "action": "Redraw the detail at 1:5 showing every requirement needed to demonstrate compliance with AS 4654.2-2012 and the Regulated Design Guidance Material, including: subsill flashing; bond breakers on internal corners; nominated compliant falls; the gap between subsill and FFL; sealant at the junction of waterstop angle and subsill; and a notation for the return of the waterstop angle.",
+      "references": ["AS 4654.2-2012 Figure 2.8", "Regulated Design Guidance Material"]
+    },
+    {
+      "regime": "Building Enclosure — sill flashing",
+      "finding": "Lack of sill flashings on architectural plans.",
+      "issue": "The architectural section through the brick veneer wall and window does not show any sill flashings. The detail is also drawn at 1:10 in lieu of the 1:5 required by the Regulated Design Guidance Material.",
+      "action": "Redraw sections at 1:5 with all additional requirements needed to demonstrate compliance with NCC Volume 1 Performance Requirement FP1.4, AS 2047 and the Regulated Design Guidance Material. Each requirement must be clearly shown so the building practitioner can carry out the work in a compliant manner.",
+      "references": ["NCC Vol 1 FP1.4", "AS 2047-2014 Figure 7.1", "Regulated Design Guidance Material"]
+    },
+    {
+      "regime": "Structural — integration",
+      "finding": "Structural engineering plans are not integrated with the civil engineering stormwater plans or the architectural plans.",
+      "issue": "The balcony hob shown on the structural concrete plans does not show the overflow channels that function as the required stormwater drainage overflow channels for the balconies.",
+      "action": "Integrate the structural concrete plans with the civil stormwater plans and the architectural plans so overflow channels are shown, achieving compliance with AS 3500.3-2021.",
+      "references": ["AS 3500.3-2021"]
+    },
+    {
+      "regime": "Stormwater drainage — design detail",
+      "finding": "Spoon drains designed in basement car parks without any indication of falls to the floor waste.",
+      "issue": "The stormwater design practitioner did not specify the fall to the floor waste within the dish drain to ensure the perimeter spoon drain and sub-soil drainage pipework have appropriate falls to prevent ponding.",
+      "action": "Comply with DBP Act s 22(1) — a building practitioner who does building work must take all reasonable steps to ensure the work complies with the BCA requirements applicable to the work. Compliance includes the gradient requirements of AS 3500.3-2018 Section 6.3.4 Gradients (Table 6.3.4, minimum gradient of site stormwater drains).",
+      "references": ["DBP Act 2020 s 22(1)", "AS 3500.3-2018 cl 6.3.4, Table 6.3.4"]
+    },
+    {
+      "regime": "Stormwater drainage — integration",
+      "finding": "Vague notes on designs such as ‘refer to drawings of others’.",
+      "issue": "The stormwater design practitioner’s references in the declared design were not specific to the relevant drawings.",
+      "action": "Provide notes that specifically reference the integrated early civil design drawings, complying with DBP Regulation cl 8 — a regulated design must, as far as reasonably practicable, integrate details of (a) other aspects of building work to which the design relates.",
+      "references": ["DBP Regulation 2021 cl 8(1)(b) / s 8(1)(b) of the Act"]
+    },
+    {
+      "regime": "Fire sprinkler system — integration",
+      "finding": "The fire sprinkler design practitioner did not appear to have a system to ensure the regulated design is integrated with the latest versions of other regulated designs.",
+      "issue": "The practitioner referenced the fire engineering performance solution report in the Design Compliance Declaration — in particular the revision associated with omission of sprinklers in concealed spaces — but the revision referenced was not the latest revision declared by the fire safety engineering design practitioner at that time.",
+      "action": "Ensure integration of the relevant performance solution in accordance with DBP Regulation cl 8: a regulated design must, as far as reasonably practicable, integrate details of (b) other regulated designs for the work, including designs prepared by other registered design practitioners.",
+      "references": ["DBP Regulation 2021 cl 8(1)(b)"]
+    },
+    {
+      "regime": "Lodgement — construction issued regulated design",
+      "finding": "The building/appropriate practitioner has not uploaded and lodged the ‘construction issued regulated design’ correctly.",
+      "issue": "Where the Class 2 building has any Design Compliance Declarations, the building/appropriate practitioner must upload and lodge the construction issued regulated design and tick the ‘Declare Design’ checkbox. The building practitioner is the default appropriate practitioner unless the developer has nominated another design practitioner under DBP Regulation s 16(2) and (3).",
+      "action": "Re-upload and re-lodge the design on the ePlanning Portal with the ‘Declare Design’ checkbox ticked, as required by DBP Regulation s 16(1) — documents must be provided to the Secretary in the approved way before commencing building work.",
+      "references": ["DBP Regulation 2021 s 16(1), s 16(2)–(3)"]
+    },
+    {
+      "regime": "Mechanical — domestic kitchen exhaust",
+      "finding": "Recirculating kitchen rangehoods have been specified.",
+      "issue": "Kitchen exhaust must discharge to outdoor air. BCA Vol 1 Part F6.3(b) (flow rate and discharge of exhaust systems) requires exhaust from a kitchen to be discharged directly, or via a shaft or duct, to outdoor air.",
+      "action": "Duct the kitchen exhaust to the facade or roof of the building.",
+      "references": ["BCA Vol 1 F6.3(b)"]
+    },
+    {
+      "regime": "Mechanical — construction issue drawings",
+      "finding": "The regulated design drawings have been declared but are not suitable for construction.",
+      "issue": "By declaring a regulated design a design practitioner signals that the design is in a form and contains the level of detail to support the building work. Here the drawings have not been issued For Construction, the specification indicates workshop drawings are still to be produced (workshop drawings of a regulated design must themselves be declared), and the designs are not integrated with other services.",
+      "action": "Only declare documents that are suitable for construction. Refer to the Design Practitioners’ Handbook.",
+      "references": ["Design Practitioners’ Handbook", "DBP Regulation 2021 cl 8"]
+    },
+    {
+      "regime": "Mechanical — scale and set-out",
+      "finding": "The drawings are not to scale.",
+      "issue": "The car park exhaust duct is 800×250 yet has been drawn as a single line, not to scale and with no set-out dimensions. The regulated design has been declared and is not suitable for construction; it also prevents other design practitioners from integrating their regulated designs.",
+      "action": "Declare only scaled designs that are suitable for construction. Refer to the Design Practitioners’ Handbook.",
+      "references": ["Design Practitioners’ Handbook"]
+    },
+    {
+      "regime": "Mechanical — duct specification",
+      "finding": "There is no specification for PVC duct in the declared documents.",
+      "issue": "Not all PVC duct on the market complies with BCA Vol 1 Part C1.10 Fire Hazard Properties and AS 4254.2-2012 cl 2.1.2. Without a specification for the PVC duct, the mechanical contractor can select a non-compliant product.",
+      "action": "Specify the performance or make of PVC duct to be used on the project that complies with the BCA, or provide a performance solution complying with BCA Vol 1 Part A2.2.",
+      "references": ["BCA Vol 1 C1.10", "AS 4254.2-2012 cl 2.1.2", "BCA Vol 1 A2.2"]
+    },
+    {
+      "regime": "Mechanical — fire dampers",
+      "finding": "The fire damper has been scheduled without an FRL for insulation.",
+      "issue": "The design does not comply with AS 1668.1-2015 cl 3.2.3 to omit insulation: the fire damper is vertically (wall) mounted, is not shaft-mounted, and is not connected to 2 m of ductwork complying with AS 1668.1-2015 cl 2.3.2 — therefore insulation is required.",
+      "action": "Schedule a fire damper with the appropriate FRL for insulation, or design for a minimum total connected duct length of 2 m.",
+      "references": ["AS 1668.1-2015 cl 3.2.3", "AS 1668.1-2015 cl 2.3.2"]
+    }
+  ]
+}

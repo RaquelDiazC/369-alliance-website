@@ -287,6 +287,56 @@ interface AnalysisResult {
 
 type Step = "configure" | "analyse" | "report";
 
+/* ─── Staged full audit (POST /api/analyse-drawing/{intake,pass,integrate}) ───
+ * The single-shot endpoint asks one model call to cover every regime, which is
+ * the same blind-spot problem specialist auditors have. The staged audit runs a
+ * dedicated pass per regulated design class, so a regime is never skipped —
+ * a regime with no drawings comes back as a MISSING DESIGN finding, not silence.
+ */
+interface AuditFinding {
+  id: string;
+  regime: string;
+  severity: "Critical" | "Major" | "Minor";
+  type: string;
+  finding: string;
+  issue: string;
+  action: string;
+  references?: string[];
+  rdgmCode?: string;
+  drawing?: string;
+  location?: string;
+  scaleStated?: string;
+  scaleRequired?: string;
+  disciplines?: string[];
+}
+
+interface AuditGate {
+  declarable: boolean;
+  cirdStatus: string;
+  issues: string[];
+  titleBlock?: Record<string, boolean>;
+}
+
+interface StageState {
+  key: string;
+  label: string;
+  status: "pending" | "running" | "done" | "failed";
+  findings: number;
+  missing: number;
+}
+
+interface AuditSummary {
+  gate: AuditGate | null;
+  register: Array<{ drawingNo?: string; title?: string; discipline?: string; revision?: string; scale?: string; issueStatus?: string }>;
+  executiveSummary: string;
+  coordinationVerdict: string;
+  totals: { critical: number; major: number; minor: number; all: number };
+  score: number;
+  declarable: boolean;
+  coverage: Array<{ key: string; label: string; audited: boolean; missingSeries: number | null }>;
+  positives: string[];
+}
+
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 let _uid = 0;
 function uid() { return "id_" + (++_uid) + "_" + Date.now(); }
@@ -326,6 +376,11 @@ export default function DrawingAnalyser() {
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
   const [analysing, setAnalysing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
+
+  // ── Staged full audit ──
+  const [stages, setStages] = useState<StageState[]>([]);
+  const [audit, setAudit] = useState<AuditSummary | null>(null);
+  const [auditError, setAuditError] = useState("");
 
   // ────────────────────────────────────────────────────────────────────────────
   // CLASS MANAGEMENT
@@ -499,6 +554,163 @@ export default function DrawingAnalyser() {
     setAnalysisResults(results);
     setAnalysing(false);
   }, [classes, bulkUploads]);
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // FULL DBP AUDIT — every regulated design class, one dedicated pass each
+  // ────────────────────────────────────────────────────────────────────────────
+  const runFullAudit = useCallback(async () => {
+    const files: File[] = [
+      ...classes.flatMap(c => c.levelRegimes.flatMap(lr => lr.files)),
+      ...bulkUploads.flatMap(b => b.files),
+    ];
+    if (files.length === 0) {
+      setAuditError("Upload at least one drawing before running the full audit.");
+      setStep("analyse");
+      return;
+    }
+
+    setStep("analyse");
+    setAnalysing(true);
+    setAnalysisProgress(0);
+    setAudit(null);
+    setAuditError("");
+    setAnalysisResults([]);
+
+    const config = {
+      classCode: classes[0]?.classCode || "2",
+      level: "whole building",
+      regime: "all regimes",
+      nccVersion, projectName, projectAddress, daNumber,
+    };
+
+    const toDefect = (f: AuditFinding): Defect => ({
+      id: f.id || uid(),
+      category: f.type || "NON-COMPLIANCE",
+      severity: f.severity || "Major",
+      description: [f.finding, f.issue].filter(Boolean).join(" "),
+      location: [f.location, f.drawing].filter(Boolean).join(" · ") || "not identified",
+      reference: (f.references || []).join(" · ") || f.rdgmCode || "",
+      solution: f.action || "",
+      discipline: f.regime || "",
+    });
+
+    try {
+      const plan = await (await fetch("/api/analyse-drawing/plan")).json();
+      const disciplines: { key: string; label: string }[] = plan.disciplines ?? [];
+      setStages(disciplines.map(d => ({ ...d, status: "pending", findings: 0, missing: 0 })));
+
+      // 1 — intake: upload once, get file ids + register + declarability gate
+      const fd = new FormData();
+      files.forEach(f => fd.append("files", f));
+      fd.append("config", JSON.stringify(config));
+      const intakeRes = await fetch("/api/analyse-drawing/intake", { method: "POST", body: fd });
+      const intake = await intakeRes.json();
+      if (!intakeRes.ok) throw new Error(intake.message || intake.error || "Intake failed");
+
+      const total = disciplines.length + 2;
+      let done = 1;
+      setAnalysisProgress(Math.round((done / total) * 100));
+
+      // 2 — one specialist pass per class, two at a time
+      const passes: Array<{ discipline: string; findings?: AuditFinding[]; seriesMissing?: string[]; positives?: string[] }> = [];
+      for (let i = 0; i < disciplines.length; i += 2) {
+        const batch = disciplines.slice(i, i + 2);
+        setStages(prev => prev.map(s => (batch.some(b => b.key === s.key) ? { ...s, status: "running" } : s)));
+
+        const out = await Promise.all(
+          batch.map(async d => {
+            try {
+              const r = await fetch("/api/analyse-drawing/pass", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ files: intake.files, config, discipline: d.key }),
+              });
+              if (!r.ok) throw new Error("pass failed");
+              return await r.json();
+            } catch {
+              return { discipline: d.key, findings: [], seriesMissing: [], failed: true };
+            }
+          }),
+        );
+
+        setStages(prev =>
+          prev.map(s => {
+            const p = out.find(o => o.discipline === s.key);
+            if (!p) return s;
+            return {
+              ...s,
+              status: p.failed ? "failed" : "done",
+              findings: (p.findings || []).length,
+              missing: (p.seriesMissing || []).length,
+            };
+          }),
+        );
+        passes.push(...out.filter(p => !p.failed));
+        done += batch.length;
+        setAnalysisProgress(Math.round((done / total) * 100));
+      }
+
+      // 3 — cross-discipline integration + deterministic coverage/score roll-up
+      const intRes = await fetch("/api/analyse-drawing/integrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ files: intake.files, config, passes, gate: intake.gate }),
+      });
+      const integration = await intRes.json();
+      if (!intRes.ok) throw new Error(integration.message || integration.error || "Integration failed");
+      setAnalysisProgress(100);
+
+      // Map onto the existing result shape so the report and PDF keep working
+      const byDiscipline: AnalysisResult[] = passes.map(p => {
+        const label = disciplines.find(d => d.key === p.discipline)?.label || p.discipline;
+        const defects = (p.findings || []).map(toDefect);
+        const crit = defects.filter(d => d.severity === "Critical").length;
+        return {
+          classCode: config.classCode,
+          level: "Whole building",
+          regime: label,
+          overallCompliant: defects.length === 0,
+          complianceScore: Math.max(0, 100 - crit * 12 - defects.filter(d => d.severity === "Major").length * 5),
+          titleBlockIssues: [],
+          defects,
+          missingElements: p.seriesMissing || [],
+          coordinationFlags: [],
+          positiveFindings: p.positives || [],
+        };
+      });
+
+      const integrationDefects = (integration.findings || []).map(toDefect);
+      byDiscipline.push({
+        classCode: config.classCode,
+        level: "Whole building",
+        regime: "Cross-discipline integration",
+        overallCompliant: integrationDefects.length === 0,
+        complianceScore: integration.score ?? 0,
+        titleBlockIssues: intake.gate?.issues || [],
+        defects: integrationDefects,
+        missingElements: [],
+        coordinationFlags: integration.coordinationVerdict ? [integration.coordinationVerdict] : [],
+        positiveFindings: integration.positives || [],
+      });
+
+      setAnalysisResults(byDiscipline);
+      setAudit({
+        gate: intake.gate ?? null,
+        register: intake.register ?? [],
+        executiveSummary: integration.executiveSummary || "",
+        coordinationVerdict: integration.coordinationVerdict || "",
+        totals: integration.totals ?? { critical: 0, major: 0, minor: 0, all: 0 },
+        score: integration.score ?? 0,
+        declarable: Boolean(integration.declarable),
+        coverage: integration.coverage ?? [],
+        positives: integration.positives ?? [],
+      });
+    } catch (err) {
+      setAuditError((err as Error)?.message || "The full audit could not be completed.");
+    } finally {
+      setAnalysing(false);
+    }
+  }, [classes, bulkUploads, nccVersion, projectName, projectAddress, daNumber]);
 
   async function analyseWithAI(combo: { classCode: string; level: string; regime: string; files: File[] }): Promise<AnalysisResult> {
     const formData = new FormData();
@@ -1171,13 +1383,26 @@ export default function DrawingAnalyser() {
           </div>
 
           {/* Next button */}
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 240, fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
+              <b style={{ color: C.navy }}>Full DBP audit</b> runs a dedicated specialist pass over every
+              regulated design class — architectural, waterproofing, fire, structural, facade, mechanical,
+              drainage, electrical, vertical transportation and geotechnical — then a cross-discipline
+              integration review. A regime with no drawings is reported as a missing design, not skipped.
+            </div>
             <button
-              style={{ ...S.btn(C.amber), fontSize: 15, padding: "12px 32px" }}
+              style={{ ...S.btnOutline, fontSize: 14, padding: "11px 22px" }}
               onClick={runAnalysis}
               disabled={classes.length === 0 && bulkUploads.length === 0}
             >
-              Next: Analyse &rarr;
+              Quick analyse
+            </button>
+            <button
+              style={{ ...S.btn(C.amber), fontSize: 15, padding: "12px 28px" }}
+              onClick={runFullAudit}
+              disabled={classes.length === 0 && bulkUploads.length === 0}
+            >
+              Run full DBP audit &rarr;
             </button>
           </div>
         </div>
@@ -1207,6 +1432,13 @@ export default function DrawingAnalyser() {
         </div>
 
         <div style={S.container}>
+          {auditError && (
+            <div style={{ ...S.section, borderLeft: "4px solid " + C.red, background: C.redBg }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.red }}>Full audit could not be completed</div>
+              <div style={{ fontSize: 12, color: C.text, marginTop: 4 }}>{auditError}</div>
+            </div>
+          )}
+
           {analysing && (
             <div style={S.section}>
               <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 12 }}>Analysing drawings...</div>
@@ -1215,6 +1447,107 @@ export default function DrawingAnalyser() {
               </div>
               <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>{analysisProgress}% complete</div>
             </div>
+          )}
+
+          {/* Per-regime coverage — visible while running and after, so nobody has
+              to take "the audit was complete" on trust. */}
+          {stages.length > 0 && (
+            <div style={S.section}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, marginBottom: 10 }}>
+                Regime coverage — {stages.filter(s => s.status === "done").length}/{stages.length} audited
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 8 }}>
+                {stages.map(s => {
+                  const tone =
+                    s.status === "done" ? C.green : s.status === "running" ? C.amber : s.status === "failed" ? C.red : C.soft;
+                  return (
+                    <div
+                      key={s.key}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 8, padding: "8px 10px",
+                        border: "1px solid " + C.border, borderLeft: "3px solid " + tone, borderRadius: 6,
+                        background: s.status === "done" ? C.greenBg : C.white,
+                      }}
+                    >
+                      <span style={{ width: 8, height: 8, borderRadius: 8, background: tone, flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: 12, color: C.text }}>{s.label}</span>
+                      <span style={{ fontSize: 11, color: s.findings ? C.red : C.muted, fontWeight: 700 }}>
+                        {s.status === "running" ? "…" : s.status === "failed" ? "failed" : s.status === "pending" ? "" : `${s.findings} findings`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Declarability gate + executive summary from the staged audit */}
+          {audit && (
+            <>
+              <div style={{ ...S.section, borderLeft: "4px solid " + (audit.declarable ? C.green : C.red) }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: audit.declarable ? C.green : C.red }}>
+                    {audit.declarable ? "Declarable as a construction issued regulated design" : "Not declarable as-is"}
+                  </div>
+                  <div style={{ fontSize: 12, color: C.muted }}>
+                    CIRD status on the sheets: <b style={{ color: C.text }}>{audit.gate?.cirdStatus || "unstated"}</b>
+                  </div>
+                  <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>
+                    Score <b style={{ color: C.navy, fontSize: 18 }}>{audit.score}</b>/100 ·{" "}
+                    <span style={{ color: C.red }}>{audit.totals.critical} critical</span> ·{" "}
+                    <span style={{ color: C.yellow }}>{audit.totals.major} major</span> ·{" "}
+                    <span style={{ color: C.blue }}>{audit.totals.minor} minor</span>
+                  </div>
+                </div>
+                {(audit.gate?.issues || []).length > 0 && (
+                  <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 12, color: C.text, lineHeight: 1.6 }}>
+                    {audit.gate!.issues.map((i, n) => <li key={n}>{i}</li>)}
+                  </ul>
+                )}
+              </div>
+
+              {audit.executiveSummary && (
+                <div style={S.section}>
+                  <div style={S.sectionTitle}>Executive summary</div>
+                  <p style={{ fontSize: 13, lineHeight: 1.65, color: C.text, margin: 0 }}>{audit.executiveSummary}</p>
+                  {audit.coordinationVerdict && (
+                    <p style={{ fontSize: 12.5, lineHeight: 1.65, color: C.muted, marginBottom: 0, marginTop: 10 }}>
+                      <b style={{ color: C.navy }}>Coordination — </b>{audit.coordinationVerdict}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {audit.register.length > 0 && (
+                <div style={S.section}>
+                  <div style={S.sectionTitle}>Drawing register as read from the sheets</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: C.bg, textAlign: "left" }}>
+                        <th style={{ padding: "6px 8px" }}>Drawing</th>
+                        <th style={{ padding: "6px 8px" }}>Title</th>
+                        <th style={{ padding: "6px 8px" }}>Discipline</th>
+                        <th style={{ padding: "6px 8px" }}>Rev</th>
+                        <th style={{ padding: "6px 8px" }}>Scale</th>
+                        <th style={{ padding: "6px 8px" }}>Issue status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {audit.register.map((r, n) => (
+                        <tr key={n} style={{ borderTop: "1px solid " + C.border }}>
+                          <td style={{ padding: "6px 8px" }}>{r.drawingNo || "—"}</td>
+                          <td style={{ padding: "6px 8px" }}>{r.title || "—"}</td>
+                          <td style={{ padding: "6px 8px" }}>{r.discipline || "—"}</td>
+                          <td style={{ padding: "6px 8px" }}>{r.revision || "—"}</td>
+                          <td style={{ padding: "6px 8px" }}>{r.scale || "—"}</td>
+                          <td style={{ padding: "6px 8px" }}>{r.issueStatus || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )}
 
           {!analysing && analysisResults.length > 0 && (
