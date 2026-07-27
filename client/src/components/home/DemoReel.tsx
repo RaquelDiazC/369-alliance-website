@@ -82,7 +82,7 @@ const BRAIN_A = [
   "a **bond breaker fillet** at every internal corner. Threshold: 25 mm step down.",
 ];
 const BRAIN_CITES = [
-  { r: "NCC 2022 · F3D5", k: "Deemed-to-Satisfy" },
+  { r: "NCC 2022 · F1D5", k: "Deemed-to-Satisfy" },
   { r: "AS 4654.2:2012 · 3.4", k: "External waterproofing" },
   { r: "Defect W1.2.4", k: "DBP defect library" },
 ];
@@ -176,7 +176,7 @@ const TRAIN_TREE = [
   "Section C · Fire resistance",
   "Section E · Services & equipment",
   "Section F · Health & amenity",
-  "  F3D5 · Waterproofing of wet areas",
+  "  F3D5 · Wall cladding",
   "Section J · Energy efficiency",
 ];
 
@@ -222,45 +222,25 @@ function TrainingDemo({ p }: { p: string }) {
         {/* lesson body */}
         <div className="flex-1 p-2.5">
           <p className="text-[10px] font-black text-white" style={anim(p, 5)}>
-            F3D5 — Waterproofing of wet areas
+            F3D5 — Wall cladding
           </p>
 
-          {/* 3D evidence board */}
+          {/* Real evidence board — the exact board the student sees in the course. */}
           <div
             className="relative mt-2 overflow-hidden rounded-md"
-            style={{ ...anim(p, 6), height: "44%", background: "#1d2337" }}
+            style={{ ...anim(p, 6), height: "44%", background: "#0b0f18" }}
           >
-            <svg viewBox="0 0 200 90" className="h-full w-full">
-              <defs>
-                <linearGradient id={`${p}g`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stopColor="#2a3350" />
-                  <stop offset="1" stopColor="#161b2c" />
-                </linearGradient>
-              </defs>
-              <rect width="200" height="90" fill={`url(#${p}g)`} />
-              {/* room in axonometric */}
-              <path d="M30 66 L100 82 L170 60 L100 44 Z" fill="#39415f" stroke={GOLD} strokeWidth="0.8" />
-              <path d="M30 66 L30 36 L100 20 L100 44 Z" fill="#2b3350" stroke={GOLD} strokeWidth="0.8" />
-              <path d="M170 60 L170 30 L100 20 L100 44 Z" fill="#232a44" stroke={GOLD} strokeWidth="0.8" />
-              {/* fall arrow */}
-              <path d="M50 62 L92 71" stroke="#2dd4bf" strokeWidth="1.4" markerEnd="" />
-              <circle cx="96" cy="72" r="2.6" fill="#2dd4bf" />
-              <text x="52" y="58" fill="#2dd4bf" fontSize="5.5" fontWeight="700">
-                fall 1:80
-              </text>
-              <text x="102" y="76" fill="#2dd4bf" fontSize="5">
-                floor waste
-              </text>
-              {/* upturn callout */}
-              <circle cx="34" cy="46" r="3.4" fill={AMBER} style={anim(p, 7)} />
-              <text x="40" y="48" fill="#fff" fontSize="5" style={anim(p, 7)}>
-                150 mm upturn
-              </text>
-            </svg>
+            <img
+              src="/api/brain/board/F3D5"
+              alt="F3D5 — Wall cladding evidence board"
+              draggable={false}
+              onContextMenu={e => e.preventDefault()}
+              className="pointer-events-none h-full w-full select-none object-contain"
+            />
           </div>
 
           {/* checklist */}
-          {["Substrate falls verified", "Membrane upturn ≥150 mm", "Bond breaker at corners"].map((t, i) => (
+          {["Cavity & ventilation path provided", "Weatherproof membrane behind cladding", "Flashings at openings sealed"].map((t, i) => (
             <p key={t} className="mt-1 text-[8px]" style={{ ...anim(p, i + 8), color: "#c3c9da" }}>
               <span style={{ color: "#2dd4bf", fontWeight: 900 }}>—</span> {t}
             </p>
