@@ -17,6 +17,7 @@ import { TRAINING_MODULES, TrainingModule } from "@/lib/trainingContent";
 import {
   ArrowLeft,
   ArrowRight,
+  House as HomeIcon,
   Check,
   ChevronDown,
   ChevronRight,
@@ -259,7 +260,8 @@ export default function TrainingPlatform() {
       {/* Header */}
       <header className="sticky top-0 z-30 border-b" style={{ background: PANEL, borderColor: LINE }}>
         <div className="flex items-center gap-3 px-4 py-2.5">
-          <Link href="/adm" className="text-gray-400 hover:text-white"><ArrowLeft size={16} /></Link>
+          <Link href="/adm" className="text-gray-400 hover:text-white" title="Back"><ArrowLeft size={16} /></Link>
+          <Link href="/home" className="shrink-0 rounded-md p-1 text-gray-400 transition hover:bg-white/10 hover:text-white" title="Home — 369 Alliance platform" aria-label="Go to home"><HomeIcon size={17} /></Link>
           <button type="button" onClick={() => setSideOpen(o => !o)} className="lg:hidden"><ChevronRight size={16} className="text-gray-400" /></button>
           <Logo369 size={40} variant="dark" />
           <div className="min-w-0">

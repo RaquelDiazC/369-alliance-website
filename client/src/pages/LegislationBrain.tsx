@@ -18,6 +18,7 @@ import {
   ChevronDown,
   CircleAlert,
   History as HistoryIcon,
+  House as HomeIcon,
   Landmark,
   LayoutTemplate,
   Loader2,
@@ -1319,8 +1320,16 @@ export default function LegislationBrain() {
       {/* Header */}
       <header className="sticky top-0 z-20 text-white shadow-md" style={{ background: NAVY }}>
         <div className="mx-auto flex max-w-[1900px] items-center gap-3 px-4 py-3">
-          <Link href="/system" className="flex items-center gap-1 text-sm text-white/70 hover:text-white">
+          <Link href="/system" className="flex items-center gap-1 text-sm text-white/70 hover:text-white" title="Back to the system">
             <ArrowLeft size={16} />
+          </Link>
+          <Link
+            href="/home"
+            className="flex shrink-0 items-center gap-1 rounded-md p-1 text-white/70 transition hover:bg-white/10 hover:text-white"
+            title="Home — 369 Alliance platform"
+            aria-label="Go to home"
+          >
+            <HomeIcon size={17} />
           </Link>
           <button type="button" onClick={() => setSidebarOpen(o => !o)} className="text-white/70 hover:text-white lg:hidden" title="Expert brains">
             <Menu size={19} />

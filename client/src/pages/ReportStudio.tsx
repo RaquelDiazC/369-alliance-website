@@ -24,6 +24,7 @@ import {
   FileDown,
   FileSpreadsheet,
   FileText,
+  House as HomeIcon,
   Loader2,
   Plus,
   Sparkles,
@@ -386,7 +387,8 @@ export default function ReportStudio() {
     <div className="min-h-screen pb-16" style={{ background: "#f4f2ee" }}>
       <header className="sticky top-0 z-20 text-white shadow-md" style={{ background: NAVY }}>
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
-          <Link href="/adm" className="text-white/70 hover:text-white"><ArrowLeft size={16} /></Link>
+          <Link href="/adm" className="text-white/70 hover:text-white" title="Back"><ArrowLeft size={16} /></Link>
+          <Link href="/home" className="shrink-0 rounded-md p-1 text-white/70 transition hover:bg-white/10 hover:text-white" title="Home — 369 Alliance platform" aria-label="Go to home"><HomeIcon size={17} /></Link>
           <Logo369 size={40} variant="dark" />
           <div>
             <h1 className="text-base font-bold leading-tight">369 Alliance Report Studio <span className="font-normal text-white/60">· OC Audit format</span></h1>

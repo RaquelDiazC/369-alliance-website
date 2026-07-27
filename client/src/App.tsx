@@ -20,6 +20,7 @@ import FieldInspector from "./pages/FieldInspector";
 import LegislationBrain from "./pages/LegislationBrain";
 import ReportStudio from "./pages/ReportStudio";
 import TrainingPlatform from "./pages/TrainingPlatform";
+import PlatformHome from "./pages/PlatformHome";
 
 // Marketing website pages
 import WebsiteHome from "./pages/website/WebsiteHome";
@@ -41,6 +42,8 @@ function Router() {
 
       {/* Internal system */}
       <Route path="/" component={WebsiteHome} />
+      {/* Product-only front door — courses, Brain and DBP drawings audit */}
+      <Route path="/home" component={PlatformHome} />
       <Route path="/system" component={LandingPage} />
       <Route path="/adm" component={AdmLanding} />
       <Route path="/action-manager" component={ActionManager} />

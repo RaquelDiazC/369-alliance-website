@@ -1,0 +1,162 @@
+{
+  "source": "‘Documentation for the D&BP Act — An Architectural Design Practitioner’s Perspective’, presentation to the NSW Building Commission (GWH). Benchmarked against the Class 2 Macquarie Tower and Class 3 Hudson Ave document sets, which the Commission holds up as examples of good-quality documentation.",
+  "purpose": "The drawing series a complete, declarable Class 2/3/9c set is expected to contain, grouped by DBP regulated building element. A missing series is itself a defect: the Building Practitioner cannot build a regime that was never documented, and the design cannot be 'in a form suitable for construction'.",
+  "regimes": [
+    {
+      "key": "general",
+      "label": "General / Architectural",
+      "plans": [
+        "Coversheet (drawing register for the set + site and building details)",
+        "Site Plan (building in the context of the site, boundaries, fire source features, reduced levels)",
+        "Grid Setout Plan (dimensioned, with grids and survey points)",
+        "General Arrangement Plans (each level, including roof and basements)",
+        "General Dimension Plans",
+        "Wall Reference Plans",
+        "General Elevations (each aspect)",
+        "General Sections (at least two intersecting sections)",
+        "General Internal Elevations",
+        "General Joinery",
+        "General Wall Sections",
+        "Sections through driveway, other ramps and egress"
+      ],
+      "schedules": [
+        "Wall Types — Steel Stud",
+        "Wall Types — Masonry",
+        "Wall Types — Concrete",
+        "Wall Types — Special",
+        "Wall Types — Masonry Veneer",
+        "Wall Types — Concrete Veneer",
+        "Wall Types — Double Masonry",
+        "Wall Types — Double Stud",
+        "Ceiling & Soffit Systems",
+        "Electrical Equipment & Appliances",
+        "Electrical Fixtures & Fittings",
+        "Floor Systems",
+        "Furniture",
+        "General Fixtures & Fittings",
+        "Joinery Schedule",
+        "Lighting Fixtures",
+        "Mechanical Equipment",
+        "Materials Schedule",
+        "Phone & Data Fixtures",
+        "Parking Fixtures",
+        "Roof Access Systems",
+        "Rainwater Goods",
+        "Sanitary Fixtures & Fittings",
+        "Security Equipment",
+        "Stairs"
+      ]
+    },
+    {
+      "key": "load-bearing",
+      "label": "Load Bearing",
+      "plans": ["Concrete Setout Plans", "Concrete Profile Plans", "Concrete Penetration Plans"],
+      "schedules": []
+    },
+    {
+      "key": "fire-safety",
+      "label": "Fire Safety Systems",
+      "plans": [
+        "Wall Type Reference Plans",
+        "Fire Safety Wall Type Sections",
+        "Fire Compartmentation Plans",
+        "Fire Compartmentation Sections",
+        "Vertical Riser Shaft Sections",
+        "Fire Safety Penetration Floor Plans",
+        "Signage Plans",
+        "Wall Setout Plans / Party Wall Setout Plans"
+      ],
+      "details": [
+        "Vertical Riser Shaft Details",
+        "Fire Safety Junction Construction Details",
+        "Signage Plan Construction Details",
+        "Fire Safety Wall Types",
+        "Fire Rated Junction Details",
+        "Fire Rated Door Details"
+      ],
+      "schedules": ["Fire Safety Door Schedules", "Fire Protection Schedules", "Signage Schedules"]
+    },
+    {
+      "key": "waterproofing",
+      "label": "Waterproofing",
+      "plans": [
+        "Bathroom Waterproofing Plans",
+        "Laundry Waterproofing Plans",
+        "External Waterproofing Reference Plans",
+        "Bathroom Waterproofing Elevations",
+        "Laundry Waterproofing Sections and Elevations",
+        "Waterproofing Floor Gradient / Floor Waste Plans"
+      ],
+      "details": [
+        "Termination Construction Details",
+        "Overflow Construction Details",
+        "Planter Box Construction Details",
+        "Floor Waste Details",
+        "Shower Details",
+        "Floor to Wall Junction Details",
+        "Wet Area Details"
+      ],
+      "schedules": []
+    },
+    {
+      "key": "building-enclosure",
+      "label": "Building Enclosure",
+      "plans": [
+        "Waterproofing Reference Plans — Roof",
+        "Waterproofing Floor Gradient / Floor Waste Plans — Roof",
+        "External Waterproofing Detail Call Out Plans — Roof",
+        "Basement Wall Construction Plans (waterstops to basement walls/piling, tanking/waterproofing to basement walls)",
+        "Schedule Call Out Plans — Ground Floor Facade Brick Coursing"
+      ],
+      "details": [
+        "Slab edge construction details",
+        "Weatherproofing of external walls for all facade types",
+        "External door weatherproofing details",
+        "External flashing details (called out from the general set)",
+        "External wall and floor/balcony interface details (called out from the general set)",
+        "Interface between different external wall building materials",
+        "Parapet and eave details",
+        "Basement wall construction details",
+        "Door details",
+        "Glazing details",
+        "Window details",
+        "Louvre details"
+      ],
+      "schedules": [
+        "Door Schedules",
+        "Glazing Schedules",
+        "Window Schedules",
+        "Louvre Schedules",
+        "Building Product Schedules or Specification"
+      ]
+    },
+    {
+      "key": "building-services",
+      "label": "Building Services",
+      "plans": ["Reflected Ceiling Plans (coordinated with fire, mechanical, electrical and hydraulic)"],
+      "schedules": []
+    }
+  ],
+  "coordination": {
+    "source": "Same presentation, ‘Design Integration / Coordination’.",
+    "expectations": [
+      "A named coordination leader — architect, consultant or external design manager — who sets timelines, goals and accountability.",
+      "Coordination carried out in 3D so vertical and horizontal clashes and service routes are resolved before construction.",
+      "A maintained design coordination register so items are demonstrably closed out.",
+      "Modelling expectations set per discipline via an LOD requirement or BIM Management Plan."
+    ],
+    "lod": {
+      "LOD 100": "Symbol or generic representation; information may be derived from other elements.",
+      "LOD 200": "Conceptual/schematic — generic system, object or assembly with approximate quantity, size, shape, location, orientation.",
+      "LOD 300": "Detailed design — specific system, object or assembly with quantity, size, shape, location and orientation.",
+      "LOD 350": "As LOD 300 plus interfaces with other building systems. This is the practical floor for construction documentation.",
+      "LOD 400": "Fabrication and assembly — includes detailing, fabrication, assembly and installation information.",
+      "LOD 500": "Field-verified as-built representation."
+    }
+  },
+  "knownGaps": [
+    "There is little published material showing what good-quality documentation actually looks like, so sets are usually corrected only by being told what is wrong.",
+    "2D documentation frequently fails to make complicated junctions legible; 3D models / digital twins resolve what plans and sections cannot.",
+    "‘Suitable for construction’ has no widely understood quantifiable benchmark — which is why detail scale, callouts and integration must be checked explicitly rather than assumed."
+  ]
+}
