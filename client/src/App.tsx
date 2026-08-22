@@ -21,6 +21,7 @@ import LegislationBrain from "./pages/LegislationBrain";
 import ReportStudio from "./pages/ReportStudio";
 import TrainingPlatform from "./pages/TrainingPlatform";
 import PlatformHome from "./pages/PlatformHome";
+import ReviewPlatform from "./pages/review/ReviewPlatform";
 
 // Marketing website pages
 import WebsiteHome from "./pages/website/WebsiteHome";
@@ -64,6 +65,8 @@ function Router() {
       <Route path="/report-studio" component={ReportStudio} />
       <Route path="/training" component={TrainingPlatform} />
       <Route path="/training/:code" component={TrainingPlatform} />
+      {/* Private course-review tool (reviewers + admin) — direct URL only */}
+      <Route path="/review" component={ReviewPlatform} />
       <Route path="/apartment-design-guide" component={ApartmentDesignGuide} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/portal/:role" component={RolePortal} />
