@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { Bell, KeyRound, LogOut, MailOpen, ShieldCheck } from "lucide-react";
+import { Bell, KeyRound, LogOut, MailOpen, MonitorX, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,7 @@ import {
   listUnreadMessages,
   markRepliesRead,
   nameFromEmail,
+  registerDevice,
   signOut,
   type UnreadMessage,
 } from "@/lib/review/api";
@@ -55,6 +56,7 @@ export default function ReviewPlatform() {
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [roleReady, setRoleReady] = useState(false);
+  const [deviceLocked, setDeviceLocked] = useState(false);
   const [view, setView] = useState<View>({ kind: "home" });
 
   const [unread, setUnread] = useState<UnreadMessage[]>([]);
@@ -78,6 +80,7 @@ export default function ReviewPlatform() {
   useEffect(() => {
     let cancelled = false;
     setRoleReady(false);
+    setDeviceLocked(false);
     setView({ kind: "home" });
     setUnread([]);
     if (!session) return;
@@ -88,6 +91,18 @@ export default function ReviewPlatform() {
         setIsAdmin(admin);
         setRoleReady(true);
         if (!admin) {
+          // Single-computer lock: the first browser used becomes the only one
+          // allowed for this reviewer (fails open on network errors).
+          try {
+            const dev = await registerDevice();
+            if (cancelled) return;
+            if (dev.locked) {
+              setDeviceLocked(true);
+              return;
+            }
+          } catch {
+            /* device check unavailable — do not lock the person out */
+          }
           const msgs = await listUnreadMessages();
           if (cancelled) return;
           setUnread(msgs);
@@ -152,6 +167,7 @@ export default function ReviewPlatform() {
     if (booting) return <CenterNote text="Loading…" />;
     if (!session) return <LoginView />;
     if (!roleReady) return <CenterNote text="Checking access…" />;
+    if (!isAdmin && deviceLocked) return <DeviceLockScreen />;
     if (view.kind === "viewer") {
       return (
         <CourseViewer
@@ -169,7 +185,7 @@ export default function ReviewPlatform() {
     ) : (
       <ReviewerHome onOpenCourse={(courseId) => openViewer({ courseId })} />
     );
-  }, [booting, session, roleReady, view, isAdmin, email, goHome, openViewer]);
+  }, [booting, session, roleReady, deviceLocked, view, isAdmin, email, goHome, openViewer]);
 
   return (
     <ProtectionShield active={!!session && roleReady && !isAdmin}>
@@ -303,6 +319,33 @@ function CenterNote({ text }: { text: string }) {
   return (
     <div className="flex flex-1 items-center justify-center py-24 text-sm font-semibold text-muted-foreground">
       {text}
+    </div>
+  );
+}
+
+/** Shown when a reviewer opens the platform on a second computer. */
+function DeviceLockScreen() {
+  return (
+    <div className="flex flex-1 items-center justify-center px-4 py-16">
+      <div className="w-full max-w-md rounded-xl border bg-white p-8 text-center shadow-xl">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-red-600">
+          <MonitorX size={22} className="text-white" />
+        </div>
+        <h1 className="mt-4 text-xl font-black" style={{ color: NAVY }}>
+          Access locked to another computer
+        </h1>
+        <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+          For security, this account only works on the computer where it was first used. If you
+          changed computers, ask the admin to unlock your access and sign in again here.
+        </p>
+        <Button
+          className="mt-5 gap-1.5 font-black"
+          style={{ background: NAVY }}
+          onClick={() => void signOut()}
+        >
+          <LogOut size={15} /> Sign out
+        </Button>
+      </div>
     </div>
   );
 }

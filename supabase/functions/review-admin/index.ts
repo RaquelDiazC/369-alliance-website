@@ -1,8 +1,8 @@
-// Course Review Platform — privileged admin actions.
+// Course Review Platform — privileged admin actions + device lock.
 // verify_jwt is disabled because this function implements its own auth:
-// every action except `bootstrap` requires a valid user JWT belonging to an
-// email listed in public.review_admins. `bootstrap` only ever creates the
-// FIRST auth account for an email already seeded in review_admins.
+// `bootstrap` only ever creates the FIRST auth account for an email already
+// seeded in review_admins; `register_device` requires any valid user JWT;
+// every other action requires a JWT belonging to an email in review_admins.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -86,12 +86,45 @@ Deno.serve(async (req: Request) => {
       return json(200, { ok: true });
     }
 
-    // Every other action requires a logged-in admin.
+    // Every other action requires a signed-in user.
     const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
     if (!token) return json(401, { error: "not authenticated" });
     const { data: caller, error: authErr } = await admin.auth.getUser(token);
     const callerEmail = caller?.user?.email?.toLowerCase() ?? "";
     if (authErr || !callerEmail) return json(401, { error: "not authenticated" });
+
+    // Device lock: a reviewer account only works on the first device that
+    // signed in with it. Admins are exempt.
+    if (action === "register_device") {
+      const deviceId = String(payload.deviceId ?? "").trim();
+      if (!deviceId || deviceId.length > 100) return json(400, { error: "invalid device id" });
+      if (await isAdminEmail(callerEmail)) return json(200, { ok: true, admin: true });
+      const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || null;
+      const { data: reg } = await admin
+        .from("review_reviewers")
+        .select("device_id")
+        .eq("email", callerEmail)
+        .maybeSingle();
+      if (!reg) return json(200, { ok: true });
+      if (!reg.device_id) {
+        await admin
+          .from("review_reviewers")
+          .update({
+            device_id: deviceId,
+            device_registered_at: new Date().toISOString(),
+            last_seen_ip: ip,
+          })
+          .eq("email", callerEmail);
+        return json(200, { ok: true, registered: true });
+      }
+      if (reg.device_id === deviceId) {
+        await admin.from("review_reviewers").update({ last_seen_ip: ip }).eq("email", callerEmail);
+        return json(200, { ok: true });
+      }
+      return json(200, { ok: false, locked: true });
+    }
+
+    // Everything below is admin-only.
     if (!(await isAdminEmail(callerEmail))) {
       return json(403, { error: "admin access only" });
     }
@@ -155,6 +188,16 @@ Deno.serve(async (req: Request) => {
       if (error) return json(500, { error: error.message });
       await admin.from("review_reviewers").update({ access_code: code }).eq("email", email);
       return json(200, { ok: true, accessCode: code });
+    }
+
+    if (action === "unlock_device") {
+      const email = String(payload.email ?? "").trim().toLowerCase();
+      const { error } = await admin
+        .from("review_reviewers")
+        .update({ device_id: null, device_registered_at: null })
+        .eq("email", email);
+      if (error) return json(500, { error: error.message });
+      return json(200, { ok: true });
     }
 
     if (action === "remove_reviewer") {

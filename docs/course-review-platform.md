@@ -52,6 +52,14 @@ folha e deixam comentários que só eles e a administradora enxergam.
   comentários da folha atual à direita. Cada comentário fica preso à folha.
 - Um revisor **nunca** vê comentários de outros revisores (garantido por
   Row Level Security no banco, não só na interface).
+- **Trava de 1 computador:** o primeiro computador em que a pessoa entrar
+  fica registrado; ao abrir em outro, o sistema mostra "Access locked to
+  another computer". A admin desbloqueia em Reviewers → "Unlock computer"
+  (o próximo computador usado vira o registrado). A trava é por navegador —
+  limpar os dados do navegador ou usar outro navegador na mesma máquina
+  também exige desbloqueio. IP puro não é usado como trava (muda com
+  frequência e é compartilhado na mesma rede); o último IP visto aparece na
+  lista de Reviewers como informação.
 - Ao entrar, um alerta lista as respostas não lidas da administradora, com
   link direto para a folha comentada.
 

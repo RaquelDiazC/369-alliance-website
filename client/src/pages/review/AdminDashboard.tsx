@@ -22,10 +22,12 @@ import {
   FolderPlus,
   KeyRound,
   MessageSquare,
+  Monitor,
   Pencil,
   Plus,
   RefreshCcw,
   Trash2,
+  Unlock,
   UserPlus,
   Users,
   X,
@@ -52,6 +54,7 @@ import {
   createCourse,
   deleteCourse,
   deleteFile,
+  formatStamp,
   listCourseComments,
   listCourses,
   listFiles,
@@ -63,6 +66,7 @@ import {
   renameFile,
   replaceFile,
   resetReviewerCode,
+  unlockDevice,
   upsertReviewer,
   uploadCourseFile,
   nameFromEmail,
@@ -694,6 +698,7 @@ function ReviewersPanel({ courses }: { courses: ReviewCourse[] }) {
   const [codeInfo, setCodeInfo] = useState<{ email: string; code: string } | null>(null);
   const [toRemove, setToRemove] = useState<ReviewerEntry | null>(null);
   const [toReset, setToReset] = useState<ReviewerEntry | null>(null);
+  const [toUnlock, setToUnlock] = useState<ReviewerEntry | null>(null);
   const [savingEmail, setSavingEmail] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
@@ -732,9 +737,10 @@ function ReviewersPanel({ courses }: { courses: ReviewCourse[] }) {
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="max-w-[60ch] text-[13px] text-muted-foreground">
-          Each reviewer signs in with their own email + an access code generated here. Below, tick
-          or untick the course folders each person can see — changes apply instantly, and removing
-          access never deletes the comments they already made.
+          Each reviewer signs in with their own email + an access code generated here, and the
+          account only works on the <b>first computer</b> they use (unlock it here if they change
+          machines). Tick or untick the course folders each person can see — changes apply
+          instantly, and removing access never deletes the comments they already made.
         </p>
         <Button className="gap-1.5 font-black" style={{ background: NAVY }} onClick={() => setAddOpen(true)}>
           <UserPlus size={15} /> Add reviewer
@@ -773,6 +779,11 @@ function ReviewersPanel({ courses }: { courses: ReviewCourse[] }) {
                 </button>
               )}
               <div className="ml-auto flex items-center gap-1">
+                {r.device_id && (
+                  <Button variant="ghost" size="sm" className="gap-1 text-[12px] font-bold text-muted-foreground" title="Let this person use a different computer" onClick={() => setToUnlock(r)}>
+                    <Unlock size={12} /> Unlock computer
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" className="gap-1 text-[12px] font-bold text-muted-foreground" title="Generate a new access code" onClick={() => setToReset(r)}>
                   <RefreshCcw size={12} /> New code
                 </Button>
@@ -781,6 +792,12 @@ function ReviewersPanel({ courses }: { courses: ReviewCourse[] }) {
                 </Button>
               </div>
             </div>
+            <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+              <Monitor size={12} />
+              {r.device_id
+                ? `Locked to 1 computer (registered ${formatStamp(r.device_registered_at ?? r.created_at)})${r.last_seen_ip ? ` · last IP ${r.last_seen_ip}` : ""}`
+                : "Computer not registered yet — the first sign-in locks the account to that machine"}
+            </p>
             {/* tick/untick access per course folder — applies instantly */}
             <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-2 border-t pt-2.5">
               {courses.length === 0 && (
@@ -857,6 +874,22 @@ function ReviewersPanel({ courses }: { courses: ReviewCourse[] }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!toUnlock}
+        title={`Unlock the computer for ${toUnlock?.email}?`}
+        description="They will be able to sign in on a different computer — the next computer they use becomes the new registered one."
+        confirmLabel="Unlock"
+        destructive={false}
+        onCancel={() => setToUnlock(null)}
+        onConfirm={async () => {
+          if (!toUnlock) return;
+          await unlockDevice(toUnlock.email);
+          setToUnlock(null);
+          await reload();
+          toast.success("Unlocked. Their next sign-in registers the new computer.");
+        }}
+      />
 
       <ConfirmDialog
         open={!!toReset}

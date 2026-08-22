@@ -52,6 +52,9 @@ export interface ReviewerEntry {
   display_name: string | null;
   access_code: string | null;
   created_at: string;
+  device_id: string | null;
+  device_registered_at: string | null;
+  last_seen_ip: string | null;
   courseIds: string[];
 }
 
@@ -147,6 +150,42 @@ export function resetReviewerCode(email: string) {
 /** Removes login + access. Comments stay (they are keyed by email). */
 export function removeReviewer(email: string) {
   return invokeAdmin({ action: "remove_reviewer", email });
+}
+
+/* ───────────────────────── device lock ───────────────────────────── */
+
+const DEVICE_KEY = "369-review-device-id";
+let memoryDeviceId: string | null = null;
+
+function getOrCreateDeviceId(): string {
+  try {
+    const cur = localStorage.getItem(DEVICE_KEY);
+    if (cur) return cur;
+    const id = crypto.randomUUID();
+    localStorage.setItem(DEVICE_KEY, id);
+    return id;
+  } catch {
+    if (!memoryDeviceId) memoryDeviceId = crypto.randomUUID();
+    return memoryDeviceId;
+  }
+}
+
+/**
+ * Binds this browser as the reviewer's single allowed computer (first call
+ * registers it; later calls validate). Returns { locked: true } when the
+ * account is already bound to a different computer.
+ */
+export async function registerDevice(): Promise<{ locked: boolean }> {
+  const res = await invokeAdmin<{ ok: boolean; locked?: boolean }>({
+    action: "register_device",
+    deviceId: getOrCreateDeviceId(),
+  });
+  return { locked: !!res.locked };
+}
+
+/** Admin: clear the binding so the person can use a new computer. */
+export function unlockDevice(email: string) {
+  return invokeAdmin({ action: "unlock_device", email });
 }
 
 /* ───────────────────────────── courses ───────────────────────────── */
