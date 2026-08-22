@@ -290,27 +290,9 @@ export default function CourseViewer({
                 </SelectContent>
               </Select>
             )}
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              <ChevronLeft size={16} />
-            </Button>
             <span className="min-w-[90px] text-center text-[13px] font-black" style={{ color: NAVY }}>
               Folha {numPages ? page : "–"} / {numPages || "–"}
             </span>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              disabled={!numPages || page >= numPages}
-              onClick={() => setPage((p) => Math.min(numPages, p + 1))}
-            >
-              <ChevronRight size={16} />
-            </Button>
           </div>
         </div>
       </div>
@@ -332,6 +314,32 @@ export default function CourseViewer({
             <>
               <canvas ref={canvasRef} className="max-h-full max-w-full rounded shadow-2xl" />
               {!isAdmin && email && <Watermark email={email} />}
+              {/* image-viewer style page arrows, floating over the slide */}
+              {numPages > 0 && (
+                <>
+                  <button
+                    aria-label="Folha anterior"
+                    title="Folha anterior"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="absolute left-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/65 disabled:cursor-default disabled:opacity-20 disabled:hover:bg-black/40"
+                  >
+                    <ChevronLeft size={26} />
+                  </button>
+                  <button
+                    aria-label="Próxima folha"
+                    title="Próxima folha"
+                    disabled={page >= numPages}
+                    onClick={() => setPage((p) => Math.min(numPages, p + 1))}
+                    className="absolute right-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/65 disabled:cursor-default disabled:opacity-20 disabled:hover:bg-black/40"
+                  >
+                    <ChevronRight size={26} />
+                  </button>
+                  <span className="pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black/45 px-3 py-1 text-[12px] font-bold text-white backdrop-blur-sm">
+                    {page} / {numPages}
+                  </span>
+                </>
+              )}
             </>
           )}
         </div>
