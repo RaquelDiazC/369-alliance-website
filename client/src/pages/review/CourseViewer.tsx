@@ -91,11 +91,11 @@ export default function CourseViewer({
           listFiles(courseId),
         ]);
         if (cancelled) return;
-        setCourseName(course?.name ?? "Curso");
+        setCourseName(course?.name ?? "Course");
         setFiles(fs);
         setFileId((cur) => cur ?? fs[0]?.id ?? null);
       } catch (e) {
-        if (!cancelled) toast.error(e instanceof Error ? e.message : "Erro ao carregar o curso.");
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to load the course.");
       }
     })();
     return () => {
@@ -123,7 +123,7 @@ export default function CourseViewer({
         setNumPages(doc.numPages);
         setPage((p) => Math.min(Math.max(1, p), doc.numPages));
       } catch (e) {
-        if (!cancelled) toast.error(e instanceof Error ? e.message : "Erro ao abrir o PDF.");
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to open the PDF.");
       } finally {
         if (!cancelled) setPdfLoading(false);
       }
@@ -206,7 +206,7 @@ export default function CourseViewer({
     try {
       setComments(await listFileComments(fileId));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao carregar comentários.");
+      toast.error(e instanceof Error ? e.message : "Failed to load comments.");
     }
   }, [fileId]);
 
@@ -254,7 +254,7 @@ export default function CourseViewer({
       <div className="border-b bg-white">
         <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-2 px-4 py-2">
           <Button variant="ghost" size="sm" className="gap-1.5 font-bold" onClick={onBack}>
-            <ArrowLeft size={15} /> Voltar
+            <ArrowLeft size={15} /> Back
           </Button>
           <span className="hidden text-[13px] font-black sm:inline" style={{ color: NAVY }}>
             {courseName}
@@ -263,7 +263,7 @@ export default function CourseViewer({
           <div className="min-w-[200px] max-w-[340px] flex-1">
             <Select value={fileId ?? undefined} onValueChange={onSelectFile}>
               <SelectTrigger className="h-8 text-[13px] font-semibold">
-                <SelectValue placeholder={files === null ? "Carregando…" : "Escolha o arquivo"} />
+                <SelectValue placeholder={files === null ? "Loading…" : "Choose a file"} />
               </SelectTrigger>
               <SelectContent>
                 {(files ?? []).map((f, i) => (
@@ -279,19 +279,19 @@ export default function CourseViewer({
             {commentedPages.length > 0 && (
               <Select value="" onValueChange={(v) => setPage(Number(v))}>
                 <SelectTrigger className="h-8 w-[170px] text-[12px] font-semibold">
-                  <SelectValue placeholder={`Folhas comentadas (${commentedPages.length})`} />
+                  <SelectValue placeholder={`Commented pages (${commentedPages.length})`} />
                 </SelectTrigger>
                 <SelectContent>
                   {commentedPages.map((p) => (
                     <SelectItem key={p} value={String(p)}>
-                      Folha {p} — {comments.filter((c) => c.page_number === p).length} comentário(s)
+                      Page {p} — {comments.filter((c) => c.page_number === p).length} comment(s)
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
             <span className="min-w-[90px] text-center text-[13px] font-black" style={{ color: NAVY }}>
-              Folha {numPages ? page : "–"} / {numPages || "–"}
+              Page {numPages ? page : "–"} / {numPages || "–"}
             </span>
           </div>
         </div>
@@ -306,10 +306,10 @@ export default function CourseViewer({
         >
           {files !== null && files.length === 0 ? (
             <p className="px-6 text-center text-sm font-semibold text-white/60">
-              Este curso ainda não tem arquivos.
+              This course has no files yet.
             </p>
           ) : pdfLoading ? (
-            <p className="text-sm font-semibold text-white/60">Abrindo o material…</p>
+            <p className="text-sm font-semibold text-white/60">Opening the material…</p>
           ) : (
             <>
               <canvas ref={canvasRef} className="max-h-full max-w-full rounded shadow-2xl" />
@@ -318,8 +318,8 @@ export default function CourseViewer({
               {numPages > 0 && (
                 <>
                   <button
-                    aria-label="Folha anterior"
-                    title="Folha anterior"
+                    aria-label="Previous page"
+                    title="Previous page"
                     disabled={page <= 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     className="absolute left-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/65 disabled:cursor-default disabled:opacity-20 disabled:hover:bg-black/40"
@@ -327,8 +327,8 @@ export default function CourseViewer({
                     <ChevronLeft size={26} />
                   </button>
                   <button
-                    aria-label="Próxima folha"
-                    title="Próxima folha"
+                    aria-label="Next page"
+                    title="Next page"
                     disabled={page >= numPages}
                     onClick={() => setPage((p) => Math.min(numPages, p + 1))}
                     className="absolute right-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/65 disabled:cursor-default disabled:opacity-20 disabled:hover:bg-black/40"
@@ -349,7 +349,7 @@ export default function CourseViewer({
           <div className="flex items-center gap-2 border-b px-4 py-3">
             <MessageSquare size={16} style={{ color: GOLD }} />
             <p className="text-[13px] font-black" style={{ color: NAVY }}>
-              Comentários · folha {numPages ? page : "–"}
+              Comments · page {numPages ? page : "–"}
             </p>
             <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
               {pageComments.length}
@@ -371,8 +371,8 @@ export default function CourseViewer({
             {pageComments.length === 0 && (
               <p className="py-8 text-center text-[13px] text-muted-foreground">
                 {isAdmin
-                  ? "Nenhum comentário nesta folha."
-                  : "Você ainda não comentou nesta folha."}
+                  ? "No comments on this page."
+                  : "You haven't commented on this page yet."}
               </p>
             )}
 
@@ -410,9 +410,9 @@ function NewCommentBox({
     try {
       await onSubmit(t);
       setText("");
-      toast.success("Comentário enviado.");
+      toast.success("Comment posted.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao enviar comentário.");
+      toast.error(e instanceof Error ? e.message : "Failed to post the comment.");
     } finally {
       setBusy(false);
     }
@@ -420,7 +420,7 @@ function NewCommentBox({
   return (
     <div className="rounded-lg border bg-[#faf9f6] p-2.5">
       <Textarea
-        placeholder="Escreva um comentário sobre esta folha…"
+        placeholder="Write a comment about this page…"
         value={text}
         disabled={disabled}
         onChange={(e) => setText(e.target.value)}
@@ -434,7 +434,7 @@ function NewCommentBox({
           disabled={disabled || busy || !text.trim()}
           onClick={() => void send()}
         >
-          <Send size={13} /> Comentar
+          <Send size={13} /> Comment
         </Button>
       </div>
     </div>
@@ -471,10 +471,10 @@ export function CommentCard({
       await addReply(comment.id, t);
       setReplyText("");
       setReplyOpen(false);
-      toast.success("Feedback enviado. A pessoa verá ao entrar no sistema.");
+      toast.success("Feedback sent. They will see it when they sign in.");
       await onChanged();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao enviar feedback.");
+      toast.error(e instanceof Error ? e.message : "Failed to send feedback.");
     } finally {
       setBusy(false);
     }
@@ -485,9 +485,9 @@ export function CommentCard({
     try {
       await deleteComment(comment.id);
       await onChanged();
-      toast.success("Comentário apagado.");
+      toast.success("Comment deleted.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao apagar.");
+      toast.error(e instanceof Error ? e.message : "Failed to delete.");
     } finally {
       setBusy(false);
       setConfirmDelete(false);
@@ -508,7 +508,7 @@ export function CommentCard({
         onClick={isAdmin ? () => setReplyOpen((v) => !v) : undefined}
         onKeyDown={isAdmin ? (e) => e.key === "Enter" && setReplyOpen((v) => !v) : undefined}
         className={isAdmin ? "cursor-pointer rounded p-0.5 transition hover:bg-[#faf6ef]" : undefined}
-        title={isAdmin ? "Clique para responder" : undefined}
+        title={isAdmin ? "Click to reply" : undefined}
       >
         <p className="text-[13px] leading-relaxed">
           <span className="font-black" style={{ color: NAVY }}>
@@ -537,7 +537,7 @@ export function CommentCard({
             <span className="whitespace-pre-wrap">{r.body}</span>
             {!r.read_at && (
               <span className="ml-1.5 rounded-full bg-amber-600 px-1.5 py-px align-middle text-[9px] font-black uppercase text-white">
-                nova
+                new
               </span>
             )}
           </p>
@@ -548,7 +548,7 @@ export function CommentCard({
         <div className="mt-2 flex items-center gap-1.5">
           <Input
             autoFocus
-            placeholder="Escreva seu feedback para esta pessoa…"
+            placeholder="Write your feedback for this person…"
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void sendReply()}
@@ -570,18 +570,18 @@ export function CommentCard({
         <div className="mt-1.5 flex justify-end">
           {confirmDelete ? (
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-bold text-red-600">Apagar comentário?</span>
+              <span className="text-[11px] font-bold text-red-600">Delete comment?</span>
               <Button size="sm" variant="destructive" className="h-6 px-2 text-[11px]" disabled={busy} onClick={() => void doDelete()}>
-                Sim
+                Yes
               </Button>
               <Button size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={() => setConfirmDelete(false)}>
-                Não
+                No
               </Button>
             </div>
           ) : (
             <button
               className="text-muted-foreground/60 transition hover:text-red-600"
-              title="Apagar comentário"
+              title="Delete comment"
               onClick={() => setConfirmDelete(true)}
             >
               <Trash2 size={13} />

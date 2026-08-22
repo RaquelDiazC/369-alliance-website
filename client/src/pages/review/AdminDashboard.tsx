@@ -1,10 +1,12 @@
 /**
  * Course Review Platform — admin dashboard.
  *
- * "Cursos": course folders with the PDF manager (upload, rename, reorder,
- * delete, replace) and the full comment overview with inline feedback.
- * "Revisores": which email can open which course folder — add/edit/remove
- * access (comments always survive), access codes to share, code reset.
+ * "Courses": folder-first navigation — each course is a folder; clicking the
+ * folder opens it (the PDFs live inside), renaming is the pencil icon. Each
+ * folder row shows a comment indicator (green as soon as any lesson has
+ * comments) to the left of the reorder arrows.
+ * "Reviewers": add people by email and manage, in one list, which course
+ * folder each email can see via tick/untick — comments always survive.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -16,6 +18,7 @@ import {
   Eye,
   FilePlus2,
   FileText,
+  Folder,
   FolderPlus,
   KeyRound,
   MessageSquare,
@@ -45,6 +48,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  countCommentsByCourse,
   createCourse,
   deleteCourse,
   deleteFile,
@@ -71,22 +75,33 @@ import { countPdfPages } from "@/lib/review/pdf";
 import { CommentCard } from "./CourseViewer";
 import { GOLD, NAVY } from "./ReviewPlatform";
 
+const GREEN = "#16a34a";
+
+type DetailTab = "files" | "comments";
+
 export default function AdminDashboard({
   onOpenCourse,
 }: {
   onOpenCourse: (courseId: string) => void;
 }) {
   const [courses, setCourses] = useState<ReviewCourse[]>([]);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [loaded, setLoaded] = useState(false);
-  const [selected, setSelected] = useState<ReviewCourse | null>(null);
+  const [selected, setSelected] = useState<{ course: ReviewCourse; tab: DetailTab } | null>(null);
 
   const reloadCourses = useCallback(async () => {
     try {
-      const cs = await listCourses();
+      const [cs, counts] = await Promise.all([listCourses(), countCommentsByCourse()]);
       setCourses(cs);
-      setSelected((cur) => (cur ? (cs.find((c) => c.id === cur.id) ?? null) : null));
+      setCommentCounts(counts);
+      setSelected((cur) =>
+        cur ? (() => {
+          const c = cs.find((x) => x.id === cur.course.id);
+          return c ? { course: c, tab: cur.tab } : null;
+        })() : null,
+      );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao carregar cursos.");
+      toast.error(e instanceof Error ? e.message : "Failed to load courses.");
     } finally {
       setLoaded(true);
     }
@@ -99,9 +114,14 @@ export default function AdminDashboard({
   if (selected) {
     return (
       <CourseDetail
-        course={selected}
-        onBack={() => setSelected(null)}
-        onOpenViewer={() => onOpenCourse(selected.id)}
+        key={`${selected.course.id}-${selected.tab}`}
+        course={selected.course}
+        initialTab={selected.tab}
+        onBack={() => {
+          setSelected(null);
+          void reloadCourses();
+        }}
+        onOpenViewer={() => onOpenCourse(selected.course.id)}
       />
     );
   }
@@ -111,19 +131,20 @@ export default function AdminDashboard({
       <Tabs defaultValue="courses">
         <TabsList>
           <TabsTrigger value="courses" className="gap-1.5 font-bold">
-            <FileText size={15} /> Cursos
+            <Folder size={15} /> Courses
           </TabsTrigger>
           <TabsTrigger value="reviewers" className="gap-1.5 font-bold">
-            <Users size={15} /> Revisores
+            <Users size={15} /> Reviewers
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="courses" className="pt-4">
           <CoursesPanel
             courses={courses}
+            commentCounts={commentCounts}
             loaded={loaded}
             onChanged={reloadCourses}
-            onSelect={setSelected}
+            onOpenFolder={(course, tab) => setSelected({ course, tab })}
             onOpenViewer={onOpenCourse}
           />
         </TabsContent>
@@ -140,20 +161,24 @@ export default function AdminDashboard({
 
 function CoursesPanel({
   courses,
+  commentCounts,
   loaded,
   onChanged,
-  onSelect,
+  onOpenFolder,
   onOpenViewer,
 }: {
   courses: ReviewCourse[];
+  commentCounts: Record<string, number>;
   loaded: boolean;
   onChanged: () => Promise<void>;
-  onSelect: (c: ReviewCourse) => void;
+  onOpenFolder: (c: ReviewCourse, tab: DetailTab) => void;
   onOpenViewer: (id: string) => void;
 }) {
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
   const [toDelete, setToDelete] = useState<ReviewCourse | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState("");
 
   const create = async () => {
     const n = newName.trim();
@@ -163,11 +188,24 @@ function CoursesPanel({
       await createCourse(n);
       setNewName("");
       await onChanged();
-      toast.success("Curso criado.");
+      toast.success("Course folder created. Click it to add the PDFs inside.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao criar curso.");
+      toast.error(e instanceof Error ? e.message : "Failed to create the course.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const saveRename = async (c: ReviewCourse) => {
+    const t = renameText.trim();
+    setRenamingId(null);
+    if (!t || t === c.name) return;
+    try {
+      await renameCourse(c.id, t);
+      await onChanged();
+      toast.success("Renamed.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to rename.");
     }
   };
 
@@ -175,84 +213,174 @@ function CoursesPanel({
     <>
       <div className="flex flex-wrap items-center gap-2">
         <Input
-          placeholder="Nome do novo curso (pasta)…"
+          placeholder="New course folder name (e.g. Strata)…"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && void create()}
           className="max-w-sm"
         />
-        <Button className="gap-1.5 font-black" style={{ background: NAVY }} disabled={busy || !newName.trim()} onClick={() => void create()}>
-          <FolderPlus size={15} /> Criar curso
+        <Button
+          className="gap-1.5 font-black"
+          style={{ background: NAVY }}
+          disabled={busy || !newName.trim()}
+          onClick={() => void create()}
+        >
+          <FolderPlus size={15} /> Create course folder
         </Button>
       </div>
+      <p className="mt-2 text-[12px] text-muted-foreground">
+        Each course is a folder — click a folder to open it and manage the PDFs inside. The green
+        icon lights up as soon as a lesson receives comments.
+      </p>
 
       {loaded && courses.length === 0 && (
         <Card className="mt-6 border-dashed">
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Crie a primeira pasta de curso para começar a subir os PDFs.
+            Create the first course folder to start uploading PDFs.
           </CardContent>
         </Card>
       )}
 
       <div className="mt-5 space-y-2">
-        {courses.map((c, i) => (
-          <div key={c.id} className="flex items-center gap-2 rounded-xl border bg-white p-3 shadow-sm">
-            <span className="w-6 text-center text-[12px] font-black text-muted-foreground">{i + 1}</span>
-            <InlineRename
-              value={c.name}
-              onSave={async (name) => {
-                await renameCourse(c.id, name);
-                await onChanged();
-              }}
-              className="min-w-0 flex-1 text-[15px] font-black"
-            />
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="Mover para cima" disabled={i === 0}
-              onClick={() => moveCourse(courses, c.id, -1).then(onChanged).catch((e) => toast.error(String(e.message ?? e)))}>
-              <ArrowUp size={15} />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="Mover para baixo" disabled={i === courses.length - 1}
-              onClick={() => moveCourse(courses, c.id, 1).then(onChanged).catch((e) => toast.error(String(e.message ?? e)))}>
-              <ArrowDown size={15} />
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5 font-bold" onClick={() => onSelect(c)}>
-              <FileText size={14} /> Arquivos & comentários
-            </Button>
-            <Button size="sm" className="gap-1.5 font-bold" style={{ background: NAVY }} onClick={() => onOpenViewer(c.id)}>
-              <Eye size={14} /> Abrir
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600" title="Apagar curso" onClick={() => setToDelete(c)}>
-              <Trash2 size={15} />
-            </Button>
-          </div>
-        ))}
+        {courses.map((c, i) => {
+          const count = commentCounts[c.id] ?? 0;
+          const renaming = renamingId === c.id;
+          return (
+            <div
+              key={c.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => !renaming && onOpenFolder(c, "files")}
+              onKeyDown={(e) => e.key === "Enter" && !renaming && onOpenFolder(c, "files")}
+              className="flex cursor-pointer items-center gap-2 rounded-xl border bg-white p-3 shadow-sm transition hover:border-[#A68A64] hover:shadow-md"
+            >
+              <span className="w-6 text-center text-[12px] font-black text-muted-foreground">{i + 1}</span>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" style={{ background: NAVY }}>
+                <Folder size={18} style={{ color: GOLD }} />
+              </span>
+              {renaming ? (
+                <Input
+                  autoFocus
+                  value={renameText}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => setRenameText(e.target.value)}
+                  onBlur={() => void saveRename(c)}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === "Enter") void saveRename(c);
+                    if (e.key === "Escape") setRenamingId(null);
+                  }}
+                  className="h-8 min-w-0 flex-1 text-[15px] font-black"
+                />
+              ) : (
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-black" style={{ color: NAVY }}>
+                    {c.name}
+                  </span>
+                  <span className="block text-[11px] text-muted-foreground">Open folder · PDFs inside</span>
+                </span>
+              )}
+
+              {/* comment indicator — green as soon as the lessons have comments */}
+              <button
+                title={count > 0 ? `${count} comment${count === 1 ? "" : "s"} — click to view` : "No comments yet"}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenFolder(c, "comments");
+                }}
+                className="flex h-8 items-center gap-1 rounded-md px-2 transition hover:bg-muted"
+              >
+                <MessageSquare
+                  size={16}
+                  style={count > 0 ? { color: GREEN } : { color: "#c9c4ba" }}
+                  fill={count > 0 ? GREEN : "none"}
+                />
+                {count > 0 && (
+                  <span className="text-[12px] font-black" style={{ color: GREEN }}>
+                    {count}
+                  </span>
+                )}
+              </button>
+
+              <Button
+                variant="ghost" size="icon" className="h-8 w-8" title="Move up" disabled={i === 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  moveCourse(courses, c.id, -1).then(onChanged).catch((err) => toast.error(String(err.message ?? err)));
+                }}
+              >
+                <ArrowUp size={15} />
+              </Button>
+              <Button
+                variant="ghost" size="icon" className="h-8 w-8" title="Move down" disabled={i === courses.length - 1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  moveCourse(courses, c.id, 1).then(onChanged).catch((err) => toast.error(String(err.message ?? err)));
+                }}
+              >
+                <ArrowDown size={15} />
+              </Button>
+              <Button
+                variant="outline" size="sm" className="gap-1.5 font-bold" title="Open in the slide viewer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenViewer(c.id);
+                }}
+              >
+                <Eye size={14} /> Preview
+              </Button>
+              <Button
+                variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" title="Rename folder"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRenameText(c.name);
+                  setRenamingId(c.id);
+                }}
+              >
+                <Pencil size={14} />
+              </Button>
+              <Button
+                variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600" title="Delete folder"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setToDelete(c);
+                }}
+              >
+                <Trash2 size={15} />
+              </Button>
+            </div>
+          );
+        })}
       </div>
 
       <ConfirmDialog
         open={!!toDelete}
-        title={`Apagar o curso "${toDelete?.name}"?`}
-        description="Todos os PDFs e comentários deste curso serão apagados de forma definitiva."
-        confirmLabel="Apagar curso"
+        title={`Delete the course folder "${toDelete?.name}"?`}
+        description="All PDFs and comments in this course will be permanently deleted."
+        confirmLabel="Delete folder"
         onCancel={() => setToDelete(null)}
         onConfirm={async () => {
           if (!toDelete) return;
           await deleteCourse(toDelete);
           setToDelete(null);
           await onChanged();
-          toast.success("Curso apagado.");
+          toast.success("Course folder deleted.");
         }}
       />
     </>
   );
 }
 
-/* ──────────────────────────── course detail ──────────────────────────── */
+/* ──────────────────────────── course folder ──────────────────────────── */
 
 function CourseDetail({
   course,
+  initialTab,
   onBack,
   onOpenViewer,
 }: {
   course: ReviewCourse;
+  initialTab: DetailTab;
   onBack: () => void;
   onOpenViewer: () => void;
 }) {
@@ -265,7 +393,7 @@ function CourseDetail({
       setFiles(fs);
       setComments(cs);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao carregar o curso.");
+      toast.error(e instanceof Error ? e.message : "Failed to load the course.");
     }
   }, [course.id]);
 
@@ -283,23 +411,26 @@ function CourseDetail({
     <div className="mx-auto w-full max-w-[1100px] px-4 py-8">
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="sm" className="gap-1.5 font-bold" onClick={onBack}>
-          <ArrowLeft size={15} /> Todos os cursos
+          <ArrowLeft size={15} /> All folders
         </Button>
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: NAVY }}>
+          <Folder size={15} style={{ color: GOLD }} />
+        </span>
         <h1 className="text-xl font-black tracking-tight" style={{ color: NAVY }}>
           {course.name}
         </h1>
         <Button size="sm" className="ml-auto gap-1.5 font-bold" style={{ background: NAVY }} onClick={onOpenViewer}>
-          <Eye size={14} /> Abrir no visualizador
+          <Eye size={14} /> Open in viewer
         </Button>
       </div>
 
-      <Tabs defaultValue="files" className="mt-5">
+      <Tabs defaultValue={initialTab} className="mt-5">
         <TabsList>
           <TabsTrigger value="files" className="gap-1.5 font-bold">
-            <FileText size={14} /> Arquivos ({files.length})
+            <FileText size={14} /> Files ({files.length})
           </TabsTrigger>
           <TabsTrigger value="comments" className="gap-1.5 font-bold">
-            <MessageSquare size={14} /> Comentários ({comments.length})
+            <MessageSquare size={14} /> Comments ({comments.length})
           </TabsTrigger>
         </TabsList>
 
@@ -336,16 +467,16 @@ function FilesManager({
     if (!list || list.length === 0) return;
     for (const f of Array.from(list)) {
       if (!/\.pdf$/i.test(f.name)) {
-        toast.error(`"${f.name}" não é um PDF.`);
+        toast.error(`"${f.name}" is not a PDF.`);
         continue;
       }
-      setBusyMsg(`Enviando "${f.name}"…`);
+      setBusyMsg(`Uploading "${f.name}"…`);
       try {
         const pages = await countPdfPages(f);
         await uploadCourseFile(course.id, f, pages);
-        toast.success(`"${f.name}" enviado (${pages} folhas).`);
+        toast.success(`"${f.name}" uploaded (${pages} pages).`);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : `Erro ao enviar "${f.name}".`);
+        toast.error(e instanceof Error ? e.message : `Failed to upload "${f.name}".`);
       }
     }
     setBusyMsg(null);
@@ -358,16 +489,16 @@ function FilesManager({
     const f = list?.[0];
     if (!f || !target) return;
     if (!/\.pdf$/i.test(f.name)) {
-      toast.error("Escolha um arquivo PDF.");
+      toast.error("Choose a PDF file.");
       return;
     }
-    setBusyMsg(`Substituindo "${target.name}"…`);
+    setBusyMsg(`Replacing "${target.name}"…`);
     try {
       const pages = await countPdfPages(f);
       await replaceFile(target, f, pages);
-      toast.success(`"${target.name}" substituído — os comentários foram mantidos.`);
+      toast.success(`"${target.name}" replaced — all comments were kept.`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao substituir o arquivo.");
+      toast.error(e instanceof Error ? e.message : "Failed to replace the file.");
     } finally {
       setBusyMsg(null);
       await onChanged();
@@ -400,7 +531,7 @@ function FilesManager({
 
       <div className="flex items-center gap-3">
         <Button className="gap-1.5 font-black" style={{ background: NAVY }} disabled={!!busyMsg} onClick={() => uploadRef.current?.click()}>
-          <FilePlus2 size={15} /> Subir PDF(s)
+          <FilePlus2 size={15} /> Upload PDF(s)
         </Button>
         {busyMsg && <span className="text-[13px] font-semibold text-muted-foreground">{busyMsg}</span>}
       </div>
@@ -408,8 +539,8 @@ function FilesManager({
       {files.length === 0 && (
         <Card className="mt-5 border-dashed">
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Nenhum PDF neste curso ainda. Suba o material em PDF — cada folha (página) poderá ser
-            comentada pelos revisores.
+            No PDFs in this folder yet. Upload the material as PDF — reviewers can comment on every
+            page.
           </CardContent>
         </Card>
       )}
@@ -428,17 +559,21 @@ function FilesManager({
               className="min-w-[160px] flex-1 text-[14px] font-bold"
             />
             <Badge variant="outline" className="text-[11px] font-bold text-muted-foreground">
-              {f.page_count} folhas
+              {f.page_count} pages
             </Badge>
-            <Badge variant="outline" className="gap-1 text-[11px] font-bold text-muted-foreground">
+            <Badge
+              variant="outline"
+              className="gap-1 text-[11px] font-bold"
+              style={(commentCountByFile.get(f.id) ?? 0) > 0 ? { color: GREEN, borderColor: GREEN } : { color: "#a8a29a" }}
+            >
               <MessageSquare size={11} /> {commentCountByFile.get(f.id) ?? 0}
             </Badge>
             <div className="ml-auto flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8" title="Mover para cima" disabled={i === 0}
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Move up" disabled={i === 0}
                 onClick={() => moveFile(files, f.id, -1).then(onChanged).catch((e) => toast.error(String(e.message ?? e)))}>
                 <ArrowUp size={15} />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" title="Mover para baixo" disabled={i === files.length - 1}
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Move down" disabled={i === files.length - 1}
                 onClick={() => moveFile(files, f.id, 1).then(onChanged).catch((e) => toast.error(String(e.message ?? e)))}>
                 <ArrowDown size={15} />
               </Button>
@@ -446,15 +581,15 @@ function FilesManager({
                 variant="outline"
                 size="sm"
                 className="gap-1 text-[12px] font-bold"
-                title="Substituir o PDF mantendo os comentários"
+                title="Replace the PDF keeping all comments"
                 onClick={() => {
                   setReplaceTarget(f);
                   replaceRef.current?.click();
                 }}
               >
-                <RefreshCcw size={13} /> Substituir
+                <RefreshCcw size={13} /> Replace
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600" title="Apagar arquivo" onClick={() => setToDelete(f)}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600" title="Delete file" onClick={() => setToDelete(f)}>
                 <Trash2 size={15} />
               </Button>
             </div>
@@ -464,16 +599,16 @@ function FilesManager({
 
       <ConfirmDialog
         open={!!toDelete}
-        title={`Apagar "${toDelete?.name}"?`}
-        description="O PDF e os comentários feitos nele serão apagados de forma definitiva. Para trocar o arquivo sem perder comentários, use “Substituir”."
-        confirmLabel="Apagar arquivo"
+        title={`Delete "${toDelete?.name}"?`}
+        description="The PDF and the comments made on it will be permanently deleted. To swap the file without losing comments, use “Replace”."
+        confirmLabel="Delete file"
         onCancel={() => setToDelete(null)}
         onConfirm={async () => {
           if (!toDelete) return;
           await deleteFile(toDelete);
           setToDelete(null);
           await onChanged();
-          toast.success("Arquivo apagado.");
+          toast.success("File deleted.");
         }}
       />
     </>
@@ -493,7 +628,7 @@ function CourseCommentsList({
     return (
       <Card className="border-dashed">
         <CardContent className="py-10 text-center text-sm text-muted-foreground">
-          Nenhum comentário neste curso ainda.
+          No comments in this course yet.
         </CardContent>
       </Card>
     );
@@ -511,7 +646,7 @@ function CourseCommentsList({
   return (
     <div className="space-y-5">
       <p className="text-[12px] text-muted-foreground">
-        Clique em um comentário para responder — a pessoa verá a sua mensagem ao entrar no sistema.
+        Click a comment to reply — the reviewer will see your message when they sign in.
       </p>
       {orderedFileIds.map((fid) => {
         const f = files.find((x) => x.id === fid);
@@ -521,7 +656,7 @@ function CourseCommentsList({
         return (
           <div key={fid}>
             <h3 className="mb-2 flex items-center gap-1.5 text-[13px] font-black uppercase tracking-wide" style={{ color: NAVY }}>
-              <FileText size={14} style={{ color: GOLD }} /> {f?.name ?? "Arquivo removido"}
+              <FileText size={14} style={{ color: GOLD }} /> {f?.name ?? "Deleted file"}
             </h3>
             <div className="space-y-2">
               {list.map((c) => (
@@ -530,7 +665,7 @@ function CourseCommentsList({
                   comment={c}
                   isAdmin
                   email=""
-                  context={`Folha ${c.page_number} · ${nameFromEmail(c.author_email)} (${c.author_email})`}
+                  context={`Page ${c.page_number} · ${nameFromEmail(c.author_email)} (${c.author_email})`}
                   onChanged={onChanged}
                 />
               ))}
@@ -546,17 +681,18 @@ function CourseCommentsList({
 
 function ReviewersPanel({ courses }: { courses: ReviewCourse[] }) {
   const [reviewers, setReviewers] = useState<ReviewerEntry[] | null>(null);
-  const [editor, setEditor] = useState<{ email: string; courseIds: string[]; isNew: boolean } | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [codeInfo, setCodeInfo] = useState<{ email: string; code: string } | null>(null);
   const [toRemove, setToRemove] = useState<ReviewerEntry | null>(null);
   const [toReset, setToReset] = useState<ReviewerEntry | null>(null);
+  const [savingEmail, setSavingEmail] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     try {
       setReviewers(await listReviewers());
     } catch (e) {
       setReviewers([]);
-      toast.error(e instanceof Error ? e.message : "Erro ao carregar revisores.");
+      toast.error(e instanceof Error ? e.message : "Failed to load reviewers.");
     }
   }, []);
 
@@ -564,28 +700,45 @@ function ReviewersPanel({ courses }: { courses: ReviewCourse[] }) {
     void reload();
   }, [reload]);
 
-  const courseName = (id: string) => courses.find((c) => c.id === id)?.name ?? "—";
+  /** Tick/untick a course for a reviewer — applies immediately. */
+  const toggleAccess = async (r: ReviewerEntry, courseId: string, on: boolean) => {
+    const next = on ? [...r.courseIds, courseId] : r.courseIds.filter((id) => id !== courseId);
+    setSavingEmail(r.email);
+    setReviewers((list) =>
+      (list ?? []).map((x) => (x.email === r.email ? { ...x, courseIds: next } : x)),
+    );
+    try {
+      await upsertReviewer(r.email, next);
+      const courseName = courses.find((c) => c.id === courseId)?.name ?? "course";
+      toast.success(on ? `Access to "${courseName}" granted.` : `Access to "${courseName}" removed. Comments are kept.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update access.");
+      await reload();
+    } finally {
+      setSavingEmail(null);
+    }
+  };
 
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="max-w-[60ch] text-[13px] text-muted-foreground">
-          Cada revisor entra com o próprio email + um código de acesso gerado aqui. Você controla
-          quais pastas de curso cada email pode ver. Remover uma pessoa nunca apaga os comentários
-          que ela já fez.
+          Each reviewer signs in with their own email + an access code generated here. Below, tick
+          or untick the course folders each person can see — changes apply instantly, and removing
+          access never deletes the comments they already made.
         </p>
-        <Button className="gap-1.5 font-black" style={{ background: NAVY }} onClick={() => setEditor({ email: "", courseIds: [], isNew: true })}>
-          <UserPlus size={15} /> Adicionar revisor
+        <Button className="gap-1.5 font-black" style={{ background: NAVY }} onClick={() => setAddOpen(true)}>
+          <UserPlus size={15} /> Add reviewer
         </Button>
       </div>
 
       {reviewers === null && (
-        <p className="py-12 text-center text-sm font-semibold text-muted-foreground">Carregando…</p>
+        <p className="py-12 text-center text-sm font-semibold text-muted-foreground">Loading…</p>
       )}
       {reviewers !== null && reviewers.length === 0 && (
         <Card className="mt-5 border-dashed">
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Nenhum revisor cadastrado ainda.
+            No reviewers yet. Add someone by email to share a course folder with them.
           </CardContent>
         </Card>
       )}
@@ -601,118 +754,70 @@ function ReviewersPanel({ courses }: { courses: ReviewCourse[] }) {
               {r.access_code && (
                 <button
                   className="flex items-center gap-1 rounded-md border bg-muted px-2 py-0.5 font-mono text-[12px] font-bold transition hover:border-[#A68A64]"
-                  title="Copiar código de acesso"
+                  title="Copy access code"
                   onClick={() => {
                     void navigator.clipboard?.writeText(r.access_code ?? "");
-                    toast.success("Código copiado.");
+                    toast.success("Code copied.");
                   }}
                 >
                   <KeyRound size={12} /> {r.access_code} <Copy size={11} />
                 </button>
               )}
               <div className="ml-auto flex items-center gap-1">
-                <Button variant="outline" size="sm" className="gap-1 text-[12px] font-bold"
-                  onClick={() => setEditor({ email: r.email, courseIds: r.courseIds, isNew: false })}>
-                  <Pencil size={12} /> Editar acesso
+                <Button variant="ghost" size="sm" className="gap-1 text-[12px] font-bold text-muted-foreground" title="Generate a new access code" onClick={() => setToReset(r)}>
+                  <RefreshCcw size={12} /> New code
                 </Button>
-                <Button variant="ghost" size="sm" className="gap-1 text-[12px] font-bold text-muted-foreground" title="Gerar um novo código de acesso" onClick={() => setToReset(r)}>
-                  <RefreshCcw size={12} /> Novo código
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600" title="Remover acesso" onClick={() => setToRemove(r)}>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600" title="Remove this person entirely" onClick={() => setToRemove(r)}>
                   <Trash2 size={14} />
                 </Button>
               </div>
             </div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {r.courseIds.length === 0 && (
-                <span className="text-[12px] italic text-muted-foreground">Sem cursos liberados</span>
+            {/* tick/untick access per course folder — applies instantly */}
+            <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-2 border-t pt-2.5">
+              {courses.length === 0 && (
+                <span className="text-[12px] italic text-muted-foreground">Create a course folder first.</span>
               )}
-              {r.courseIds.map((cid) => (
-                <Badge key={cid} className="border-0 text-[11px] font-bold" style={{ background: "#efe9dd", color: NAVY }}>
-                  {courseName(cid)}
-                </Badge>
-              ))}
+              {courses.map((c) => {
+                const on = r.courseIds.includes(c.id);
+                return (
+                  <label
+                    key={c.id}
+                    className="flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold"
+                    style={{ color: on ? NAVY : "#8a8478" }}
+                  >
+                    <Checkbox
+                      checked={on}
+                      disabled={savingEmail === r.email}
+                      onCheckedChange={(v) => void toggleAccess(r, c.id, v === true)}
+                    />
+                    <Folder size={13} style={{ color: on ? GOLD : "#c9c4ba" }} />
+                    {c.name}
+                  </label>
+                );
+              })}
             </div>
           </div>
         ))}
       </div>
 
-      {/* add / edit access */}
-      <Dialog open={!!editor} onOpenChange={(v) => !v && setEditor(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editor?.isNew ? "Adicionar revisor" : `Acesso de ${editor?.email}`}</DialogTitle>
-            <DialogDescription>
-              Marque as pastas de curso que este email pode revisar.
-            </DialogDescription>
-          </DialogHeader>
-          {editor && (
-            <div className="space-y-4">
-              {editor.isNew && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="rev-email">Email do revisor</Label>
-                  <Input
-                    id="rev-email"
-                    type="email"
-                    placeholder="colega@exemplo.com"
-                    value={editor.email}
-                    onChange={(e) => setEditor({ ...editor, email: e.target.value })}
-                  />
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label>Cursos liberados</Label>
-                {courses.length === 0 && (
-                  <p className="text-[12px] italic text-muted-foreground">Crie um curso primeiro.</p>
-                )}
-                <div className="max-h-56 space-y-1.5 overflow-y-auto rounded-md border p-2.5">
-                  {courses.map((c) => {
-                    const on = editor.courseIds.includes(c.id);
-                    return (
-                      <label key={c.id} className="flex cursor-pointer items-center gap-2 text-[13px] font-semibold">
-                        <Checkbox
-                          checked={on}
-                          onCheckedChange={(v) =>
-                            setEditor({
-                              ...editor,
-                              courseIds: v === true
-                                ? [...editor.courseIds, c.id]
-                                : editor.courseIds.filter((x) => x !== c.id),
-                            })
-                          }
-                        />
-                        {c.name}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditor(null)}>
-              <X size={14} className="mr-1" /> Cancelar
-            </Button>
-            <SubmitReviewerButton
-              editor={editor}
-              onDone={async (email, code, isNew) => {
-                setEditor(null);
-                await reload();
-                if (isNew && code) setCodeInfo({ email, code });
-                else toast.success("Acesso atualizado.");
-              }}
-            />
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AddReviewerDialog
+        open={addOpen}
+        courses={courses}
+        onClose={() => setAddOpen(false)}
+        onAdded={async (email, code) => {
+          setAddOpen(false);
+          await reload();
+          if (code) setCodeInfo({ email, code });
+        }}
+      />
 
       {/* share the generated access code */}
       <Dialog open={!!codeInfo} onOpenChange={(v) => !v && setCodeInfo(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Revisor adicionado</DialogTitle>
+            <DialogTitle>Reviewer added</DialogTitle>
             <DialogDescription>
-              Compartilhe estes dados com a pessoa — é com eles que ela entra no sistema.
+              Share these details with the person — this is how they sign in.
             </DialogDescription>
           </DialogHeader>
           {codeInfo && (
@@ -727,18 +832,18 @@ function ReviewersPanel({ courses }: { courses: ReviewCourse[] }) {
                 className="gap-1.5 font-bold"
                 onClick={() => {
                   void navigator.clipboard?.writeText(
-                    `Acesso à revisão de cursos 369 Alliance\nLink: ${window.location.origin}/review\nEmail: ${codeInfo.email}\nCódigo de acesso: ${codeInfo.code}`,
+                    `369 Alliance course review access\nLink: ${window.location.origin}/review\nEmail: ${codeInfo.email}\nAccess code: ${codeInfo.code}`,
                   );
-                  toast.success("Instruções copiadas.");
+                  toast.success("Instructions copied.");
                 }}
               >
-                <Copy size={13} /> Copiar instruções de acesso
+                <Copy size={13} /> Copy access instructions
               </Button>
             </div>
           )}
           <DialogFooter>
             <Button style={{ background: NAVY }} onClick={() => setCodeInfo(null)}>
-              <Check size={15} className="mr-1" /> Entendi
+              <Check size={15} className="mr-1" /> Got it
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -746,9 +851,9 @@ function ReviewersPanel({ courses }: { courses: ReviewCourse[] }) {
 
       <ConfirmDialog
         open={!!toReset}
-        title={`Gerar novo código para ${toReset?.email}?`}
-        description="O código atual deixa de funcionar na hora. Compartilhe o novo código com a pessoa."
-        confirmLabel="Gerar novo código"
+        title={`Generate a new code for ${toReset?.email}?`}
+        description="The current code stops working immediately. Share the new code with the person."
+        confirmLabel="Generate new code"
         destructive={false}
         onCancel={() => setToReset(null)}
         onConfirm={async () => {
@@ -762,51 +867,117 @@ function ReviewersPanel({ courses }: { courses: ReviewCourse[] }) {
 
       <ConfirmDialog
         open={!!toRemove}
-        title={`Remover o acesso de ${toRemove?.email}?`}
-        description="A pessoa não conseguirá mais entrar nem ver nenhum curso. Os comentários que ela já fez são mantidos."
-        confirmLabel="Remover acesso"
+        title={`Remove ${toRemove?.email}?`}
+        description="They will no longer be able to sign in or see any course. The comments they already made are kept. (To just hide a course, untick it instead.)"
+        confirmLabel="Remove person"
         onCancel={() => setToRemove(null)}
         onConfirm={async () => {
           if (!toRemove) return;
           await removeReviewer(toRemove.email);
           setToRemove(null);
           await reload();
-          toast.success("Acesso removido. Comentários preservados.");
+          toast.success("Access removed. Comments preserved.");
         }}
       />
     </>
   );
 }
 
-function SubmitReviewerButton({
-  editor,
-  onDone,
+function AddReviewerDialog({
+  open,
+  courses,
+  onClose,
+  onAdded,
 }: {
-  editor: { email: string; courseIds: string[]; isNew: boolean } | null;
-  onDone: (email: string, code: string | null, isNew: boolean) => Promise<void>;
+  open: boolean;
+  courses: ReviewCourse[];
+  onClose: () => void;
+  onAdded: (email: string, code: string | null) => Promise<void>;
 }) {
+  const [email, setEmail] = useState("");
+  const [courseIds, setCourseIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  if (!editor) return null;
-  const valid = /.+@.+\..+/.test(editor.email.trim());
+
+  useEffect(() => {
+    if (open) {
+      setEmail("");
+      setCourseIds([]);
+    }
+  }, [open]);
+
+  const valid = /.+@.+\..+/.test(email.trim());
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      const res = await upsertReviewer(email.trim().toLowerCase(), courseIds);
+      await onAdded(email.trim().toLowerCase(), res.accessCode ?? null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to add the reviewer.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <Button
-      className="gap-1.5 font-black"
-      style={{ background: NAVY }}
-      disabled={busy || !valid}
-      onClick={async () => {
-        setBusy(true);
-        try {
-          const res = await upsertReviewer(editor.email.trim().toLowerCase(), editor.courseIds);
-          await onDone(editor.email.trim().toLowerCase(), res.accessCode ?? null, editor.isNew);
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Erro ao salvar revisor.");
-        } finally {
-          setBusy(false);
-        }
-      }}
-    >
-      <Plus size={15} /> {busy ? "Salvando…" : editor.isNew ? "Adicionar" : "Salvar acesso"}
-    </Button>
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add reviewer</DialogTitle>
+          <DialogDescription>
+            Only folder names are listed here — the PDFs live inside each folder.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="rev-email">Reviewer email</Label>
+            <Input
+              id="rev-email"
+              type="email"
+              placeholder="colleague@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Course folders this email can see</Label>
+            {courses.length === 0 && (
+              <p className="text-[12px] italic text-muted-foreground">Create a course folder first.</p>
+            )}
+            <div className="max-h-56 space-y-1.5 overflow-y-auto rounded-md border p-2.5">
+              {courses.map((c) => {
+                const on = courseIds.includes(c.id);
+                return (
+                  <label key={c.id} className="flex cursor-pointer items-center gap-2 text-[13px] font-semibold">
+                    <Checkbox
+                      checked={on}
+                      onCheckedChange={(v) =>
+                        setCourseIds(v === true ? [...courseIds, c.id] : courseIds.filter((x) => x !== c.id))
+                      }
+                    />
+                    <Folder size={14} style={{ color: on ? GOLD : "#c9c4ba" }} />
+                    {c.name}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            <X size={14} className="mr-1" /> Cancel
+          </Button>
+          <Button
+            className="gap-1.5 font-black"
+            style={{ background: NAVY }}
+            disabled={busy || !valid}
+            onClick={() => void submit()}
+          >
+            <Plus size={15} /> {busy ? "Adding…" : "Add"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -832,10 +1003,10 @@ function InlineRename({
     }
     try {
       await onSave(t);
-      toast.success("Renomeado.");
+      toast.success("Renamed.");
     } catch (e) {
       setText(value);
-      toast.error(e instanceof Error ? e.message : "Erro ao renomear.");
+      toast.error(e instanceof Error ? e.message : "Failed to rename.");
     }
   };
   if (editing) {
@@ -860,7 +1031,7 @@ function InlineRename({
     <button
       className={`group flex items-center gap-1.5 truncate text-left ${className ?? ""}`}
       style={{ color: NAVY }}
-      title="Clique para renomear"
+      title="Click to rename"
       onClick={() => {
         setText(value);
         setEditing(true);
@@ -899,7 +1070,7 @@ function ConfirmDialog({
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" disabled={busy} onClick={onCancel}>
-            Cancelar
+            Cancel
           </Button>
           <Button
             variant={destructive ? "destructive" : "default"}
@@ -910,13 +1081,13 @@ function ConfirmDialog({
               try {
                 await onConfirm();
               } catch (e) {
-                toast.error(e instanceof Error ? e.message : "A operação falhou.");
+                toast.error(e instanceof Error ? e.message : "The operation failed.");
               } finally {
                 setBusy(false);
               }
             }}
           >
-            {busy ? "Aguarde…" : confirmLabel}
+            {busy ? "Please wait…" : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

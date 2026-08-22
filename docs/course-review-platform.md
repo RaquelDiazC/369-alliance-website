@@ -11,10 +11,12 @@ folha e deixam comentários que só eles e a administradora enxergam.
   `client/src/components/review/`
 - **Backend versionado:** `supabase/migrations/…course_review_platform.sql`
   (já aplicado) e `supabase/functions/review-admin/index.ts` (já publicado)
+- **Idioma:** toda a interface é em **inglês** (os revisores são anglófonos);
+  esta documentação continua em português para a administradora
 
 ## Primeiro acesso da administradora
 
-1. Abra `/review` → "Primeiro acesso da administradora".
+1. Abra `/review` → "Admin first-time setup".
 2. Informe `raqueldiaz@raqueldiaz.com.br` e crie uma senha (mín. 8 caracteres).
 3. Isso só funciona **uma vez** e **só** para o email registrado na tabela
    `review_admins`. Depois, é login normal. A senha pode ser trocada pelo
@@ -22,15 +24,21 @@ folha e deixam comentários que só eles e a administradora enxergam.
 
 ## Fluxo da administradora
 
-- **Cursos** — criar pastas de curso, renomear (clique no nome), reordenar
-  (setas), apagar (com confirmação; apaga PDFs e comentários do curso).
+- **Courses** — cada curso é uma **pasta**: clicar na pasta abre o conteúdo
+  (os PDFs ficam dentro). Renomear é o ícone de lápis; reordenar, as setas;
+  apagar pede confirmação (apaga PDFs e comentários do curso). O ícone de
+  balão ao lado das setas **fica verde com a contagem** assim que as lessons
+  daquela pasta recebem comentários — clicando nele abre direto a aba
+  Comments.
 - **Arquivos** — dentro de um curso: subir vários PDFs de uma vez, renomear,
   mudar a ordem, apagar ou **Substituir** (troca o PDF e mantém todos os
   comentários do arquivo).
-- **Revisores** — adicionar por email: o sistema cria a conta e gera um
-  **código de acesso** (é ele que a pessoa usa como senha). Marque quais
-  cursos aquele email pode ver. Dá para editar o acesso, gerar novo código e
-  remover a pessoa — **remover nunca apaga os comentários já feitos**.
+- **Reviewers** — adicionar por email: o sistema cria a conta e gera um
+  **código de acesso** (é ele que a pessoa usa como senha). Abaixo do botão
+  de adicionar fica a lista com cada pessoa e **checkboxes por pasta de
+  curso (tick/untick)** — marcar/desmarcar aplica o acesso na hora, sem
+  apagar nada. "New code" gera outro código; a lixeira remove a pessoa —
+  **remover nunca apaga os comentários já feitos**.
 - **Comentários** — na aba "Comentários" do curso (ou no visualizador), cada
   comentário aparece como `Nome 22.08 at 2:14pm - texto`. Clique no
   comentário → aparece uma linha de resposta → envie o feedback. A pessoa vê

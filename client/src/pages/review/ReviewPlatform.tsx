@@ -97,7 +97,7 @@ export default function ReviewPlatform() {
         if (!cancelled) {
           setIsAdmin(false);
           setRoleReady(true);
-          toast.error(e instanceof Error ? e.message : "Erro ao carregar seu perfil.");
+          toast.error(e instanceof Error ? e.message : "Failed to load your profile.");
         }
       }
     })();
@@ -142,16 +142,16 @@ export default function ReviewPlatform() {
       await markRepliesRead(unread.map((m) => m.reply.id));
       setUnread([]);
       setUnreadOpen(false);
-      toast.success("Mensagens marcadas como lidas.");
+      toast.success("Messages marked as read.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao marcar como lidas.");
+      toast.error(e instanceof Error ? e.message : "Failed to mark as read.");
     }
   }, [unread]);
 
   const body = useMemo(() => {
-    if (booting) return <CenterNote text="Carregando…" />;
+    if (booting) return <CenterNote text="Loading…" />;
     if (!session) return <LoginView />;
-    if (!roleReady) return <CenterNote text="Verificando acesso…" />;
+    if (!roleReady) return <CenterNote text="Checking access…" />;
     if (view.kind === "viewer") {
       return (
         <CourseViewer
@@ -180,25 +180,25 @@ export default function ReviewPlatform() {
             <div className="leading-tight">
               <p className="text-[14px] font-black tracking-tight text-white">Course Review</p>
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: GOLD }}>
-                369 Alliance · material em revisão
+                369 Alliance · material under review
               </p>
             </div>
             {session && roleReady && (
               <div className="ml-auto flex items-center gap-2">
                 {isAdmin ? (
                   <Badge className="gap-1 border-0 text-[10px] font-black uppercase" style={{ background: GOLD, color: NAVY }}>
-                    <ShieldCheck size={12} /> Administradora
+                    <ShieldCheck size={12} /> Admin
                   </Badge>
                 ) : (
                   <>
                     <Badge variant="outline" className="hidden border-white/25 text-[10px] font-bold text-white/80 sm:inline-flex">
-                      Revisor(a)
+                      Reviewer
                     </Badge>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="relative text-white hover:bg-white/10 hover:text-white"
-                      title="Mensagens da administradora"
+                      title="Messages from the admin"
                       onClick={() => {
                         void refreshUnread();
                         setUnreadOpen(true);
@@ -221,7 +221,7 @@ export default function ReviewPlatform() {
                     variant="ghost"
                     size="icon"
                     className="text-white hover:bg-white/10 hover:text-white"
-                    title="Alterar minha senha"
+                    title="Change my password"
                     onClick={() => setPwOpen(true)}
                   >
                     <KeyRound size={16} />
@@ -233,7 +233,7 @@ export default function ReviewPlatform() {
                   className="gap-1.5 text-white hover:bg-white/10 hover:text-white"
                   onClick={() => void signOut()}
                 >
-                  <LogOut size={15} /> Sair
+                  <LogOut size={15} /> Sign out
                 </Button>
               </div>
             )}
@@ -249,15 +249,15 @@ export default function ReviewPlatform() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MailOpen size={18} style={{ color: AMBER }} />
-              Você tem {unread.length} {unread.length === 1 ? "mensagem" : "mensagens"} da administradora
+              You have {unread.length} {unread.length === 1 ? "message" : "messages"} from the admin
             </DialogTitle>
             <DialogDescription>
-              Respostas ao seus comentários. Clique em uma mensagem para abrir a página do curso.
+              Replies to your comments. Click a message to open that page of the course.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             {unread.length === 0 && (
-              <p className="py-4 text-center text-sm text-muted-foreground">Nenhuma mensagem nova.</p>
+              <p className="py-4 text-center text-sm text-muted-foreground">No new messages.</p>
             )}
             {unread.map((m) => (
               <button
@@ -266,7 +266,7 @@ export default function ReviewPlatform() {
                 className="w-full rounded-lg border p-3 text-left transition hover:border-[#A68A64] hover:bg-[#faf8f4]"
               >
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {m.fileName} · folha {m.pageNumber}
+                  {m.fileName} · page {m.pageNumber}
                 </p>
                 <p className="mt-1 text-[13px]">
                   <span className="font-black">
@@ -276,7 +276,7 @@ export default function ReviewPlatform() {
                   {m.reply.body}
                 </p>
                 <p className="mt-1 truncate text-[12px] italic text-muted-foreground">
-                  Seu comentário: “{m.commentBody}”
+                  Your comment: “{m.commentBody}”
                 </p>
               </button>
             ))}
@@ -284,10 +284,10 @@ export default function ReviewPlatform() {
           {unread.length > 0 && (
             <DialogFooter>
               <Button variant="outline" onClick={() => void markAllRead()}>
-                Marcar todas como lidas
+                Mark all as read
               </Button>
               <Button style={{ background: NAVY }} onClick={() => setUnreadOpen(false)}>
-                Fechar
+                Close
               </Button>
             </DialogFooter>
           )}
@@ -318,7 +318,7 @@ function ChangePasswordDialog({
   const [busy, setBusy] = useState(false);
   const save = async () => {
     if (pw.length < 8) {
-      toast.error("A senha precisa de pelo menos 8 caracteres.");
+      toast.error("Password must be at least 8 characters.");
       return;
     }
     setBusy(true);
@@ -328,7 +328,7 @@ function ChangePasswordDialog({
       toast.error(error.message);
       return;
     }
-    toast.success("Senha alterada.");
+    toast.success("Password changed.");
     setPw("");
     onOpenChange(false);
   };
@@ -336,21 +336,21 @@ function ChangePasswordDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Alterar minha senha</DialogTitle>
+          <DialogTitle>Change my password</DialogTitle>
         </DialogHeader>
         <div className="space-y-2">
-          <Label htmlFor="new-pw">Nova senha</Label>
+          <Label htmlFor="new-pw">New password</Label>
           <Input
             id="new-pw"
             type="password"
             value={pw}
             onChange={(e) => setPw(e.target.value)}
-            placeholder="mínimo 8 caracteres"
+            placeholder="min. 8 characters"
           />
         </div>
         <DialogFooter>
           <Button disabled={busy} style={{ background: NAVY }} onClick={() => void save()}>
-            {busy ? "Salvando…" : "Salvar"}
+            {busy ? "Saving…" : "Save"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -91,16 +91,16 @@ export async function signIn(email: string, password: string) {
     email: email.trim().toLowerCase(),
     password,
   });
-  if (error) throw new Error(traduzAuthError(error.message));
+  if (error) throw new Error(translateAuthError(error.message));
 }
 
 export async function signOut() {
   await reviewDb.auth.signOut();
 }
 
-function traduzAuthError(msg: string): string {
-  if (/invalid login credentials/i.test(msg)) return "Email ou código de acesso incorretos.";
-  if (/rate limit/i.test(msg)) return "Muitas tentativas. Aguarde um instante e tente de novo.";
+function translateAuthError(msg: string): string {
+  if (/invalid login credentials/i.test(msg)) return "Incorrect email or access code.";
+  if (/rate limit/i.test(msg)) return "Too many attempts. Wait a moment and try again.";
   return msg;
 }
 
@@ -299,6 +299,19 @@ export async function listFileComments(fileId: string): Promise<ReviewComment[]>
   return sortReplies(data ?? []);
 }
 
+/** Admin dashboard: total comment count per course (RLS: admin sees all). */
+export async function countCommentsByCourse(): Promise<Record<string, number>> {
+  const { data, error } = await reviewDb
+    .from("review_comments")
+    .select("id, file:review_files!inner(course_id)");
+  if (error) throw new Error(error.message);
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as unknown as { file: { course_id: string } }[]) {
+    counts[row.file.course_id] = (counts[row.file.course_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
 export async function listCourseComments(courseId: string): Promise<ReviewComment[]> {
   const { data, error } = await reviewDb
     .from("review_comments")
@@ -319,7 +332,7 @@ function sortReplies(comments: ReviewComment[]): ReviewComment[] {
 export async function addComment(fileId: string, page: number, body: string): Promise<void> {
   const { data: session } = await reviewDb.auth.getSession();
   const email = session.session?.user.email?.toLowerCase();
-  if (!email) throw new Error("Sessão expirada. Entre novamente.");
+  if (!email) throw new Error("Session expired. Please sign in again.");
   const { error } = await reviewDb.from("review_comments").insert({
     file_id: fileId,
     page_number: page,
@@ -337,7 +350,7 @@ export async function deleteComment(id: string): Promise<void> {
 export async function addReply(commentId: string, body: string): Promise<void> {
   const { data: session } = await reviewDb.auth.getSession();
   const email = session.session?.user.email?.toLowerCase();
-  if (!email) throw new Error("Sessão expirada. Entre novamente.");
+  if (!email) throw new Error("Session expired. Please sign in again.");
   const { error } = await reviewDb.from("review_replies").insert({
     comment_id: commentId,
     author_email: email,

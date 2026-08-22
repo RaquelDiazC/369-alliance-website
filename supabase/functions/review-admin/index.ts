@@ -68,14 +68,14 @@ Deno.serve(async (req: Request) => {
       const password = String(payload.password ?? "");
       if (!email || password.length < 8) {
         return json(400, {
-          error: "Informe o email da administradora e uma senha com pelo menos 8 caracteres.",
+          error: "Provide the admin email and a password of at least 8 characters.",
         });
       }
       if (!(await isAdminEmail(email))) {
-        return json(403, { error: "Este email não está registrado como administradora." });
+        return json(403, { error: "This email is not registered as an admin." });
       }
       if (await findUserByEmail(email)) {
-        return json(409, { error: "A conta da administradora já existe. Use a tela de login." });
+        return json(409, { error: "The admin account already exists. Use the sign-in screen." });
       }
       const { error } = await admin.auth.admin.createUser({
         email,
@@ -88,12 +88,12 @@ Deno.serve(async (req: Request) => {
 
     // Every other action requires a logged-in admin.
     const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-    if (!token) return json(401, { error: "não autenticado" });
+    if (!token) return json(401, { error: "not authenticated" });
     const { data: caller, error: authErr } = await admin.auth.getUser(token);
     const callerEmail = caller?.user?.email?.toLowerCase() ?? "";
-    if (authErr || !callerEmail) return json(401, { error: "não autenticado" });
+    if (authErr || !callerEmail) return json(401, { error: "not authenticated" });
     if (!(await isAdminEmail(callerEmail))) {
-      return json(403, { error: "acesso restrito à administradora" });
+      return json(403, { error: "admin access only" });
     }
 
     if (action === "upsert_reviewer") {
@@ -101,7 +101,7 @@ Deno.serve(async (req: Request) => {
       const courseIds: string[] = Array.isArray(payload.courseIds)
         ? (payload.courseIds as unknown[]).map(String)
         : [];
-      if (!email || !email.includes("@")) return json(400, { error: "email inválido" });
+      if (!email || !email.includes("@")) return json(400, { error: "invalid email" });
 
       const existingUser = await findUserByEmail(email);
       const { data: reg } = await admin
@@ -149,7 +149,7 @@ Deno.serve(async (req: Request) => {
     if (action === "reset_code") {
       const email = String(payload.email ?? "").trim().toLowerCase();
       const user = await findUserByEmail(email);
-      if (!user) return json(404, { error: "conta não encontrada" });
+      if (!user) return json(404, { error: "account not found" });
       const code = newAccessCode();
       const { error } = await admin.auth.admin.updateUserById(user.id, { password: code });
       if (error) return json(500, { error: error.message });
@@ -160,7 +160,7 @@ Deno.serve(async (req: Request) => {
     if (action === "remove_reviewer") {
       const email = String(payload.email ?? "").trim().toLowerCase();
       if (await isAdminEmail(email)) {
-        return json(400, { error: "não é possível remover a administradora" });
+        return json(400, { error: "the admin cannot be removed" });
       }
       await admin.from("review_access").delete().eq("email", email);
       await admin.from("review_reviewers").delete().eq("email", email);
@@ -170,8 +170,8 @@ Deno.serve(async (req: Request) => {
       return json(200, { ok: true });
     }
 
-    return json(400, { error: "ação desconhecida" });
+    return json(400, { error: "unknown action" });
   } catch (e) {
-    return json(500, { error: e instanceof Error ? e.message : "erro interno" });
+    return json(500, { error: e instanceof Error ? e.message : "internal error" });
   }
 });

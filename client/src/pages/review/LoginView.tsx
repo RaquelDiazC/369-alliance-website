@@ -30,14 +30,14 @@ export default function LoginView() {
 
   const doLogin = async () => {
     if (!email.trim() || !password) {
-      toast.error("Informe email e código de acesso.");
+      toast.error("Enter your email and access code.");
       return;
     }
     setBusy(true);
     try {
       await signIn(email, password);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível entrar.");
+      toast.error(e instanceof Error ? e.message : "Could not sign you in.");
     } finally {
       setBusy(false);
     }
@@ -45,20 +45,20 @@ export default function LoginView() {
 
   const doSetup = async () => {
     if (setupPw.length < 8) {
-      toast.error("A senha precisa de pelo menos 8 caracteres.");
+      toast.error("Password must be at least 8 characters.");
       return;
     }
     if (setupPw !== setupPw2) {
-      toast.error("As senhas não conferem.");
+      toast.error("Passwords do not match.");
       return;
     }
     setSetupBusy(true);
     try {
       await bootstrapAdmin(setupEmail, setupPw);
-      toast.success("Conta da administradora criada. Entrando…");
+      toast.success("Admin account created. Signing in…");
       await signIn(setupEmail, setupPw);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível criar a conta.");
+      toast.error(e instanceof Error ? e.message : "Could not create the account.");
     } finally {
       setSetupBusy(false);
     }
@@ -76,10 +76,10 @@ export default function LoginView() {
               <Lock size={20} style={{ color: GOLD }} />
             </div>
             <CardTitle className="pt-2 text-center text-xl font-black" style={{ color: NAVY }}>
-              Acesso restrito
+              Restricted access
             </CardTitle>
             <p className="text-center text-[13px] text-muted-foreground">
-              Material de curso em revisão. Entre com o email e o código de acesso que você recebeu.
+              Course material under review. Sign in with the email and access code you received.
             </p>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
@@ -89,14 +89,14 @@ export default function LoginView() {
                 id="login-email"
                 type="email"
                 autoComplete="email"
-                placeholder="voce@exemplo.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && void doLogin()}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="login-pw">Código de acesso / senha</Label>
+              <Label htmlFor="login-pw">Access code / password</Label>
               <Input
                 id="login-pw"
                 type="password"
@@ -113,31 +113,31 @@ export default function LoginView() {
               disabled={busy}
               onClick={() => void doLogin()}
             >
-              <LogIn size={16} /> {busy ? "Entrando…" : "Entrar"}
+              <LogIn size={16} /> {busy ? "Signing in…" : "Sign in"}
             </Button>
 
             <Collapsible open={setupOpen} onOpenChange={setSetupOpen}>
               <CollapsibleTrigger className="flex w-full items-center justify-center gap-1 pt-1 text-[12px] font-semibold text-muted-foreground transition hover:text-foreground">
-                Primeiro acesso da administradora
+                Admin first-time setup
                 <ChevronDown size={14} className={`transition ${setupOpen ? "rotate-180" : ""}`} />
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-3 pt-3">
                 <p className="rounded-md bg-muted p-2.5 text-[12px] leading-relaxed text-muted-foreground">
-                  Só funciona uma vez, para o email registrado como administradora. Crie aqui a sua
-                  senha de acesso ao painel.
+                  This works only once, for the email registered as admin. Create your password for
+                  the admin panel here.
                 </p>
                 <div className="space-y-1.5">
-                  <Label htmlFor="setup-email">Email da administradora</Label>
+                  <Label htmlFor="setup-email">Admin email</Label>
                   <Input
                     id="setup-email"
                     type="email"
                     value={setupEmail}
                     onChange={(e) => setSetupEmail(e.target.value)}
-                    placeholder="admin@exemplo.com"
+                    placeholder="admin@example.com"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="setup-pw">Senha (mín. 8 caracteres)</Label>
+                  <Label htmlFor="setup-pw">Password (min. 8 characters)</Label>
                   <Input
                     id="setup-pw"
                     type="password"
@@ -147,7 +147,7 @@ export default function LoginView() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="setup-pw2">Confirmar senha</Label>
+                  <Label htmlFor="setup-pw2">Confirm password</Label>
                   <Input
                     id="setup-pw2"
                     type="password"
@@ -162,14 +162,14 @@ export default function LoginView() {
                   disabled={setupBusy}
                   onClick={() => void doSetup()}
                 >
-                  {setupBusy ? "Criando…" : "Criar conta da administradora"}
+                  {setupBusy ? "Creating…" : "Create admin account"}
                 </Button>
               </CollapsibleContent>
             </Collapsible>
           </CardContent>
         </Card>
         <p className="mt-4 text-center text-[11px] text-muted-foreground">
-          Conteúdo confidencial · proibido copiar, imprimir ou divulgar
+          Confidential content · copying, printing or sharing is prohibited
         </p>
       </div>
     </div>

@@ -31,7 +31,7 @@ export function ProtectionShield({
     setBlackout("screenshot");
     try {
       // Best effort: replace whatever PrintScreen put on the clipboard.
-      void navigator.clipboard?.writeText("Não autorizado screenshot");
+      void navigator.clipboard?.writeText("Screenshot not authorized");
     } catch {
       /* clipboard may be unavailable — the overlay still shows */
     }
@@ -106,7 +106,7 @@ export function ProtectionShield({
           @media print {
             body * { display: none !important; visibility: hidden !important; }
             body::after {
-              content: "Impressão não autorizada — 369 Alliance Course Review";
+              content: "Printing is not authorized — 369 Alliance Course Review";
               display: block !important; visibility: visible !important;
               padding: 40px; font-family: sans-serif; font-weight: 700;
             }
@@ -123,15 +123,15 @@ export function ProtectionShield({
             <>
               <Ban size={56} className="text-red-500" />
               <p className="px-6 text-center text-2xl font-black text-white">
-                Não autorizado screenshot
+                Screenshot not authorized
               </p>
               <p className="px-6 text-center text-sm text-white/50">
-                Este material é confidencial e está protegido.
+                This material is confidential and protected.
               </p>
             </>
           ) : (
             <p className="px-6 text-center text-lg font-bold text-white/70">
-              Conteúdo oculto — volte para esta janela para continuar.
+              Content hidden — return to this window to continue.
             </p>
           )}
         </div>

@@ -18,28 +18,28 @@ export default function ReviewerHome({ onOpenCourse }: { onOpenCourse: (id: stri
       .then(setCourses)
       .catch((e) => {
         setCourses([]);
-        toast.error(e instanceof Error ? e.message : "Erro ao carregar cursos.");
+        toast.error(e instanceof Error ? e.message : "Failed to load courses.");
       });
   }, []);
 
   return (
     <div className="mx-auto w-full max-w-[900px] px-4 py-10">
       <h1 className="text-2xl font-black tracking-tight" style={{ color: NAVY }}>
-        Cursos para revisar
+        Courses to review
       </h1>
       <p className="mt-1 text-[13px] text-muted-foreground">
-        Abra um curso, navegue folha por folha e deixe seus comentários no painel à direita.
+        Open a course, go through it page by page and leave your comments in the panel on the right.
       </p>
 
       {courses === null && (
-        <p className="py-16 text-center text-sm font-semibold text-muted-foreground">Carregando…</p>
+        <p className="py-16 text-center text-sm font-semibold text-muted-foreground">Loading…</p>
       )}
       {courses !== null && courses.length === 0 && (
         <Card className="mt-8 border-dashed">
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Nenhum curso foi liberado para o seu email ainda.
+            No course has been shared with your email yet.
             <br />
-            Fale com a administradora para receber acesso.
+            Ask the admin for access.
           </CardContent>
         </Card>
       )}
@@ -61,7 +61,7 @@ export default function ReviewerHome({ onOpenCourse }: { onOpenCourse: (id: stri
               <span className="block truncate text-[15px] font-black" style={{ color: NAVY }}>
                 {c.name}
               </span>
-              <span className="block text-[12px] text-muted-foreground">Abrir para revisão</span>
+              <span className="block text-[12px] text-muted-foreground">Open for review</span>
             </span>
             <ArrowRight size={16} className="shrink-0 transition group-hover:translate-x-1" style={{ color: GOLD }} />
           </button>
