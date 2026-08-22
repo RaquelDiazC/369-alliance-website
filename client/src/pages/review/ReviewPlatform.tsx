@@ -165,7 +165,7 @@ export default function ReviewPlatform() {
       );
     }
     return isAdmin ? (
-      <AdminDashboard onOpenCourse={(courseId) => openViewer({ courseId })} />
+      <AdminDashboard onOpenViewer={openViewer} />
     ) : (
       <ReviewerHome onOpenCourse={(courseId) => openViewer({ courseId })} />
     );

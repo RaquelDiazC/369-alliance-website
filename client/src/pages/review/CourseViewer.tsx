@@ -3,7 +3,9 @@
  *
  * Left: the PDF page rendered onto a canvas (bytes fetched through the
  * authenticated Supabase client — no URL, no download, no text layer).
- * Right: the comment thread for the page currently on screen.
+ * Right: the comment thread for the page currently on screen (collapsible,
+ * so the slide can take the full width). Zoom controls let reviewers read
+ * small print; the stage scrolls when zoomed in.
  *
  * The same component serves both roles: RLS means a reviewer's query only
  * returns their own comments, while the admin receives everyone's and can
@@ -16,9 +18,14 @@ import {
   ChevronLeft,
   ChevronRight,
   CornerDownRight,
+  Eye,
   MessageSquare,
+  PanelRightClose,
+  PanelRightOpen,
   Send,
   Trash2,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -49,6 +56,8 @@ import {
 import { reviewDb } from "@/lib/review/supabase";
 import { GOLD, NAVY } from "./ReviewPlatform";
 
+const MAX_ZOOM = 3;
+
 interface Props {
   courseId: string;
   initialFileId?: string;
@@ -73,11 +82,13 @@ export default function CourseViewer({
   const [numPages, setNumPages] = useState(0);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [comments, setComments] = useState<ReviewComment[]>([]);
+  const [zoom, setZoom] = useState(1);
+  const [panelOpen, setPanelOpen] = useState(true);
 
   const pdfRef = useRef<PDFDocumentProxy | null>(null);
   const taskRef = useRef<RenderTask | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const file = useMemo(() => files?.find((f) => f.id === fileId) ?? null, [files, fileId]);
 
@@ -134,10 +145,11 @@ export default function CourseViewer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file?.id, file?.storage_path]);
 
-  // Reset to the requested page only when switching files manually.
+  // Reset to the first page only when switching files manually.
   const onSelectFile = (id: string) => {
     setFileId(id);
     setPage(1);
+    setZoom(1);
   };
 
   useEffect(
@@ -149,24 +161,30 @@ export default function CourseViewer({
     [],
   );
 
-  /* ── render current page to canvas (fit inside the stage, retina-aware) ── */
+  /* ── render current page to canvas (fit inside the stage, retina-aware,
+        zoom scrolls inside the stage) ── */
   const renderPage = useCallback(async () => {
     const pdf = pdfRef.current;
     const canvas = canvasRef.current;
-    const wrap = wrapRef.current;
-    if (!pdf || !canvas || !wrap || page < 1 || page > pdf.numPages) return;
+    const scroller = scrollRef.current;
+    if (!pdf || !canvas || !scroller || page < 1 || page > pdf.numPages) return;
     try {
       const p = await pdf.getPage(page);
       const base = p.getViewport({ scale: 1 });
-      const maxW = Math.max(wrap.clientWidth - 24, 100);
-      const maxH = Math.max(wrap.clientHeight - 24, 100);
+      const maxW = Math.max(scroller.clientWidth - 24, 100);
+      const maxH = Math.max(scroller.clientHeight - 24, 100);
       const fit = Math.min(maxW / base.width, maxH / base.height);
+      const cssScale = fit * zoom;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const viewport = p.getViewport({ scale: fit * dpr });
+      let renderScale = cssScale * dpr;
+      // Cap the backing bitmap so deep zooms stay fast.
+      const MAX_BITMAP_W = 4500;
+      if (base.width * renderScale > MAX_BITMAP_W) renderScale = MAX_BITMAP_W / base.width;
+      const viewport = p.getViewport({ scale: renderScale });
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
-      canvas.style.width = `${Math.floor(viewport.width / dpr)}px`;
-      canvas.style.height = `${Math.floor(viewport.height / dpr)}px`;
+      canvas.style.width = `${Math.floor(base.width * cssScale)}px`;
+      canvas.style.height = `${Math.floor(base.height * cssScale)}px`;
       taskRef.current?.cancel();
       const task = p.render({ canvas, viewport });
       taskRef.current = task;
@@ -174,17 +192,17 @@ export default function CourseViewer({
     } catch {
       /* render cancelled by a newer page — expected */
     }
-  }, [page]);
+  }, [page, zoom]);
 
   useEffect(() => {
     void renderPage();
   }, [renderPage, numPages]);
 
   useEffect(() => {
-    const wrap = wrapRef.current;
-    if (!wrap) return;
+    const scroller = scrollRef.current;
+    if (!scroller) return;
     const obs = new ResizeObserver(() => void renderPage());
-    obs.observe(wrap);
+    obs.observe(scroller);
     return () => obs.disconnect();
   }, [renderPage]);
 
@@ -252,7 +270,7 @@ export default function CourseViewer({
     <div className="flex min-h-0 flex-1 flex-col">
       {/* toolbar */}
       <div className="border-b bg-white">
-        <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-2 px-4 py-2">
+        <div className="flex w-full flex-wrap items-center gap-2 px-4 py-2">
           <Button variant="ghost" size="sm" className="gap-1.5 font-bold" onClick={onBack}>
             <ArrowLeft size={15} /> Back
           </Button>
@@ -290,103 +308,162 @@ export default function CourseViewer({
                 </SelectContent>
               </Select>
             )}
-            <span className="min-w-[90px] text-center text-[13px] font-black" style={{ color: NAVY }}>
+            <span className="min-w-[86px] text-center text-[13px] font-black" style={{ color: NAVY }}>
               Page {numPages ? page : "–"} / {numPages || "–"}
             </span>
+
+            {/* zoom controls */}
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              title="Zoom out"
+              disabled={zoom <= 1}
+              onClick={() => setZoom((z) => Math.max(1, Math.round((z - 0.25) * 100) / 100))}
+            >
+              <ZoomOut size={15} />
+            </Button>
+            <button
+              className="min-w-[48px] rounded-md border px-1.5 py-1 text-[12px] font-black transition hover:bg-muted"
+              title="Reset zoom (fit page)"
+              onClick={() => setZoom(1)}
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              title="Zoom in"
+              disabled={zoom >= MAX_ZOOM}
+              onClick={() => setZoom((z) => Math.min(MAX_ZOOM, Math.round((z + 0.25) * 100) / 100))}
+            >
+              <ZoomIn size={15} />
+            </Button>
+
+            {/* hide/show the comment panel to give the slide the full width */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="relative h-8 gap-1.5 text-[12px] font-bold"
+              title={panelOpen ? "Hide comments — bigger slide" : "Show comments"}
+              onClick={() => setPanelOpen((v) => !v)}
+            >
+              {panelOpen ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
+              {panelOpen ? "Bigger slide" : "Comments"}
+              {!panelOpen && pageComments.length > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-black text-white" style={{ background: "#dc2626" }}>
+                  {pageComments.length}
+                </span>
+              )}
+            </Button>
           </div>
         </div>
       </div>
 
       {/* stage + comment panel */}
-      <div className="mx-auto flex w-full max-w-[1400px] min-h-0 flex-1 flex-col gap-3 px-4 py-3 lg:flex-row">
-        <div
-          ref={wrapRef}
-          className="relative flex min-h-[420px] flex-1 items-center justify-center overflow-hidden rounded-xl border"
-          style={{ background: "#232338" }}
-        >
-          {files !== null && files.length === 0 ? (
-            <p className="px-6 text-center text-sm font-semibold text-white/60">
-              This course has no files yet.
-            </p>
-          ) : pdfLoading ? (
-            <p className="text-sm font-semibold text-white/60">Opening the material…</p>
-          ) : (
+      <div className="flex w-full min-h-0 flex-1 flex-col gap-3 px-3 py-3 lg:flex-row">
+        <div className="relative min-h-[480px] flex-1">
+          <div
+            ref={scrollRef}
+            className="absolute inset-0 overflow-auto rounded-xl border"
+            style={{ background: "#232338" }}
+          >
+            {files !== null && files.length === 0 ? (
+              <div className="flex h-full items-center justify-center">
+                <p className="px-6 text-center text-sm font-semibold text-white/60">
+                  This course has no files yet.
+                </p>
+              </div>
+            ) : pdfLoading ? (
+              <div className="flex h-full items-center justify-center">
+                <p className="text-sm font-semibold text-white/60">Opening the material…</p>
+              </div>
+            ) : (
+              <div
+                className="flex min-h-full items-center justify-center p-3"
+                style={{ minWidth: "100%", width: "max-content" }}
+              >
+                <canvas ref={canvasRef} className="rounded shadow-2xl" />
+              </div>
+            )}
+          </div>
+
+          {!isAdmin && email && !pdfLoading && <Watermark email={email} />}
+
+          {/* image-viewer style page arrows, floating over the slide */}
+          {numPages > 0 && !pdfLoading && (
             <>
-              <canvas ref={canvasRef} className="max-h-full max-w-full rounded shadow-2xl" />
-              {!isAdmin && email && <Watermark email={email} />}
-              {/* image-viewer style page arrows, floating over the slide */}
-              {numPages > 0 && (
-                <>
-                  <button
-                    aria-label="Previous page"
-                    title="Previous page"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="absolute left-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/65 disabled:cursor-default disabled:opacity-20 disabled:hover:bg-black/40"
-                  >
-                    <ChevronLeft size={26} />
-                  </button>
-                  <button
-                    aria-label="Next page"
-                    title="Next page"
-                    disabled={page >= numPages}
-                    onClick={() => setPage((p) => Math.min(numPages, p + 1))}
-                    className="absolute right-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/65 disabled:cursor-default disabled:opacity-20 disabled:hover:bg-black/40"
-                  >
-                    <ChevronRight size={26} />
-                  </button>
-                  <span className="pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black/45 px-3 py-1 text-[12px] font-bold text-white backdrop-blur-sm">
-                    {page} / {numPages}
-                  </span>
-                </>
-              )}
+              <button
+                aria-label="Previous page"
+                title="Previous page"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="absolute left-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/65 disabled:cursor-default disabled:opacity-20 disabled:hover:bg-black/40"
+              >
+                <ChevronLeft size={26} />
+              </button>
+              <button
+                aria-label="Next page"
+                title="Next page"
+                disabled={page >= numPages}
+                onClick={() => setPage((p) => Math.min(numPages, p + 1))}
+                className="absolute right-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/65 disabled:cursor-default disabled:opacity-20 disabled:hover:bg-black/40"
+              >
+                <ChevronRight size={26} />
+              </button>
+              <span className="pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black/45 px-3 py-1 text-[12px] font-bold text-white backdrop-blur-sm">
+                {page} / {numPages}
+              </span>
             </>
           )}
         </div>
 
         {/* right side: comments for the current page */}
-        <aside className="flex w-full shrink-0 flex-col rounded-xl border bg-white lg:w-[360px]">
-          <div className="flex items-center gap-2 border-b px-4 py-3">
-            <MessageSquare size={16} style={{ color: GOLD }} />
-            <p className="text-[13px] font-black" style={{ color: NAVY }}>
-              Comments · page {numPages ? page : "–"}
-            </p>
-            <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
-              {pageComments.length}
-            </span>
-          </div>
-
-          <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 lg:max-h-[calc(100vh-240px)]">
-            {!isAdmin && (
-              <NewCommentBox
-                disabled={!fileId || !numPages}
-                onSubmit={async (text) => {
-                  if (!fileId) return;
-                  await addComment(fileId, page, text);
-                  await reloadComments();
-                }}
-              />
-            )}
-
-            {pageComments.length === 0 && (
-              <p className="py-8 text-center text-[13px] text-muted-foreground">
-                {isAdmin
-                  ? "No comments on this page."
-                  : "You haven't commented on this page yet."}
+        {panelOpen && (
+          <aside className="flex w-full shrink-0 flex-col rounded-xl border bg-white lg:w-[360px]">
+            <div className="flex items-center gap-2 border-b px-4 py-3">
+              <MessageSquare size={16} style={{ color: GOLD }} />
+              <p className="text-[13px] font-black" style={{ color: NAVY }}>
+                Comments · page {numPages ? page : "–"}
               </p>
-            )}
+              <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
+                {pageComments.length}
+              </span>
+            </div>
 
-            {pageComments.map((c) => (
-              <CommentCard
-                key={c.id}
-                comment={c}
-                isAdmin={isAdmin}
-                email={email}
-                onChanged={reloadComments}
-              />
-            ))}
-          </div>
-        </aside>
+            <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 lg:max-h-[calc(100vh-240px)]">
+              {!isAdmin && (
+                <NewCommentBox
+                  disabled={!fileId || !numPages}
+                  onSubmit={async (text) => {
+                    if (!fileId) return;
+                    await addComment(fileId, page, text);
+                    await reloadComments();
+                  }}
+                />
+              )}
+
+              {pageComments.length === 0 && (
+                <p className="py-8 text-center text-[13px] text-muted-foreground">
+                  {isAdmin
+                    ? "No comments on this page."
+                    : "You haven't commented on this page yet."}
+                </p>
+              )}
+
+              {pageComments.map((c) => (
+                <CommentCard
+                  key={c.id}
+                  comment={c}
+                  isAdmin={isAdmin}
+                  email={email}
+                  onChanged={reloadComments}
+                />
+              ))}
+            </div>
+          </aside>
+        )}
       </div>
     </div>
   );
@@ -447,6 +524,7 @@ export function CommentCard({
   email,
   onChanged,
   context,
+  onOpenPage,
 }: {
   comment: ReviewComment;
   isAdmin: boolean;
@@ -454,6 +532,8 @@ export function CommentCard({
   onChanged: () => void | Promise<void>;
   /** Optional "file · page" label shown above the comment (admin overview). */
   context?: string;
+  /** Optional: open the lesson at this comment's page (admin overview). */
+  onOpenPage?: () => void;
 }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyText, setReplyText] = useState("");
@@ -497,9 +577,20 @@ export function CommentCard({
   return (
     <div className="rounded-lg border bg-white p-3 shadow-sm">
       {context && (
-        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {context}
-        </p>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {context}
+          </p>
+          {onOpenPage && (
+            <button
+              onClick={onOpenPage}
+              title="Open the lesson at this page"
+              className="flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-bold text-muted-foreground transition hover:border-[#A68A64] hover:text-foreground"
+            >
+              <Eye size={11} /> Open page
+            </button>
+          )}
+        </div>
       )}
       {/* "Raqueldiaz 22.08 at 2:14pm - comment" — click it to answer (admin). */}
       <div

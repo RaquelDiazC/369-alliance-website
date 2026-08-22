@@ -115,6 +115,10 @@ export default function LoginView() {
             >
               <LogIn size={16} /> {busy ? "Signing in…" : "Sign in"}
             </Button>
+            <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+              Lost your access code? Ask the admin — she can see it or generate a new one at any
+              time.
+            </p>
 
             <Collapsible open={setupOpen} onOpenChange={setSetupOpen}>
               <CollapsibleTrigger className="flex w-full items-center justify-center gap-1 pt-1 text-[12px] font-semibold text-muted-foreground transition hover:text-foreground">

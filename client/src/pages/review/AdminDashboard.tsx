@@ -73,16 +73,16 @@ import {
 } from "@/lib/review/api";
 import { countPdfPages } from "@/lib/review/pdf";
 import { CommentCard } from "./CourseViewer";
-import { GOLD, NAVY } from "./ReviewPlatform";
+import { GOLD, NAVY, type ViewerTarget } from "./ReviewPlatform";
 
 const GREEN = "#16a34a";
 
 type DetailTab = "files" | "comments";
 
 export default function AdminDashboard({
-  onOpenCourse,
+  onOpenViewer,
 }: {
-  onOpenCourse: (courseId: string) => void;
+  onOpenViewer: (target: ViewerTarget) => void;
 }) {
   const [courses, setCourses] = useState<ReviewCourse[]>([]);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
@@ -121,7 +121,10 @@ export default function AdminDashboard({
           setSelected(null);
           void reloadCourses();
         }}
-        onOpenViewer={() => onOpenCourse(selected.course.id)}
+        onOpenViewer={() => onOpenViewer({ courseId: selected.course.id })}
+        onOpenPage={(fileId, page) =>
+          onOpenViewer({ courseId: selected.course.id, fileId, page })
+        }
       />
     );
   }
@@ -145,7 +148,7 @@ export default function AdminDashboard({
             loaded={loaded}
             onChanged={reloadCourses}
             onOpenFolder={(course, tab) => setSelected({ course, tab })}
-            onOpenViewer={onOpenCourse}
+            onOpenViewer={(id) => onOpenViewer({ courseId: id })}
           />
         </TabsContent>
 
@@ -378,11 +381,13 @@ function CourseDetail({
   initialTab,
   onBack,
   onOpenViewer,
+  onOpenPage,
 }: {
   course: ReviewCourse;
   initialTab: DetailTab;
   onBack: () => void;
   onOpenViewer: () => void;
+  onOpenPage: (fileId: string, page: number) => void;
 }) {
   const [files, setFiles] = useState<ReviewFile[]>([]);
   const [comments, setComments] = useState<ReviewComment[]>([]);
@@ -439,7 +444,7 @@ function CourseDetail({
         </TabsContent>
 
         <TabsContent value="comments" className="pt-4">
-          <CourseCommentsList files={files} comments={comments} onChanged={reload} />
+          <CourseCommentsList files={files} comments={comments} onChanged={reload} onOpenPage={onOpenPage} />
         </TabsContent>
       </Tabs>
     </div>
@@ -619,10 +624,12 @@ function CourseCommentsList({
   files,
   comments,
   onChanged,
+  onOpenPage,
 }: {
   files: ReviewFile[];
   comments: ReviewComment[];
   onChanged: () => Promise<void>;
+  onOpenPage: (fileId: string, page: number) => void;
 }) {
   if (comments.length === 0) {
     return (
@@ -646,7 +653,8 @@ function CourseCommentsList({
   return (
     <div className="space-y-5">
       <p className="text-[12px] text-muted-foreground">
-        Click a comment to reply — the reviewer will see your message when they sign in.
+        Click a comment to reply — the reviewer will see your message when they sign in. Use
+        “Open page” to see the exact slide the person is talking about.
       </p>
       {orderedFileIds.map((fid) => {
         const f = files.find((x) => x.id === fid);
@@ -667,6 +675,7 @@ function CourseCommentsList({
                   email=""
                   context={`Page ${c.page_number} · ${nameFromEmail(c.author_email)} (${c.author_email})`}
                   onChanged={onChanged}
+                  onOpenPage={() => onOpenPage(c.file_id, c.page_number)}
                 />
               ))}
             </div>
