@@ -29,6 +29,7 @@ import { Logo369 } from "@/components/Logo369";
 import { ProtectionShield } from "@/components/review/Protection";
 import {
   formatStamp,
+  formatTime,
   isAdminEmail,
   listUnreadMessages,
   markRepliesRead,
@@ -48,7 +49,7 @@ export const NAVY = "#1a1a2e";
 export const GOLD = "#A68A64";
 export const AMBER = "#C07040";
 
-export type ViewerTarget = { courseId: string; fileId?: string; page?: number };
+export type ViewerTarget = { courseId: string; fileId?: string; page?: number; time?: number };
 type View = { kind: "home" } | ({ kind: "viewer" } & ViewerTarget);
 
 export default function ReviewPlatform() {
@@ -147,7 +148,12 @@ export default function ReviewPlatform() {
         /* non-fatal */
       }
       setUnread((u) => u.filter((x) => x.reply.id !== m.reply.id));
-      openViewer({ courseId: m.courseId, fileId: m.fileId, page: m.pageNumber });
+      openViewer({
+        courseId: m.courseId,
+        fileId: m.fileId,
+        page: m.pageNumber,
+        time: m.timeSeconds ?? undefined,
+      });
     },
     [openViewer],
   );
@@ -171,9 +177,13 @@ export default function ReviewPlatform() {
     if (view.kind === "viewer") {
       return (
         <CourseViewer
+          // Remount when the target changes so deep links (message → page or
+          // video moment) also work while the viewer is already open.
+          key={`${view.courseId}·${view.fileId ?? ""}·${view.page ?? ""}·${view.time ?? ""}`}
           courseId={view.courseId}
           initialFileId={view.fileId}
           initialPage={view.page}
+          initialTime={view.time}
           isAdmin={isAdmin}
           email={email}
           onBack={goHome}
@@ -268,7 +278,7 @@ export default function ReviewPlatform() {
               You have {unread.length} {unread.length === 1 ? "message" : "messages"} from the admin
             </DialogTitle>
             <DialogDescription>
-              Replies to your comments. Click a message to open that page of the course.
+              Replies to your comments. Click a message to open that exact page or video moment.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -282,7 +292,8 @@ export default function ReviewPlatform() {
                 className="w-full rounded-lg border p-3 text-left transition hover:border-[#A68A64] hover:bg-[#faf8f4]"
               >
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {m.fileName} · page {m.pageNumber}
+                  {m.fileName} ·{" "}
+                  {m.timeSeconds != null ? `at ${formatTime(m.timeSeconds)}` : `page ${m.pageNumber}`}
                 </p>
                 <p className="mt-1 text-[13px]">
                   <span className="font-black">

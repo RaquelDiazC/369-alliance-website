@@ -17,15 +17,27 @@ export interface ReviewCourse {
   created_at: string;
 }
 
+export type ReviewFileKind = "pdf" | "video";
+
 export interface ReviewFile {
   id: string;
   course_id: string;
   name: string;
   storage_path: string;
+  /** "pdf" (slide deck, per-page comments) or "video" (per-timestamp comments). */
+  kind: ReviewFileKind;
   page_count: number;
+  duration_seconds: number | null;
   position: number;
   created_at: string;
   updated_at: string;
+}
+
+/** What the admin uploads alongside the file: pages for PDFs, length for videos. */
+export interface UploadInfo {
+  kind: ReviewFileKind;
+  pageCount?: number;
+  durationSeconds?: number;
 }
 
 export interface ReviewReply {
@@ -41,6 +53,9 @@ export interface ReviewComment {
   id: string;
   file_id: string;
   page_number: number;
+  /** Video comments only: playback position (in seconds) captured when the
+   *  reviewer clicked the comment box. Null for PDF comments. */
+  time_seconds: number | null;
   author_email: string;
   body: string;
   created_at: string;
@@ -62,6 +77,8 @@ export interface UnreadMessage {
   reply: ReviewReply;
   commentBody: string;
   pageNumber: number;
+  /** Set when the comment was made on a video (playback position). */
+  timeSeconds: number | null;
   fileId: string;
   fileName: string;
   courseId: string;
@@ -73,6 +90,16 @@ export interface UnreadMessage {
 export function nameFromEmail(email: string): string {
   const local = (email.split("@")[0] || email).trim();
   return local ? local.charAt(0).toUpperCase() + local.slice(1) : email;
+}
+
+/** Video position "205.4" → "3:25" (or "1:02:05" past the hour). */
+export function formatTime(seconds: number | null | undefined): string {
+  const total = Math.max(0, Math.floor(seconds ?? 0));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const mm = h > 0 ? String(m).padStart(2, "0") : String(m);
+  return `${h > 0 ? `${h}:` : ""}${mm}:${String(s).padStart(2, "0")}`;
 }
 
 /** Comment header stamp, exactly "22.08 at 2:14pm". */
@@ -248,15 +275,21 @@ export async function listFiles(courseId: string): Promise<ReviewFile[]> {
   return data ?? [];
 }
 
+const KIND_EXT: Record<ReviewFileKind, string> = { pdf: "pdf", video: "mp4" };
+const KIND_MIME: Record<ReviewFileKind, string> = {
+  pdf: "application/pdf",
+  video: "video/mp4",
+};
+
 export async function uploadCourseFile(
   courseId: string,
   file: File,
-  pageCount: number,
+  info: UploadInfo,
 ): Promise<void> {
   const id = crypto.randomUUID();
-  const path = `${courseId}/${id}.pdf`;
+  const path = `${courseId}/${id}.${KIND_EXT[info.kind]}`;
   const up = await reviewDb.storage.from(REVIEW_BUCKET).upload(path, file, {
-    contentType: "application/pdf",
+    contentType: KIND_MIME[info.kind],
   });
   if (up.error) throw new Error(up.error.message);
 
@@ -268,13 +301,15 @@ export async function uploadCourseFile(
     .limit(1);
   const next = (data?.[0]?.position ?? 0) + 1;
 
-  const cleanName = file.name.replace(/\.pdf$/i, "");
+  const cleanName = file.name.replace(/\.(pdf|mp4)$/i, "");
   const { error } = await reviewDb.from("review_files").insert({
     id,
     course_id: courseId,
     name: cleanName,
     storage_path: path,
-    page_count: pageCount,
+    kind: info.kind,
+    page_count: info.pageCount ?? 0,
+    duration_seconds: info.durationSeconds ?? null,
     position: next,
   });
   if (error) {
@@ -288,16 +323,21 @@ export async function renameFile(id: string, name: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-/** Replace the PDF behind a file, keeping the record and all its comments. */
-export async function replaceFile(f: ReviewFile, file: File, pageCount: number): Promise<void> {
-  const newPath = `${f.course_id}/${f.id}-${Date.now()}.pdf`;
+/** Replace the file's content (same kind), keeping the record and all comments. */
+export async function replaceFile(f: ReviewFile, file: File, info: UploadInfo): Promise<void> {
+  const newPath = `${f.course_id}/${f.id}-${Date.now()}.${KIND_EXT[f.kind]}`;
   const up = await reviewDb.storage.from(REVIEW_BUCKET).upload(newPath, file, {
-    contentType: "application/pdf",
+    contentType: KIND_MIME[f.kind],
   });
   if (up.error) throw new Error(up.error.message);
   const { error } = await reviewDb
     .from("review_files")
-    .update({ storage_path: newPath, page_count: pageCount, updated_at: new Date().toISOString() })
+    .update({
+      storage_path: newPath,
+      page_count: info.pageCount ?? 0,
+      duration_seconds: info.durationSeconds ?? null,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", f.id);
   if (error) {
     await reviewDb.storage.from(REVIEW_BUCKET).remove([newPath]);
@@ -321,6 +361,32 @@ export async function downloadPdfBytes(storagePath: string): Promise<ArrayBuffer
   const { data, error } = await reviewDb.storage.from(REVIEW_BUCKET).download(storagePath);
   if (error) throw new Error(error.message);
   return data.arrayBuffer();
+}
+
+/** Download a stored file as a Blob (used for video playback via object URL —
+ *  the video never gets a public/signed URL). */
+export async function downloadFileBlob(storagePath: string): Promise<Blob> {
+  const { data, error } = await reviewDb.storage.from(REVIEW_BUCKET).download(storagePath);
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Read the duration (seconds) of a local video file before uploading it. */
+export function getVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      resolve(Number.isFinite(v.duration) ? v.duration : 0);
+    };
+    v.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not read this video. Make sure it is a valid MP4."));
+    };
+    v.src = url;
+  });
 }
 
 /* ──────────────────────────── comments ───────────────────────────── */
@@ -368,13 +434,19 @@ function sortReplies(comments: ReviewComment[]): ReviewComment[] {
   return comments;
 }
 
-export async function addComment(fileId: string, page: number, body: string): Promise<void> {
+export async function addComment(
+  fileId: string,
+  page: number,
+  body: string,
+  timeSeconds?: number | null,
+): Promise<void> {
   const { data: session } = await reviewDb.auth.getSession();
   const email = session.session?.user.email?.toLowerCase();
   if (!email) throw new Error("Session expired. Please sign in again.");
   const { error } = await reviewDb.from("review_comments").insert({
     file_id: fileId,
     page_number: page,
+    time_seconds: timeSeconds ?? null,
     author_email: email,
     body,
   });
@@ -405,6 +477,7 @@ interface UnreadRow extends ReviewReply {
     id: string;
     body: string;
     page_number: number;
+    time_seconds: number | null;
     file: { id: string; name: string; course_id: string };
   };
 }
@@ -413,7 +486,7 @@ export async function listUnreadMessages(): Promise<UnreadMessage[]> {
   const { data, error } = await reviewDb
     .from("review_replies")
     .select(
-      "*, comment:review_comments!inner(id, body, page_number, file:review_files!inner(id, name, course_id))",
+      "*, comment:review_comments!inner(id, body, page_number, time_seconds, file:review_files!inner(id, name, course_id))",
     )
     .is("read_at", null)
     .order("created_at");
@@ -430,6 +503,7 @@ export async function listUnreadMessages(): Promise<UnreadMessage[]> {
     },
     commentBody: r.comment.body,
     pageNumber: r.comment.page_number,
+    timeSeconds: r.comment.time_seconds,
     fileId: r.comment.file.id,
     fileName: r.comment.file.name,
     courseId: r.comment.file.course_id,

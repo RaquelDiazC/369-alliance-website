@@ -1,11 +1,16 @@
 /**
- * Course Review Platform — slide viewer + per-page comment panel.
+ * Course Review Platform — lesson viewer + comment panel.
  *
- * Left: the PDF page rendered onto a canvas (bytes fetched through the
- * authenticated Supabase client — no URL, no download, no text layer).
- * Right: the comment thread for the page currently on screen (collapsible,
- * so the slide can take the full width). Zoom controls let reviewers read
- * small print; the stage scrolls when zoomed in.
+ * PDF lessons: the page renders onto a canvas (bytes fetched through the
+ * authenticated Supabase client — no URL, no download, no text layer) and the
+ * right panel shows the comments for the page on screen.
+ *
+ * Video lessons (MP4): the bytes are downloaded the same authenticated way
+ * and played from an in-memory object URL (never a public link). Comments are
+ * anchored to the playback time — clicking the comment box captures the
+ * current time automatically (and pauses the video); the panel lists every
+ * comment of the video ordered by that time, each one jumping the player
+ * back to its moment.
  *
  * The same component serves both roles: RLS means a reviewer's query only
  * returns their own comments, while the admin receives everyone's and can
@@ -22,6 +27,8 @@ import {
   MessageSquare,
   PanelRightClose,
   PanelRightOpen,
+  Play,
+  RefreshCcw,
   Send,
   Trash2,
   ZoomIn,
@@ -44,8 +51,10 @@ import {
   addComment,
   addReply,
   deleteComment,
+  downloadFileBlob,
   downloadPdfBytes,
   formatStamp,
+  formatTime,
   listFileComments,
   listFiles,
   markRepliesRead,
@@ -62,6 +71,8 @@ interface Props {
   courseId: string;
   initialFileId?: string;
   initialPage?: number;
+  /** Video lessons: open the player already positioned at this second. */
+  initialTime?: number;
   isAdmin: boolean;
   email: string;
   onBack: () => void;
@@ -71,6 +82,7 @@ export default function CourseViewer({
   courseId,
   initialFileId,
   initialPage,
+  initialTime,
   isAdmin,
   email,
   onBack,
@@ -80,7 +92,8 @@ export default function CourseViewer({
   const [fileId, setFileId] = useState<string | null>(initialFileId ?? null);
   const [page, setPage] = useState(initialPage ?? 1);
   const [numPages, setNumPages] = useState(0);
-  const [pdfLoading, setPdfLoading] = useState(false);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [comments, setComments] = useState<ReviewComment[]>([]);
   const [zoom, setZoom] = useState(1);
   const [panelOpen, setPanelOpen] = useState(true);
@@ -89,8 +102,12 @@ export default function CourseViewer({
   const taskRef = useRef<RenderTask | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  // Applied once the video metadata loads (deep links from messages/comments).
+  const pendingSeekRef = useRef<number | null>(initialTime ?? null);
 
   const file = useMemo(() => files?.find((f) => f.id === fileId) ?? null, [files, fileId]);
+  const isVideo = file?.kind === "video";
 
   /* ── course + files ── */
   useEffect(() => {
@@ -114,11 +131,11 @@ export default function CourseViewer({
     };
   }, [courseId]);
 
-  /* ── load PDF bytes whenever the selected file changes ── */
+  /* ── load PDF bytes whenever a PDF file is selected ── */
   useEffect(() => {
-    if (!file) return;
+    if (!file || file.kind === "video") return;
     let cancelled = false;
-    setPdfLoading(true);
+    setMediaLoading(true);
     setNumPages(0);
     (async () => {
       try {
@@ -136,20 +153,66 @@ export default function CourseViewer({
       } catch (e) {
         if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to open the PDF.");
       } finally {
-        if (!cancelled) setPdfLoading(false);
+        if (!cancelled) setMediaLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file?.id, file?.storage_path]);
+  }, [file?.id, file?.storage_path, file?.kind]);
+
+  /* ── load video bytes (authenticated → in-memory object URL) ── */
+  useEffect(() => {
+    if (!file || file.kind !== "video") {
+      setVideoUrl(null);
+      return;
+    }
+    let cancelled = false;
+    let url: string | null = null;
+    setMediaLoading(true);
+    setNumPages(0);
+    setVideoUrl(null);
+    (async () => {
+      try {
+        const blob = await downloadFileBlob(file.storage_path);
+        if (cancelled) return;
+        url = URL.createObjectURL(blob);
+        setVideoUrl(url);
+      } catch (e) {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to open the video.");
+      } finally {
+        if (!cancelled) setMediaLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file?.id, file?.storage_path, file?.kind]);
+
+  /* ── video helpers: jump to a moment / capture the moment for a comment ── */
+  const seekTo = useCallback((t: number) => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.pause();
+    v.currentTime = Math.max(0, t);
+  }, []);
+
+  const captureVideoTime = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return 0;
+    v.pause(); // the person types the comment, then resumes playback
+    return v.currentTime;
+  }, []);
 
   // Reset to the first page only when switching files manually.
   const onSelectFile = (id: string) => {
     setFileId(id);
     setPage(1);
     setZoom(1);
+    pendingSeekRef.current = null; // a deep link only applies to the file it targeted
   };
 
   useEffect(
@@ -206,8 +269,9 @@ export default function CourseViewer({
     return () => obs.disconnect();
   }, [renderPage]);
 
-  /* ── keyboard page navigation ── */
+  /* ── keyboard page navigation (PDF only — the video player owns the keys) ── */
   useEffect(() => {
+    if (isVideo) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
@@ -216,7 +280,7 @@ export default function CourseViewer({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [numPages]);
+  }, [numPages, isVideo]);
 
   /* ── comments ── */
   const reloadComments = useCallback(async () => {
@@ -233,14 +297,32 @@ export default function CourseViewer({
     void reloadComments();
   }, [reloadComments]);
 
+  /** Panel content: video → every comment ordered by its moment; PDF → the
+   *  current page's comments. */
   const pageComments = useMemo(
-    () => comments.filter((c) => c.page_number === page),
-    [comments, page],
+    () =>
+      isVideo
+        ? [...comments].sort(
+            (a, b) =>
+              (a.time_seconds ?? 0) - (b.time_seconds ?? 0) ||
+              a.created_at.localeCompare(b.created_at),
+          )
+        : comments.filter((c) => c.page_number === page),
+    [comments, page, isVideo],
   );
   const commentedPages = useMemo(
-    () => Array.from(new Set(comments.map((c) => c.page_number))).sort((a, b) => a - b),
-    [comments],
+    () =>
+      isVideo
+        ? []
+        : Array.from(new Set(comments.map((c) => c.page_number))).sort((a, b) => a - b),
+    [comments, isVideo],
   );
+  const commentedTimes = useMemo(() => {
+    if (!isVideo) return [] as number[];
+    return Array.from(
+      new Set(comments.map((c) => Math.floor(c.time_seconds ?? 0))),
+    ).sort((a, b) => a - b);
+  }, [comments, isVideo]);
 
   // Reviewer: seeing a reply on screen marks it as read.
   useEffect(() => {
@@ -294,7 +376,7 @@ export default function CourseViewer({
           </div>
 
           <div className="ml-auto flex items-center gap-1.5">
-            {commentedPages.length > 0 && (
+            {!isVideo && commentedPages.length > 0 && (
               <Select value="" onValueChange={(v) => setPage(Number(v))}>
                 <SelectTrigger className="h-8 w-[170px] text-[12px] font-semibold">
                   <SelectValue placeholder={`Commented pages (${commentedPages.length})`} />
@@ -308,49 +390,69 @@ export default function CourseViewer({
                 </SelectContent>
               </Select>
             )}
-            <span className="min-w-[86px] text-center text-[13px] font-black" style={{ color: NAVY }}>
-              Page {numPages ? page : "–"} / {numPages || "–"}
-            </span>
+            {isVideo && commentedTimes.length > 0 && (
+              <Select value="" onValueChange={(v) => seekTo(Number(v))}>
+                <SelectTrigger className="h-8 w-[190px] text-[12px] font-semibold">
+                  <SelectValue placeholder={`Commented moments (${commentedTimes.length})`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {commentedTimes.map((t) => (
+                    <SelectItem key={t} value={String(t)}>
+                      {formatTime(t)} —{" "}
+                      {comments.filter((c) => Math.floor(c.time_seconds ?? 0) === t).length}{" "}
+                      comment(s)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {!isVideo && (
+              <>
+                <span className="min-w-[86px] text-center text-[13px] font-black" style={{ color: NAVY }}>
+                  Page {numPages ? page : "–"} / {numPages || "–"}
+                </span>
 
-            {/* zoom controls */}
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              title="Zoom out"
-              disabled={zoom <= 1}
-              onClick={() => setZoom((z) => Math.max(1, Math.round((z - 0.25) * 100) / 100))}
-            >
-              <ZoomOut size={15} />
-            </Button>
-            <button
-              className="min-w-[48px] rounded-md border px-1.5 py-1 text-[12px] font-black transition hover:bg-muted"
-              title="Reset zoom (fit page)"
-              onClick={() => setZoom(1)}
-            >
-              {Math.round(zoom * 100)}%
-            </button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              title="Zoom in"
-              disabled={zoom >= MAX_ZOOM}
-              onClick={() => setZoom((z) => Math.min(MAX_ZOOM, Math.round((z + 0.25) * 100) / 100))}
-            >
-              <ZoomIn size={15} />
-            </Button>
+                {/* zoom controls */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  title="Zoom out"
+                  disabled={zoom <= 1}
+                  onClick={() => setZoom((z) => Math.max(1, Math.round((z - 0.25) * 100) / 100))}
+                >
+                  <ZoomOut size={15} />
+                </Button>
+                <button
+                  className="min-w-[48px] rounded-md border px-1.5 py-1 text-[12px] font-black transition hover:bg-muted"
+                  title="Reset zoom (fit page)"
+                  onClick={() => setZoom(1)}
+                >
+                  {Math.round(zoom * 100)}%
+                </button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  title="Zoom in"
+                  disabled={zoom >= MAX_ZOOM}
+                  onClick={() => setZoom((z) => Math.min(MAX_ZOOM, Math.round((z + 0.25) * 100) / 100))}
+                >
+                  <ZoomIn size={15} />
+                </Button>
+              </>
+            )}
 
-            {/* hide/show the comment panel to give the slide the full width */}
+            {/* hide/show the comment panel to give the lesson the full width */}
             <Button
               variant="outline"
               size="sm"
               className="relative h-8 gap-1.5 text-[12px] font-bold"
-              title={panelOpen ? "Hide comments — bigger slide" : "Show comments"}
+              title={panelOpen ? "Hide comments — bigger view" : "Show comments"}
               onClick={() => setPanelOpen((v) => !v)}
             >
               {panelOpen ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
-              {panelOpen ? "Bigger slide" : "Comments"}
+              {panelOpen ? (isVideo ? "Bigger video" : "Bigger slide") : "Comments"}
               {!panelOpen && pageComments.length > 0 && (
                 <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-black text-white" style={{ background: "#dc2626" }}>
                   {pageComments.length}
@@ -375,9 +477,34 @@ export default function CourseViewer({
                   This course has no files yet.
                 </p>
               </div>
-            ) : pdfLoading ? (
+            ) : mediaLoading ? (
               <div className="flex h-full items-center justify-center">
                 <p className="text-sm font-semibold text-white/60">Opening the material…</p>
+              </div>
+            ) : isVideo ? (
+              <div className="flex h-full items-center justify-center p-3">
+                {videoUrl && (
+                  <video
+                    ref={videoRef}
+                    src={videoUrl}
+                    controls
+                    playsInline
+                    // Reviewers: no download button, no fullscreen (fullscreen
+                    // would escape the watermark), no casting. The admin keeps
+                    // fullscreen for her own checks.
+                    controlsList={
+                      isAdmin ? "nodownload" : "nodownload nofullscreen noremoteplayback"
+                    }
+                    disablePictureInPicture={!isAdmin}
+                    onContextMenu={(e) => e.preventDefault()}
+                    onLoadedMetadata={() => {
+                      const t = pendingSeekRef.current;
+                      pendingSeekRef.current = null;
+                      if (t != null && videoRef.current) videoRef.current.currentTime = t;
+                    }}
+                    className="max-h-full max-w-full rounded shadow-2xl"
+                  />
+                )}
               </div>
             ) : (
               <div
@@ -389,10 +516,10 @@ export default function CourseViewer({
             )}
           </div>
 
-          {!isAdmin && email && !pdfLoading && <Watermark email={email} />}
+          {!isAdmin && email && !mediaLoading && <Watermark email={email} />}
 
-          {/* image-viewer style page arrows, floating over the slide */}
-          {numPages > 0 && !pdfLoading && (
+          {/* image-viewer style page arrows, floating over the slide (PDF only) */}
+          {!isVideo && numPages > 0 && !mediaLoading && (
             <>
               <button
                 aria-label="Previous page"
@@ -425,7 +552,7 @@ export default function CourseViewer({
             <div className="flex items-center gap-2 border-b px-4 py-3">
               <MessageSquare size={16} style={{ color: GOLD }} />
               <p className="text-[13px] font-black" style={{ color: NAVY }}>
-                Comments · page {numPages ? page : "–"}
+                {isVideo ? "Comments · this video" : `Comments · page ${numPages ? page : "–"}`}
               </p>
               <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
                 {pageComments.length}
@@ -435,10 +562,16 @@ export default function CourseViewer({
             <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 lg:max-h-[calc(100vh-240px)]">
               {!isAdmin && (
                 <NewCommentBox
-                  disabled={!fileId || !numPages}
-                  onSubmit={async (text) => {
+                  disabled={!fileId || (isVideo ? !videoUrl : !numPages)}
+                  captureTime={isVideo ? captureVideoTime : undefined}
+                  onSubmit={async (text, timeSeconds) => {
                     if (!fileId) return;
-                    await addComment(fileId, page, text);
+                    await addComment(
+                      fileId,
+                      isVideo ? 1 : page,
+                      text,
+                      isVideo ? (timeSeconds ?? 0) : null,
+                    );
                     await reloadComments();
                   }}
                 />
@@ -446,9 +579,13 @@ export default function CourseViewer({
 
               {pageComments.length === 0 && (
                 <p className="py-8 text-center text-[13px] text-muted-foreground">
-                  {isAdmin
-                    ? "No comments on this page."
-                    : "You haven't commented on this page yet."}
+                  {isVideo
+                    ? isAdmin
+                      ? "No comments on this video."
+                      : "You haven't commented on this video yet."
+                    : isAdmin
+                      ? "No comments on this page."
+                      : "You haven't commented on this page yet."}
                 </p>
               )}
 
@@ -459,6 +596,10 @@ export default function CourseViewer({
                   isAdmin={isAdmin}
                   email={email}
                   onChanged={reloadComments}
+                  timeLabel={
+                    isVideo && c.time_seconds != null ? formatTime(c.time_seconds) : undefined
+                  }
+                  onSeek={isVideo ? () => seekTo(c.time_seconds ?? 0) : undefined}
                 />
               ))}
             </div>
@@ -474,19 +615,30 @@ export default function CourseViewer({
 function NewCommentBox({
   disabled,
   onSubmit,
+  captureTime,
 }: {
   disabled: boolean;
-  onSubmit: (text: string) => Promise<void>;
+  onSubmit: (text: string, timeSeconds: number | null) => Promise<void>;
+  /** Video mode: returns the current playback time (and pauses the video).
+   *  Clicking the box captures the moment automatically. */
+  captureTime?: () => number;
 }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [capturedTime, setCapturedTime] = useState<number | null>(null);
+
+  const capture = () => {
+    if (captureTime) setCapturedTime(captureTime());
+  };
+
   const send = async () => {
     const t = text.trim();
     if (!t) return;
     setBusy(true);
     try {
-      await onSubmit(t);
+      await onSubmit(t, capturedTime);
       setText("");
+      setCapturedTime(null);
       toast.success("Comment posted.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to post the comment.");
@@ -496,10 +648,37 @@ function NewCommentBox({
   };
   return (
     <div className="rounded-lg border bg-[#faf9f6] p-2.5">
+      {captureTime && capturedTime !== null && (
+        <div className="flex items-center gap-1.5 px-1 pb-1">
+          <span
+            className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-black text-white"
+            style={{ background: NAVY }}
+            title="This comment will be pinned to this moment of the video"
+          >
+            <Play size={9} fill="white" /> at {formatTime(capturedTime)}
+          </span>
+          <button
+            className="text-muted-foreground/70 transition hover:text-foreground"
+            title="Update to the current video time"
+            onClick={capture}
+          >
+            <RefreshCcw size={12} />
+          </button>
+        </div>
+      )}
       <Textarea
-        placeholder="Write a comment about this page…"
+        placeholder={
+          captureTime
+            ? "Click here to comment — the video time is captured automatically…"
+            : "Write a comment about this page…"
+        }
         value={text}
         disabled={disabled}
+        onFocus={() => {
+          // First click (or click after posting) freezes the moment the person
+          // is talking about — even while the video is still playing.
+          if (captureTime && capturedTime === null && !text.trim()) capture();
+        }}
         onChange={(e) => setText(e.target.value)}
         className="min-h-[64px] resize-none border-0 bg-transparent p-1 text-[13px] shadow-none focus-visible:ring-0"
       />
@@ -525,6 +704,9 @@ export function CommentCard({
   onChanged,
   context,
   onOpenPage,
+  openLabel,
+  timeLabel,
+  onSeek,
 }: {
   comment: ReviewComment;
   isAdmin: boolean;
@@ -532,8 +714,14 @@ export function CommentCard({
   onChanged: () => void | Promise<void>;
   /** Optional "file · page" label shown above the comment (admin overview). */
   context?: string;
-  /** Optional: open the lesson at this comment's page (admin overview). */
+  /** Optional: open the lesson at this comment's page/moment (admin overview). */
   onOpenPage?: () => void;
+  /** Label for the open button — "Open page" (default) or "Open video". */
+  openLabel?: string;
+  /** Video comments: the "3:25" chip pinned to this comment. */
+  timeLabel?: string;
+  /** Video comments (in the viewer): jump the player to this moment. */
+  onSeek?: () => void;
 }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyText, setReplyText] = useState("");
@@ -584,13 +772,26 @@ export function CommentCard({
           {onOpenPage && (
             <button
               onClick={onOpenPage}
-              title="Open the lesson at this page"
+              title="Open the lesson at this exact spot"
               className="flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-bold text-muted-foreground transition hover:border-[#A68A64] hover:text-foreground"
             >
-              <Eye size={11} /> Open page
+              <Eye size={11} /> {openLabel ?? "Open page"}
             </button>
           )}
         </div>
+      )}
+      {timeLabel && (
+        <button
+          onClick={onSeek}
+          disabled={!onSeek}
+          title={onSeek ? "Jump the video to this moment" : undefined}
+          className={`mb-1 flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-black transition ${
+            onSeek ? "hover:border-[#A68A64] hover:bg-[#faf6ef]" : "cursor-default"
+          }`}
+          style={{ color: NAVY }}
+        >
+          <Play size={9} fill={NAVY} /> {timeLabel}
+        </button>
       )}
       {/* "Raqueldiaz 22.08 at 2:14pm - comment" — click it to answer (admin). */}
       <div

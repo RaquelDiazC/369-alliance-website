@@ -18,6 +18,7 @@ import {
   Eye,
   FilePlus2,
   FileText,
+  Film,
   Folder,
   FolderPlus,
   KeyRound,
@@ -55,6 +56,8 @@ import {
   deleteCourse,
   deleteFile,
   formatStamp,
+  formatTime,
+  getVideoDuration,
   listCourseComments,
   listCourses,
   listFiles,
@@ -126,8 +129,8 @@ export default function AdminDashboard({
           void reloadCourses();
         }}
         onOpenViewer={() => onOpenViewer({ courseId: selected.course.id })}
-        onOpenPage={(fileId, page) =>
-          onOpenViewer({ courseId: selected.course.id, fileId, page })
+        onOpenPage={(fileId, page, time) =>
+          onOpenViewer({ courseId: selected.course.id, fileId, page, time })
         }
       />
     );
@@ -236,14 +239,14 @@ function CoursesPanel({
         </Button>
       </div>
       <p className="mt-2 text-[12px] text-muted-foreground">
-        Each course is a folder — click a folder to open it and manage the PDFs inside. The green
-        icon lights up as soon as a lesson receives comments.
+        Each course is a folder — click a folder to open it and manage the PDFs and videos inside.
+        The green icon lights up as soon as a lesson receives comments.
       </p>
 
       {loaded && courses.length === 0 && (
         <Card className="mt-6 border-dashed">
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Create the first course folder to start uploading PDFs.
+            Create the first course folder to start uploading PDFs and videos.
           </CardContent>
         </Card>
       )}
@@ -284,7 +287,7 @@ function CoursesPanel({
                   <span className="block truncate text-[15px] font-black" style={{ color: NAVY }}>
                     {c.name}
                   </span>
-                  <span className="block text-[11px] text-muted-foreground">Open folder · PDFs inside</span>
+                  <span className="block text-[11px] text-muted-foreground">Open folder · lessons inside</span>
                 </span>
               )}
 
@@ -363,7 +366,7 @@ function CoursesPanel({
       <ConfirmDialog
         open={!!toDelete}
         title={`Delete the course folder "${toDelete?.name}"?`}
-        description="All PDFs and comments in this course will be permanently deleted."
+        description="All files (PDFs and videos) and comments in this course will be permanently deleted."
         confirmLabel="Delete folder"
         onCancel={() => setToDelete(null)}
         onConfirm={async () => {
@@ -391,7 +394,7 @@ function CourseDetail({
   initialTab: DetailTab;
   onBack: () => void;
   onOpenViewer: () => void;
-  onOpenPage: (fileId: string, page: number) => void;
+  onOpenPage: (fileId: string, page: number, time?: number) => void;
 }) {
   const [files, setFiles] = useState<ReviewFile[]>([]);
   const [comments, setComments] = useState<ReviewComment[]>([]);
@@ -467,23 +470,43 @@ function FilesManager({
   onChanged: () => Promise<void>;
 }) {
   const uploadRef = useRef<HTMLInputElement>(null);
-  const replaceRef = useRef<HTMLInputElement>(null);
+  const replacePdfRef = useRef<HTMLInputElement>(null);
+  const replaceVideoRef = useRef<HTMLInputElement>(null);
   const [replaceTarget, setReplaceTarget] = useState<ReviewFile | null>(null);
   const [toDelete, setToDelete] = useState<ReviewFile | null>(null);
   const [busyMsg, setBusyMsg] = useState<string | null>(null);
 
+  // Supabase free-plan hard limit per stored file.
+  const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+  const tooBig = (f: File) => {
+    if (f.size <= MAX_UPLOAD_BYTES) return false;
+    toast.error(
+      `"${f.name}" is over the 50 MB limit (${Math.round(f.size / 1024 / 1024)} MB). Export a compressed version (e.g. 720p for videos) and try again.`,
+    );
+    return true;
+  };
+
   const doUpload = async (list: FileList | null) => {
     if (!list || list.length === 0) return;
     for (const f of Array.from(list)) {
-      if (!/\.pdf$/i.test(f.name)) {
-        toast.error(`"${f.name}" is not a PDF.`);
+      const isPdf = /\.pdf$/i.test(f.name);
+      const isMp4 = /\.mp4$/i.test(f.name);
+      if (!isPdf && !isMp4) {
+        toast.error(`"${f.name}" is not a PDF or an MP4 video.`);
         continue;
       }
+      if (tooBig(f)) continue;
       setBusyMsg(`Uploading "${f.name}"…`);
       try {
-        const pages = await countPdfPages(f);
-        await uploadCourseFile(course.id, f, pages);
-        toast.success(`"${f.name}" uploaded (${pages} pages).`);
+        if (isMp4) {
+          const duration = await getVideoDuration(f);
+          await uploadCourseFile(course.id, f, { kind: "video", durationSeconds: duration });
+          toast.success(`"${f.name}" uploaded (video, ${formatTime(duration)}).`);
+        } else {
+          const pages = await countPdfPages(f);
+          await uploadCourseFile(course.id, f, { kind: "pdf", pageCount: pages });
+          toast.success(`"${f.name}" uploaded (${pages} pages).`);
+        }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : `Failed to upload "${f.name}".`);
       }
@@ -497,14 +520,25 @@ function FilesManager({
     setReplaceTarget(null);
     const f = list?.[0];
     if (!f || !target) return;
-    if (!/\.pdf$/i.test(f.name)) {
-      toast.error("Choose a PDF file.");
+    const wantVideo = target.kind === "video";
+    if (wantVideo ? !/\.mp4$/i.test(f.name) : !/\.pdf$/i.test(f.name)) {
+      toast.error(
+        wantVideo
+          ? "Choose an MP4 video — this lesson is a video."
+          : "Choose a PDF file — this lesson is a slide deck.",
+      );
       return;
     }
+    if (tooBig(f)) return;
     setBusyMsg(`Replacing "${target.name}"…`);
     try {
-      const pages = await countPdfPages(f);
-      await replaceFile(target, f, pages);
+      if (wantVideo) {
+        const duration = await getVideoDuration(f);
+        await replaceFile(target, f, { kind: "video", durationSeconds: duration });
+      } else {
+        const pages = await countPdfPages(f);
+        await replaceFile(target, f, { kind: "pdf", pageCount: pages });
+      }
       toast.success(`"${target.name}" replaced — all comments were kept.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to replace the file.");
@@ -519,7 +553,7 @@ function FilesManager({
       <input
         ref={uploadRef}
         type="file"
-        accept="application/pdf,.pdf"
+        accept="application/pdf,.pdf,video/mp4,.mp4"
         multiple
         className="hidden"
         onChange={(e) => {
@@ -528,9 +562,19 @@ function FilesManager({
         }}
       />
       <input
-        ref={replaceRef}
+        ref={replacePdfRef}
         type="file"
         accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={(e) => {
+          void doReplace(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={replaceVideoRef}
+        type="file"
+        accept="video/mp4,.mp4"
         className="hidden"
         onChange={(e) => {
           void doReplace(e.target.files);
@@ -540,16 +584,20 @@ function FilesManager({
 
       <div className="flex items-center gap-3">
         <Button className="gap-1.5 font-black" style={{ background: NAVY }} disabled={!!busyMsg} onClick={() => uploadRef.current?.click()}>
-          <FilePlus2 size={15} /> Upload PDF(s)
+          <FilePlus2 size={15} /> Upload PDF / MP4
         </Button>
         {busyMsg && <span className="text-[13px] font-semibold text-muted-foreground">{busyMsg}</span>}
       </div>
+      <p className="mt-2 text-[12px] text-muted-foreground">
+        Slides go up as PDF (comments per page) and lesson videos as MP4 (comments pinned to the
+        video time). Max 50 MB per file — for longer videos, export a compressed 720p MP4.
+      </p>
 
       {files.length === 0 && (
         <Card className="mt-5 border-dashed">
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No PDFs in this folder yet. Upload the material as PDF — reviewers can comment on every
-            page.
+            No files in this folder yet. Upload the material as PDF or MP4 — reviewers can comment
+            on every page (and on any moment of a video).
           </CardContent>
         </Card>
       )}
@@ -558,7 +606,11 @@ function FilesManager({
         {files.map((f, i) => (
           <div key={f.id} className="flex flex-wrap items-center gap-2 rounded-xl border bg-white p-3 shadow-sm">
             <span className="w-6 text-center text-[12px] font-black text-muted-foreground">{i + 1}</span>
-            <FileText size={16} className="shrink-0" style={{ color: GOLD }} />
+            {f.kind === "video" ? (
+              <Film size={16} className="shrink-0" style={{ color: GOLD }} />
+            ) : (
+              <FileText size={16} className="shrink-0" style={{ color: GOLD }} />
+            )}
             <InlineRename
               value={f.name}
               onSave={async (name) => {
@@ -568,7 +620,7 @@ function FilesManager({
               className="min-w-[160px] flex-1 text-[14px] font-bold"
             />
             <Badge variant="outline" className="text-[11px] font-bold text-muted-foreground">
-              {f.page_count} pages
+              {f.kind === "video" ? `video · ${formatTime(f.duration_seconds)}` : `${f.page_count} pages`}
             </Badge>
             <Badge
               variant="outline"
@@ -590,10 +642,10 @@ function FilesManager({
                 variant="outline"
                 size="sm"
                 className="gap-1 text-[12px] font-bold"
-                title="Replace the PDF keeping all comments"
+                title="Replace the file keeping all comments"
                 onClick={() => {
                   setReplaceTarget(f);
-                  replaceRef.current?.click();
+                  (f.kind === "video" ? replaceVideoRef : replacePdfRef).current?.click();
                 }}
               >
                 <RefreshCcw size={13} /> Replace
@@ -609,7 +661,7 @@ function FilesManager({
       <ConfirmDialog
         open={!!toDelete}
         title={`Delete "${toDelete?.name}"?`}
-        description="The PDF and the comments made on it will be permanently deleted. To swap the file without losing comments, use “Replace”."
+        description="The file and the comments made on it will be permanently deleted. To swap the file without losing comments, use “Replace”."
         confirmLabel="Delete file"
         onCancel={() => setToDelete(null)}
         onConfirm={async () => {
@@ -633,7 +685,7 @@ function CourseCommentsList({
   files: ReviewFile[];
   comments: ReviewComment[];
   onChanged: () => Promise<void>;
-  onOpenPage: (fileId: string, page: number) => void;
+  onOpenPage: (fileId: string, page: number, time?: number) => void;
 }) {
   if (comments.length === 0) {
     return (
@@ -658,17 +710,26 @@ function CourseCommentsList({
     <div className="space-y-5">
       <p className="text-[12px] text-muted-foreground">
         Click a comment to reply — the reviewer will see your message when they sign in. Use
-        “Open page” to see the exact slide the person is talking about.
+        “Open page” / “Open video” to see the exact slide or moment the person is talking about.
       </p>
       {orderedFileIds.map((fid) => {
         const f = files.find((x) => x.id === fid);
-        const list = (byFile.get(fid) ?? []).slice().sort(
-          (a, b) => a.page_number - b.page_number || a.created_at.localeCompare(b.created_at),
+        const isVideo = f?.kind === "video";
+        const list = (byFile.get(fid) ?? []).slice().sort((a, b) =>
+          isVideo
+            ? (a.time_seconds ?? 0) - (b.time_seconds ?? 0) ||
+              a.created_at.localeCompare(b.created_at)
+            : a.page_number - b.page_number || a.created_at.localeCompare(b.created_at),
         );
         return (
           <div key={fid}>
             <h3 className="mb-2 flex items-center gap-1.5 text-[13px] font-black uppercase tracking-wide" style={{ color: NAVY }}>
-              <FileText size={14} style={{ color: GOLD }} /> {f?.name ?? "Deleted file"}
+              {isVideo ? (
+                <Film size={14} style={{ color: GOLD }} />
+              ) : (
+                <FileText size={14} style={{ color: GOLD }} />
+              )}{" "}
+              {f?.name ?? "Deleted file"}
             </h3>
             <div className="space-y-2">
               {list.map((c) => (
@@ -677,9 +738,16 @@ function CourseCommentsList({
                   comment={c}
                   isAdmin
                   email=""
-                  context={`Page ${c.page_number} · ${nameFromEmail(c.author_email)} (${c.author_email})`}
+                  context={
+                    isVideo
+                      ? `At ${formatTime(c.time_seconds)} · ${nameFromEmail(c.author_email)} (${c.author_email})`
+                      : `Page ${c.page_number} · ${nameFromEmail(c.author_email)} (${c.author_email})`
+                  }
+                  openLabel={isVideo ? "Open video" : "Open page"}
                   onChanged={onChanged}
-                  onOpenPage={() => onOpenPage(c.file_id, c.page_number)}
+                  onOpenPage={() =>
+                    onOpenPage(c.file_id, c.page_number, isVideo ? (c.time_seconds ?? 0) : undefined)
+                  }
                 />
               ))}
             </div>
@@ -967,7 +1035,8 @@ function AddReviewerDialog({
         <DialogHeader>
           <DialogTitle>Add reviewer</DialogTitle>
           <DialogDescription>
-            Only folder names are listed here — the PDFs live inside each folder.
+            Only folder names are listed here — the lessons (PDFs and videos) live inside each
+            folder.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
