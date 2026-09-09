@@ -28,6 +28,8 @@ export interface ReviewFile {
   kind: ReviewFileKind;
   page_count: number;
   duration_seconds: number | null;
+  /** Video lessons: storage path of the WebVTT subtitle file, when one was added. */
+  subtitle_path: string | null;
   position: number;
   created_at: string;
   updated_at: string;
@@ -349,7 +351,43 @@ export async function replaceFile(f: ReviewFile, file: File, info: UploadInfo): 
 export async function deleteFile(f: ReviewFile): Promise<void> {
   const { error } = await reviewDb.from("review_files").delete().eq("id", f.id);
   if (error) throw new Error(error.message);
-  await reviewDb.storage.from(REVIEW_BUCKET).remove([f.storage_path]);
+  const paths = f.subtitle_path ? [f.storage_path, f.subtitle_path] : [f.storage_path];
+  await reviewDb.storage.from(REVIEW_BUCKET).remove(paths);
+}
+
+/* ─────────────────────────── subtitles ───────────────────────────── */
+
+/** Normalize a subtitle file to WebVTT — browsers only render VTT tracks.
+ *  SRT converts trivially: header + decimal comma → dot in timestamps. */
+async function toVttBlob(file: File): Promise<Blob> {
+  const text = await file.text();
+  if (/^﻿?WEBVTT/.test(text.trimStart())) {
+    return new Blob([text], { type: "text/vtt" });
+  }
+  const vtt =
+    "WEBVTT\n\n" + text.replace(/\r/g, "").replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
+  return new Blob([vtt], { type: "text/vtt" });
+}
+
+/** Attach (or replace) the subtitle of a video lesson. Accepts .srt or .vtt. */
+export async function uploadSubtitle(f: ReviewFile, file: File): Promise<void> {
+  const blob = await toVttBlob(file);
+  const newPath = `${f.course_id}/${f.id}-sub-${Date.now()}.vtt`;
+  const up = await reviewDb.storage.from(REVIEW_BUCKET).upload(newPath, blob, {
+    contentType: "text/vtt",
+  });
+  if (up.error) throw new Error(up.error.message);
+  const { error } = await reviewDb
+    .from("review_files")
+    .update({ subtitle_path: newPath, updated_at: new Date().toISOString() })
+    .eq("id", f.id);
+  if (error) {
+    await reviewDb.storage.from(REVIEW_BUCKET).remove([newPath]);
+    throw new Error(error.message);
+  }
+  if (f.subtitle_path) {
+    await reviewDb.storage.from(REVIEW_BUCKET).remove([f.subtitle_path]);
+  }
 }
 
 export async function moveFile(list: ReviewFile[], id: string, dir: -1 | 1): Promise<void> {

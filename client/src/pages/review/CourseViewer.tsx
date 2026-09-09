@@ -94,6 +94,7 @@ export default function CourseViewer({
   const [numPages, setNumPages] = useState(0);
   const [mediaLoading, setMediaLoading] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
   const [comments, setComments] = useState<ReviewComment[]>([]);
   const [zoom, setZoom] = useState(1);
   const [panelOpen, setPanelOpen] = useState(true);
@@ -168,17 +169,28 @@ export default function CourseViewer({
   useEffect(() => {
     if (!file || file.kind !== "video") {
       setVideoUrl(null);
+      setSubtitleUrl(null);
       return;
     }
     let cancelled = false;
     setMediaLoading(true);
     setNumPages(0);
     setVideoUrl(null);
+    setSubtitleUrl(null);
     (async () => {
       try {
         const url = await getSignedFileUrl(file.storage_path);
+        let sub: string | null = null;
+        if (file.subtitle_path) {
+          try {
+            sub = await getSignedFileUrl(file.subtitle_path);
+          } catch {
+            /* subtitles are optional — the video still plays */
+          }
+        }
         if (cancelled) return;
         setVideoUrl(url);
+        setSubtitleUrl(sub);
       } catch (e) {
         if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to open the video.");
       } finally {
@@ -189,7 +201,7 @@ export default function CourseViewer({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file?.id, file?.storage_path, file?.kind]);
+  }, [file?.id, file?.storage_path, file?.kind, file?.subtitle_path]);
 
   /* ── video helpers: jump to a moment / capture the moment for a comment ── */
   const seekTo = useCallback((t: number) => {
@@ -488,6 +500,8 @@ export default function CourseViewer({
                     src={videoUrl}
                     controls
                     playsInline
+                    // Required so the cross-origin subtitle track can load.
+                    crossOrigin="anonymous"
                     // Reviewers: no download button, no fullscreen (fullscreen
                     // would escape the watermark), no casting. The admin keeps
                     // fullscreen for her own checks.
@@ -502,7 +516,17 @@ export default function CourseViewer({
                       if (t != null && videoRef.current) videoRef.current.currentTime = t;
                     }}
                     className="max-h-full max-w-full rounded shadow-2xl"
-                  />
+                  >
+                    {subtitleUrl && (
+                      <track
+                        kind="subtitles"
+                        src={subtitleUrl}
+                        srcLang="en"
+                        label="English"
+                        default
+                      />
+                    )}
+                  </video>
                 )}
               </div>
             ) : (

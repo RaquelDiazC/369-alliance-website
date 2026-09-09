@@ -13,6 +13,7 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  Captions,
   Check,
   Copy,
   Eye,
@@ -72,6 +73,7 @@ import {
   unlockDevice,
   upsertReviewer,
   uploadCourseFile,
+  uploadSubtitle,
   nameFromEmail,
   type ReviewComment,
   type ReviewCourse,
@@ -472,7 +474,9 @@ function FilesManager({
   const uploadRef = useRef<HTMLInputElement>(null);
   const replacePdfRef = useRef<HTMLInputElement>(null);
   const replaceVideoRef = useRef<HTMLInputElement>(null);
+  const subtitleRef = useRef<HTMLInputElement>(null);
   const [replaceTarget, setReplaceTarget] = useState<ReviewFile | null>(null);
+  const [subtitleTarget, setSubtitleTarget] = useState<ReviewFile | null>(null);
   const [toDelete, setToDelete] = useState<ReviewFile | null>(null);
   const [busyMsg, setBusyMsg] = useState<string | null>(null);
 
@@ -548,6 +552,27 @@ function FilesManager({
     }
   };
 
+  const doSubtitle = async (list: FileList | null) => {
+    const target = subtitleTarget;
+    setSubtitleTarget(null);
+    const f = list?.[0];
+    if (!f || !target) return;
+    if (!/\.(srt|vtt)$/i.test(f.name)) {
+      toast.error("Choose a .srt or .vtt subtitle file.");
+      return;
+    }
+    setBusyMsg(`Adding subtitle to "${target.name}"…`);
+    try {
+      await uploadSubtitle(target, f);
+      toast.success(`Subtitle added to "${target.name}" — the CC button appears in the player.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to add the subtitle.");
+    } finally {
+      setBusyMsg(null);
+      await onChanged();
+    }
+  };
+
   return (
     <>
       <input
@@ -581,6 +606,16 @@ function FilesManager({
           e.target.value = "";
         }}
       />
+      <input
+        ref={subtitleRef}
+        type="file"
+        accept=".srt,.vtt,text/vtt"
+        className="hidden"
+        onChange={(e) => {
+          void doSubtitle(e.target.files);
+          e.target.value = "";
+        }}
+      />
 
       <div className="flex items-center gap-3">
         <Button className="gap-1.5 font-black" style={{ background: NAVY }} disabled={!!busyMsg} onClick={() => uploadRef.current?.click()}>
@@ -591,7 +626,8 @@ function FilesManager({
       <p className="mt-2 text-[12px] text-muted-foreground">
         Slides go up as PDF (comments per page) and lesson videos as MP4 (comments pinned to the
         video time). Files up to 2 GB — large videos may take a few minutes to upload, keep the
-        tab open until the confirmation appears.
+        tab open until the confirmation appears. Use the CC icon on a video row to add its
+        subtitle (.srt or .vtt) — the captions button then appears in the player.
       </p>
 
       {files.length === 0 && (
@@ -639,6 +675,27 @@ function FilesManager({
                 onClick={() => moveFile(files, f.id, 1).then(onChanged).catch((e) => toast.error(String(e.message ?? e)))}>
                 <ArrowDown size={15} />
               </Button>
+              {f.kind === "video" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  title={
+                    f.subtitle_path
+                      ? "Subtitle added — click to replace it (.srt or .vtt)"
+                      : "Add a subtitle to this video (.srt or .vtt)"
+                  }
+                  onClick={() => {
+                    setSubtitleTarget(f);
+                    subtitleRef.current?.click();
+                  }}
+                >
+                  <Captions
+                    size={16}
+                    style={f.subtitle_path ? { color: GREEN } : { color: "#a8a29a" }}
+                  />
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"

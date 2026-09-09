@@ -38,7 +38,10 @@ deixam comentários que só eles e a administradora enxergam.
   e mantém todos os comentários). Vídeos mostram a duração no lugar da
   contagem de páginas. **Limite: 2 GB por arquivo** (plano Pro) — os MP4
   originais sobem sem comprimir; um vídeo de 600 MB leva alguns minutos,
-  mantenha a aba aberta até a confirmação.
+  mantenha a aba aberta até a confirmação. Cada vídeo pode ter **legenda**:
+  clique no ícone CC da linha do vídeo e escolha o arquivo `.srt` ou `.vtt`
+  (SRT é convertido automaticamente) — o ícone fica verde e o botão de
+  legendas aparece no player para todo mundo.
 - **Reviewers** — adicionar por email: o sistema cria a conta e gera um
   **código de acesso** (é ele que a pessoa usa como senha). Abaixo do botão
   de adicionar fica a lista com cada pessoa e **checkboxes por pasta de
