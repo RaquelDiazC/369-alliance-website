@@ -363,12 +363,28 @@ export async function downloadPdfBytes(storagePath: string): Promise<ArrayBuffer
   return data.arrayBuffer();
 }
 
-/** Download a stored file as a Blob (used for video playback via object URL —
- *  the video never gets a public/signed URL). */
+/** Download a stored file as a Blob through the authenticated client. */
 export async function downloadFileBlob(storagePath: string): Promise<Blob> {
   const { data, error } = await reviewDb.storage.from(REVIEW_BUCKET).download(storagePath);
   if (error) throw new Error(error.message);
   return data;
+}
+
+/**
+ * Short-lived signed URL for streaming playback of large videos (the browser
+ * then uses HTTP range requests, so playback starts immediately instead of
+ * waiting for hundreds of MB to download). Creating the URL is RLS-checked —
+ * only someone with access to the course can obtain it — and it expires.
+ */
+export async function getSignedFileUrl(
+  storagePath: string,
+  expiresInSeconds = 6 * 60 * 60,
+): Promise<string> {
+  const { data, error } = await reviewDb.storage
+    .from(REVIEW_BUCKET)
+    .createSignedUrl(storagePath, expiresInSeconds);
+  if (error) throw new Error(error.message);
+  return data.signedUrl;
 }
 
 /** Read the duration (seconds) of a local video file before uploading it. */

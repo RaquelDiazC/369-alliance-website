@@ -51,10 +51,10 @@ import {
   addComment,
   addReply,
   deleteComment,
-  downloadFileBlob,
   downloadPdfBytes,
   formatStamp,
   formatTime,
+  getSignedFileUrl,
   listFileComments,
   listFiles,
   markRepliesRead,
@@ -162,22 +162,22 @@ export default function CourseViewer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file?.id, file?.storage_path, file?.kind]);
 
-  /* ── load video bytes (authenticated → in-memory object URL) ── */
+  /* ── load the video as a short-lived signed URL so the browser streams it
+        with range requests (instant start + seeking, even for 600 MB files).
+        Obtaining the URL is authenticated + RLS-checked and it expires. ── */
   useEffect(() => {
     if (!file || file.kind !== "video") {
       setVideoUrl(null);
       return;
     }
     let cancelled = false;
-    let url: string | null = null;
     setMediaLoading(true);
     setNumPages(0);
     setVideoUrl(null);
     (async () => {
       try {
-        const blob = await downloadFileBlob(file.storage_path);
+        const url = await getSignedFileUrl(file.storage_path);
         if (cancelled) return;
-        url = URL.createObjectURL(blob);
         setVideoUrl(url);
       } catch (e) {
         if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to open the video.");
@@ -187,7 +187,6 @@ export default function CourseViewer({
     })();
     return () => {
       cancelled = true;
-      if (url) URL.revokeObjectURL(url);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file?.id, file?.storage_path, file?.kind]);

@@ -476,12 +476,12 @@ function FilesManager({
   const [toDelete, setToDelete] = useState<ReviewFile | null>(null);
   const [busyMsg, setBusyMsg] = useState<string | null>(null);
 
-  // Supabase free-plan hard limit per stored file.
-  const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+  // Per-file cap on the Pro plan (bucket is configured to match).
+  const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024;
   const tooBig = (f: File) => {
     if (f.size <= MAX_UPLOAD_BYTES) return false;
     toast.error(
-      `"${f.name}" is over the 50 MB limit (${Math.round(f.size / 1024 / 1024)} MB). Export a compressed version (e.g. 720p for videos) and try again.`,
+      `"${f.name}" is over the 2 GB limit (${Math.round(f.size / 1024 / 1024)} MB).`,
     );
     return true;
   };
@@ -590,7 +590,8 @@ function FilesManager({
       </div>
       <p className="mt-2 text-[12px] text-muted-foreground">
         Slides go up as PDF (comments per page) and lesson videos as MP4 (comments pinned to the
-        video time). Max 50 MB per file — for longer videos, export a compressed 720p MP4.
+        video time). Files up to 2 GB — large videos may take a few minutes to upload, keep the
+        tab open until the confirmation appears.
       </p>
 
       {files.length === 0 && (

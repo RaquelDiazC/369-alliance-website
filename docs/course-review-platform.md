@@ -7,7 +7,8 @@ deixam comentários que só eles e a administradora enxergam.
 
 - **URL:** `https://<seu-dominio>/review` (não aparece em nenhum menu do site)
 - **Backend:** projeto Supabase `369-course-review` (`iknjmeatyxzrwtejbwvm`,
-  região Sydney, plano gratuito — $0/mês)
+  região Sydney, **plano Pro — US$ 25/mês**: 100 GB de armazenamento, até
+  2 GB por arquivo, sem pausa por inatividade)
 - **Frontend:** `client/src/pages/review/` + `client/src/lib/review/` +
   `client/src/components/review/`
 - **Backend versionado:** `supabase/migrations/…course_review_platform.sql`
@@ -35,8 +36,9 @@ deixam comentários que só eles e a administradora enxergam.
   (**PDF** para slides, **MP4** para as vídeo-aulas), renomear, mudar a
   ordem, apagar ou **Substituir** (troca o arquivo — sempre pelo mesmo tipo —
   e mantém todos os comentários). Vídeos mostram a duração no lugar da
-  contagem de páginas. **Limite: 50 MB por arquivo** (teto do plano gratuito
-  do Supabase) — para aulas mais longas, exporte o MP4 comprimido em 720p.
+  contagem de páginas. **Limite: 2 GB por arquivo** (plano Pro) — os MP4
+  originais sobem sem comprimir; um vídeo de 600 MB leva alguns minutos,
+  mantenha a aba aberta até a confirmação.
 - **Reviewers** — adicionar por email: o sistema cria a conta e gera um
   **código de acesso** (é ele que a pessoa usa como senha). Abaixo do botão
   de adicionar fica a lista com cada pessoa e **checkboxes por pasta de
@@ -78,11 +80,13 @@ deixam comentários que só eles e a administradora enxergam.
 
 ## Proteção do conteúdo
 
-Nem o PDF nem o vídeo chegam ao navegador como link: os bytes são baixados
-autenticados — o PDF vira canvas (sem camada de texto) e o MP4 toca a partir
-da memória (URL de objeto local, sem endereço público). No player de vídeo o
-revisor não tem botão de download, tela cheia nem picture-in-picture (a tela
-cheia escaparia da marca d'água). Para revisores, a plataforma também:
+O PDF nunca chega ao navegador como link: os bytes são baixados autenticados
+e viram canvas (sem camada de texto). O vídeo toca por **streaming via URL
+assinada de curta duração** (obter a URL exige login com acesso ao curso, e
+ela expira em algumas horas) — assim um vídeo de 600 MB começa na hora, sem
+baixar tudo antes. No player de vídeo o revisor não tem botão de download,
+tela cheia nem picture-in-picture (a tela cheia escaparia da marca d'água).
+Para revisores, a plataforma também:
 
 - bloqueia seleção/cópia de texto, clique direito, arrastar imagem;
 - bloqueia Ctrl/Cmd+P, S, C, X, U e atalhos de DevTools;
@@ -102,10 +106,12 @@ existe para que qualquer imagem vazada identifique a origem.
 
 - Todas as regras de visibilidade são **Row Level Security** no Postgres —
   valem para qualquer cliente, não só para o app.
-- O bucket `course-review-pdfs` é privado (≤ 50 MB por arquivo; aceita
-  `application/pdf` e `video/mp4`). O plano gratuito dá **1 GB de
-  armazenamento total** e ~5 GB de tráfego/mês — com muitas vídeo-aulas,
-  acompanhe o uso no painel do Supabase (upgrade Pro se precisar de mais).
+- O bucket `course-review-pdfs` é privado (≤ 2 GB por arquivo; aceita
+  `application/pdf` e `video/mp4`). O plano Pro inclui **100 GB de
+  armazenamento** e 250 GB de tráfego/mês — folga para a biblioteca inteira
+  e para os revisores assistirem; acompanhe o uso no painel do Supabase.
+- Projetos Pro **não pausam por inatividade** (o antigo problema do
+  "Failed to fetch" após semanas parado não existe mais).
 - Ações privilegiadas (criar/remover contas, códigos) rodam na edge function
   `review-admin` com service role; ela mesma valida que quem chama é a
   administradora.
