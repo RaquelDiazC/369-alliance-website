@@ -58,6 +58,9 @@ export default function ReviewPlatform() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [roleReady, setRoleReady] = useState(false);
   const [deviceLocked, setDeviceLocked] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
+  const [accessAttempt, setAccessAttempt] = useState(0);
+  const retryAccess = useCallback(() => setAccessAttempt(value => value + 1), []);
   const [view, setView] = useState<View>({ kind: "home" });
 
   const [unread, setUnread] = useState<UnreadMessage[]>([]);
@@ -70,6 +73,9 @@ export default function ReviewPlatform() {
     reviewDb.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setBooting(false);
+    }).catch(() => {
+      setBooting(false);
+      toast.error("Your session could not be restored. Please sign in again.");
     });
     const { data: sub } = reviewDb.auth.onAuthStateChange((_evt, s) => {
       setSession(s);
@@ -82,6 +88,7 @@ export default function ReviewPlatform() {
     let cancelled = false;
     setRoleReady(false);
     setDeviceLocked(false);
+    setAccessError(null);
     setView({ kind: "home" });
     setUnread([]);
     if (!session) return;
@@ -90,37 +97,49 @@ export default function ReviewPlatform() {
         const admin = await isAdminEmail();
         if (cancelled) return;
         setIsAdmin(admin);
-        setRoleReady(true);
         if (!admin) {
-          // Single-computer lock: the first browser used becomes the only one
-          // allowed for this reviewer (fails open on network errors).
-          try {
-            const dev = await registerDevice();
-            if (cancelled) return;
-            if (dev.locked) {
-              setDeviceLocked(true);
-              return;
-            }
-          } catch {
-            /* device check unavailable — do not lock the person out */
-          }
-          const msgs = await listUnreadMessages();
+          // Never render course content before the device check succeeds.
+          const dev = await registerDevice();
           if (cancelled) return;
-          setUnread(msgs);
-          if (msgs.length > 0) setUnreadOpen(true);
+          if (dev.locked) {
+            setDeviceLocked(true);
+            return;
+          }
+          setRoleReady(true);
+          // Notifications are optional; their failure must not block review.
+          try {
+            const msgs = await listUnreadMessages();
+            if (cancelled) return;
+            setUnread(msgs);
+            if (msgs.length > 0) setUnreadOpen(true);
+          } catch { /* can be retried from the messages button */ }
         }
       } catch (e) {
         if (!cancelled) {
           setIsAdmin(false);
-          setRoleReady(true);
-          toast.error(e instanceof Error ? e.message : "Failed to load your profile.");
+          setAccessError(e instanceof Error ? e.message : "Unable to verify access. Please try again.");
         }
+      } finally {
+        if (!cancelled) setRoleReady(true);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [session?.user.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [session?.user.id, accessAttempt]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Recover automatically after an admin unlock or a temporary connection issue.
+  useEffect(() => {
+    if (!deviceLocked && !accessError) return;
+    const timer = window.setInterval(retryAccess, 30000);
+    window.addEventListener("online", retryAccess);
+    window.addEventListener("focus", retryAccess);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("online", retryAccess);
+      window.removeEventListener("focus", retryAccess);
+    };
+  }, [deviceLocked, accessError, retryAccess]);
 
   const refreshUnread = useCallback(async () => {
     if (!session || isAdmin) return;
@@ -173,7 +192,15 @@ export default function ReviewPlatform() {
     if (booting) return <CenterNote text="Loading…" />;
     if (!session) return <LoginView />;
     if (!roleReady) return <CenterNote text="Checking access…" />;
-    if (!isAdmin && deviceLocked) return <DeviceLockScreen />;
+    if (accessError) return (
+      <div className="mx-auto my-16 max-w-md space-y-4 px-6 text-center">
+        <h1 className="text-xl font-black">Access check temporarily unavailable</h1>
+        <p className="text-sm text-muted-foreground">{accessError}</p>
+        <Button onClick={retryAccess}>Try again</Button>
+        <p className="text-xs text-muted-foreground">Your access has not been removed. We will check again automatically.</p>
+      </div>
+    );
+    if (!isAdmin && deviceLocked) return <DeviceLockScreen onRetry={retryAccess} />;
     if (view.kind === "viewer") {
       return (
         <CourseViewer
@@ -195,7 +222,7 @@ export default function ReviewPlatform() {
     ) : (
       <ReviewerHome onOpenCourse={(courseId) => openViewer({ courseId })} />
     );
-  }, [booting, session, roleReady, deviceLocked, view, isAdmin, email, goHome, openViewer]);
+  }, [booting, session, roleReady, deviceLocked, accessError, retryAccess, view, isAdmin, email, goHome, openViewer]);
 
   return (
     <ProtectionShield active={!!session && roleReady && !isAdmin}>
@@ -335,7 +362,7 @@ function CenterNote({ text }: { text: string }) {
 }
 
 /** Shown when a reviewer opens the platform on a second computer. */
-function DeviceLockScreen() {
+function DeviceLockScreen({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-16">
       <div className="w-full max-w-md rounded-xl border bg-white p-8 text-center shadow-xl">
@@ -357,7 +384,7 @@ function DeviceLockScreen() {
         >
           <LogOut size={15} /> Sign out
         </Button>
-        <Button className="mt-3 w-full" variant="outline" onClick={() => window.location.reload()}>
+        <Button className="mt-3 w-full" variant="outline" onClick={onRetry}>
           Check access again
         </Button>
       </div>

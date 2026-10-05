@@ -128,21 +128,34 @@ existe para que qualquer imagem vazada identifique a origem.
   os dados é o RLS. Podem ser sobrescritas com
   `VITE_REVIEW_SUPABASE_URL` / `VITE_REVIEW_SUPABASE_ANON_KEY`.
 
-## Correção de acesso e recuperação da tela (outubro de 2026)
+## Confiabilidade do vínculo de navegador (5 de outubro de 2026)
 
-A identificação continua sendo por navegador e endereço do site, não pelo
-hardware do computador. O identificador existente é preservado e passa a
-ter uma cópia em cookie; se apenas o localStorage desaparecer, o cookie
-restaura o mesmo identificador. Limpar todos os dados, usar modo privado,
-outro perfil, navegador ou domínio ainda pode exigir “Unlock computer”.
-Não há desbloqueio automático por IP.
+O limite de um navegador por revisor permanece ativo. A identificação é por
+navegador/perfil/endereço do site, não por hardware físico. Convites novos
+copiam sempre o endereço público estável da plataforma.
 
-A tela de bloqueio explica essa diferença e oferece “Check access again”
-para repetir a verificação após o desbloqueio pela administradora.
-A proteção de conteúdo volta com foco, clique, foco pelo teclado ou
-restauração da página, e oferece “Continue reviewing” se o navegador
-não emitir o evento de foco esperado. A proteção de captura e impressão
-e as marcas d’água continuam ativas.
+O identificador é guardado em localStorage, cookie e IndexedDB. As cópias são
+lidas antes de qualquer gravação; se estiverem diferentes, o servidor procura
+uma prova válida entre as cópias enviadas. Somente após a validação a interface
+repara as cópias locais. Um navegador diferente não recebe o identificador
+registrado, não pode substituí-lo e não ganha acesso por uma falha de rede.
+O primeiro registro é condicional e atômico: acessos simultâneos não podem
+registrar dois navegadores diferentes.
 
-Verificação: `node --test tests/review-*.test.mjs` (Node 24; dependências
-instaladas para o teste de componentes).
+Erros temporários são diferenciados de bloqueios. O acesso pode ser verificado
+novamente pelo botão, ao voltar à janela, ao recuperar a conexão ou após 30
+segundos. A tela só libera os cursos depois da verificação. Falhas no carregamento
+de notificações não interrompem a revisão.
+
+Recuperação administrativa das contas existentes: a administradora pode limpar
+um vínculo antigo mantendo código, permissões e comentários. No próximo login,
+o primeiro navegador usado fica registrado novamente. Quem estiver numa versão
+antiga deve atualizar a página uma vez. Não usar janela anônima nem apagar todos
+os dados do site: a perda de todas as provas exige novo desbloqueio administrativo.
+
+A proteção de conteúdo recupera foco/clique/teclado/restauração da página e
+oferece “Continue reviewing”. Impressão, captura e marcas d’água mantêm as
+proteções existentes, limitadas ao que o navegador consegue fazer.
+
+Verificação: `node --test tests/review-*.test.mjs` (Node 24 e dependências
+instaladas), `npm run check` e `npm run build`.

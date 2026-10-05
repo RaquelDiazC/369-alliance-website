@@ -7,7 +7,7 @@
  */
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { REVIEW_BUCKET, reviewDb } from "./supabase";
-import { getOrCreateDeviceId } from "./device";
+import { getDeviceCandidates, persistDeviceId } from "./device";
 
 /* ────────────────────────────── types ────────────────────────────── */
 
@@ -138,14 +138,22 @@ function translateAuthError(msg: string): string {
 }
 
 export async function isAdminEmail(): Promise<boolean> {
-  const { data } = await reviewDb.from("review_admins").select("email").limit(1);
-  return !!data && data.length > 0;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const { data, error } = await reviewDb.from("review_admins").select("email").limit(1).abortSignal(controller.signal);
+    if (error) throw new Error(error.message);
+    return !!data && data.length > 0;
+  } finally { clearTimeout(timer); }
 }
 
 /* ─────────────────────── admin edge function ─────────────────────── */
 
 async function invokeAdmin<T = Record<string, unknown>>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await reviewDb.functions.invoke("review-admin", { body });
+  const { data, error } = await reviewDb.functions.invoke("review-admin", {
+    body,
+    ...(body.action === "register_device" ? { timeout: 15000 } : {}),
+  });
   if (error) {
     let msg = error.message;
     if (error instanceof FunctionsHttpError) {
@@ -190,11 +198,17 @@ export function removeReviewer(email: string) {
  * account is already bound to a different computer.
  */
 export async function registerDevice(): Promise<{ locked: boolean }> {
-  const res = await invokeAdmin<{ ok: boolean; locked?: boolean }>({
+  const candidates = await getDeviceCandidates();
+  const res = await invokeAdmin<{ ok: boolean; locked?: boolean; deviceId?: string }>({
     action: "register_device",
-    deviceId: getOrCreateDeviceId(),
+    deviceId: candidates[0],
+    deviceIds: candidates,
   });
-  return { locked: !!res.locked };
+  if (res.locked) return { locked: true };
+  if (!res.ok) throw new Error("Unable to verify browser access. Please try again.");
+  // The server only echoes a proof that we supplied and it accepted.
+  if (res.deviceId && candidates.includes(res.deviceId)) await persistDeviceId(res.deviceId);
+  return { locked: false };
 }
 
 /** Admin: clear the binding so the person can use a new computer. */

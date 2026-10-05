@@ -984,7 +984,7 @@ function ReviewersPanel({ courses }: { courses: ReviewCourse[] }) {
                 className="gap-1.5 font-bold"
                 onClick={() => {
                   void navigator.clipboard?.writeText(
-                    `369 Alliance course review access\nLink: ${window.location.origin}/review\nEmail: ${codeInfo.email}\nAccess code: ${codeInfo.code}`,
+                    `369 Alliance course review access\nLink: https://369-alliance-raqueldiaz-7755s-projects.vercel.app/review\nEmail: ${codeInfo.email}\nAccess code: ${codeInfo.code}`,
                   );
                   toast.success("Instructions copied.");
                 }}

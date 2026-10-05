@@ -93,35 +93,48 @@ Deno.serve(async (req: Request) => {
     const callerEmail = caller?.user?.email?.toLowerCase() ?? "";
     if (authErr || !callerEmail) return json(401, { error: "not authenticated" });
 
-    // Device lock: a reviewer account only works on the first device that
-    // signed in with it. Admins are exempt.
+    // One browser binding per reviewer. Accept surviving copies of the same
+    // proof, never reveal the stored proof to a different browser.
     if (action === "register_device") {
       const deviceId = String(payload.deviceId ?? "").trim();
-      if (!deviceId || deviceId.length > 100) return json(400, { error: "invalid device id" });
+      const validDeviceId = (value: unknown): value is string =>
+        typeof value === "string" && /^[A-Za-z0-9-]{1,100}$/.test(value);
+      if (!validDeviceId(deviceId)) return json(400, { error: "invalid device id" });
+      const supplied = Array.isArray(payload.deviceIds) ? payload.deviceIds : [];
+      if (supplied.length > 4 || supplied.some(id => !validDeviceId(id))) {
+        return json(400, { error: "invalid device ids" });
+      }
+      const candidates = [...new Set([deviceId, ...supplied])];
       if (await isAdminEmail(callerEmail)) return json(200, { ok: true, admin: true });
-      const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || null;
-      const { data: reg } = await admin
+      const { data: reg, error: lookupError } = await admin
         .from("review_reviewers")
         .select("device_id")
         .eq("email", callerEmail)
         .maybeSingle();
-      if (!reg) return json(200, { ok: true });
-      if (!reg.device_id) {
-        await admin
+      if (lookupError) throw new Error(lookupError.message);
+      if (!reg) return json(403, { error: "Reviewer access has not been granted." });
+      let registeredId = reg.device_id;
+      if (!registeredId) {
+        // Compare-and-set: two simultaneous first sign-ins cannot both bind.
+        const { data: claimed, error: claimError } = await admin
           .from("review_reviewers")
-          .update({
-            device_id: deviceId,
-            device_registered_at: new Date().toISOString(),
-            last_seen_ip: ip,
-          })
-          .eq("email", callerEmail);
-        return json(200, { ok: true, registered: true });
+          .update({ device_id: deviceId, device_registered_at: new Date().toISOString() })
+          .eq("email", callerEmail)
+          .is("device_id", null)
+          .select("device_id")
+          .maybeSingle();
+        if (claimError) throw new Error(claimError.message);
+        registeredId = claimed?.device_id;
+        if (!registeredId) {
+          const { data: winner, error: winnerError } = await admin
+            .from("review_reviewers").select("device_id").eq("email", callerEmail).maybeSingle();
+          if (winnerError) throw new Error(winnerError.message);
+          registeredId = winner?.device_id;
+        }
       }
-      if (reg.device_id === deviceId) {
-        await admin.from("review_reviewers").update({ last_seen_ip: ip }).eq("email", callerEmail);
-        return json(200, { ok: true });
-      }
-      return json(200, { ok: false, locked: true });
+      if (!registeredId) return json(409, { error: "Browser registration changed. Please try again." });
+      if (!candidates.includes(registeredId)) return json(200, { ok: false, locked: true });
+      return json(200, { ok: true, locked: false, deviceId: registeredId });
     }
 
     // Everything below is admin-only.
