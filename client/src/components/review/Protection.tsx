@@ -31,16 +31,22 @@ export function ProtectionShield({
     setBlackout("screenshot");
     try {
       // Best effort: replace whatever PrintScreen put on the clipboard.
-      void navigator.clipboard?.writeText("Screenshot not authorized");
+      void navigator.clipboard?.writeText("Screenshot not authorized").catch(() => {});
     } catch {
       /* clipboard may be unavailable — the overlay still shows */
     }
     if (timerRef.current) window.clearTimeout(timerRef.current);
-    timerRef.current = window.setTimeout(() => setBlackout(null), 3000);
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null;
+      setBlackout(document.visibilityState === "hidden" || !document.hasFocus() ? "blur" : null);
+    }, 3000);
   }, []);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      setBlackout(null);
+      return;
+    }
 
     const stop = (e: Event) => {
       e.preventDefault();
@@ -62,7 +68,10 @@ export function ProtectionShield({
       if (e.key === "PrintScreen") flashScreenshot();
     };
     const onBlur = () => setBlackout((b) => (b === "screenshot" ? b : "blur"));
-    const onFocus = () => setBlackout((b) => (b === "blur" ? null : b));
+    const onFocus = () => {
+      if (document.visibilityState === "hidden") return;
+      setBlackout((b) => (b === "blur" ? null : b));
+    };
     const onVisibility = () => {
       if (document.visibilityState === "hidden") onBlur();
       else onFocus();
@@ -82,6 +91,9 @@ export function ProtectionShield({
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("blur", onBlur);
     window.addEventListener("focus", onFocus);
+    window.addEventListener("pageshow", onVisibility);
+    document.addEventListener("pointerdown", onFocus, true);
+    document.addEventListener("focusin", onFocus, true);
     window.addEventListener("beforeprint", onBeforePrint);
     return () => {
       document.removeEventListener("contextmenu", stop, true);
@@ -94,6 +106,9 @@ export function ProtectionShield({
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("focus", onFocus);
+      window.removeEventListener("pageshow", onVisibility);
+      document.removeEventListener("pointerdown", onFocus, true);
+      document.removeEventListener("focusin", onFocus, true);
       window.removeEventListener("beforeprint", onBeforePrint);
       if (timerRef.current) window.clearTimeout(timerRef.current);
     };
@@ -130,9 +145,20 @@ export function ProtectionShield({
               </p>
             </>
           ) : (
-            <p className="px-6 text-center text-lg font-bold text-white/70">
-              Content hidden — return to this window to continue.
-            </p>
+            <>
+              <p className="px-6 text-center text-lg font-bold text-white/70">
+                Content hidden — return to this window to continue.
+              </p>
+              <button
+                type="button"
+                className="rounded-lg bg-white px-5 py-3 font-bold text-black"
+                onClick={() => {
+                  if (document.visibilityState !== "hidden") setBlackout(null);
+                }}
+              >
+                Continue reviewing
+              </button>
+            </>
           )}
         </div>
       )}

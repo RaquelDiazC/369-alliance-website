@@ -127,3 +127,22 @@ existe para que qualquer imagem vazada identifique a origem.
   *publicáveis* do projeto — podem ir ao navegador por design; o que protege
   os dados é o RLS. Podem ser sobrescritas com
   `VITE_REVIEW_SUPABASE_URL` / `VITE_REVIEW_SUPABASE_ANON_KEY`.
+
+## Correção de acesso e recuperação da tela (outubro de 2026)
+
+A identificação continua sendo por navegador e endereço do site, não pelo
+hardware do computador. O identificador existente é preservado e passa a
+ter uma cópia em cookie; se apenas o localStorage desaparecer, o cookie
+restaura o mesmo identificador. Limpar todos os dados, usar modo privado,
+outro perfil, navegador ou domínio ainda pode exigir “Unlock computer”.
+Não há desbloqueio automático por IP.
+
+A tela de bloqueio explica essa diferença e oferece “Check access again”
+para repetir a verificação após o desbloqueio pela administradora.
+A proteção de conteúdo volta com foco, clique, foco pelo teclado ou
+restauração da página, e oferece “Continue reviewing” se o navegador
+não emitir o evento de foco esperado. A proteção de captura e impressão
+e as marcas d’água continuam ativas.
+
+Verificação: `node --test tests/review-*.test.mjs` (Node 24; dependências
+instaladas para o teste de componentes).

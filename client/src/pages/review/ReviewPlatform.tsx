@@ -343,11 +343,12 @@ function DeviceLockScreen() {
           <MonitorX size={22} className="text-white" />
         </div>
         <h1 className="mt-4 text-xl font-black" style={{ color: NAVY }}>
-          Access locked to another computer
+          This browser is not recognised
         </h1>
         <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-          For security, this account only works on the computer where it was first used. If you
-          changed computers, ask the admin to unlock your access and sign in again here.
+          Access is linked to the browser you first used. Changing browser, browser profile,
+          website address, or clearing site data can cause this message on the same computer.
+          Ask the admin to use “Unlock computer” in Reviewers, then check access again.
         </p>
         <Button
           className="mt-5 gap-1.5 font-black"
@@ -355,6 +356,9 @@ function DeviceLockScreen() {
           onClick={() => void signOut()}
         >
           <LogOut size={15} /> Sign out
+        </Button>
+        <Button className="mt-3 w-full" variant="outline" onClick={() => window.location.reload()}>
+          Check access again
         </Button>
       </div>
     </div>
