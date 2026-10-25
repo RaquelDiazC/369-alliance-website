@@ -79,6 +79,7 @@ interface BrainTemplate {
 interface BrainStatus {
   ai: boolean;
   model: string;
+  live?: { ok: boolean; url: string; generatedAt?: string; councils?: { total: number; withDocuments: number; digitised: { lga: string; state: string; records: number }[] }; ncc?: { currentByState: Record<string, string | null> }; sources?: { watched: number; lastChecked?: string; alerts: { key: string; status: string; detail?: string }[] }; standards?: { library: number; outdated: string[] }; stateCodes?: Record<string, { records: number }> };
   counts: { vol1: number; hp: number; standards: number; topics: number; defects: number; editions: number; boards: number; stateBoards: number };
   variationBoards: Record<string, number>;
   states: StateProfile[];
@@ -1350,7 +1351,12 @@ export default function LegislationBrain() {
               {status
                 ? `${status.personas.length + 1} brains · ${status.counts.vol1} NCC clauses · ${status.counts.standards} AS · ${status.counts.defects} defects` +
                   (status.counts.boards ? ` · ${status.counts.boards + status.counts.stateBoards} evidence boards` : "") +
-                  ` · ${status.states.length} jurisdictions`
+                  ` · ${status.states.length} jurisdictions` +
+                  (status.live?.ok
+                    ? ` · live hub: ${status.live.councils?.total ?? 0} councils · ${Object.values(status.live.stateCodes ?? {}).reduce((t, c) => t + c.records, 0)} state-code records · ${status.live.standards?.library ?? 0} AS in library` +
+                      (status.live.ncc?.currentByState?.[state?.code ?? "NSW"] ? ` · ${status.live.ncc.currentByState[state?.code ?? "NSW"]} in force` : "") +
+                      (status.live.sources?.alerts?.length ? ` · ${status.live.sources.alerts.length} source changes` : "")
+                    : " · hub offline (own packs only)")
                 : "Loading knowledge base…"}
             </p>
           </div>
