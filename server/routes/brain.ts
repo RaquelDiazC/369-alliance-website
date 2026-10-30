@@ -21,6 +21,7 @@ import defectLibraryJson from "../defect-library.json" with { type: "json" };
 import { NATIONAL, STATES, STATE_BY_CODE, stateProfileText } from "../brain/states.js";
 import { PERSONAS, PERSONA_BY_KEY, PERSONA_SECTIONS, TEMPLATES, personaText, Persona } from "../brain/personas.js";
 import type { StateProfile } from "../brain/states.js";
+import { liveContext, liveFeed } from "../brain/live.js";
 
 const router = Router();
 const MODEL = "claude-sonnet-5";
@@ -395,7 +396,7 @@ RULES
 1. Answer for the SELECTED JURISDICTION given below. The NCC is national; apply that state's adopting act, licensing, warranty/insurance, contract and dispute regimes, and its NCC variations. If the question concerns a different state, say so and answer for the state asked.
 2. Cite precisely: NCC 2022 clause codes (e.g. F1D5, B1P1, D2D14), ABCB Housing Provisions clauses (e.g. 10.2.3) for Class 1/10, Australian Standards with clause numbers (e.g. AS 3740 §3.2), and state acts with section numbers where you are confident (e.g. Home Building Act 1989 (NSW) s18B).
 3. Use RETRIEVED clause extracts as the authoritative NCC text. You may also cite any clause from the CLAUSE INDEX; never invent codes that are in neither.
-4. NCC 2022 is the baseline. If an older edition (2019/2016/2015) or NCC 2025 matters, note the difference and the legacy code (e.g. F1D5 was FP1.4/F1.9 territory in 2019).
+4. NCC 2022 is the baseline of the clause index. When a LIVE KNOWLEDGE block names the edition in force today in the selected state (e.g. NCC 2022 Amendment 2, or NCC 2025 where adopted), answer for that edition; if an older edition (2019/2016/2015) matters, note the difference and the legacy code (e.g. F1D5 was FP1.4/F1.9 territory in 2019). Council controls and state-code records in the LIVE KNOWLEDGE block are digitised and flagged verify — cite them with their instrument and clause and say they are to be verified against the published document.
 5. Dollar thresholds, insurance caps and adoption dates change: state the figure with "verify current" when it is threshold-sensitive.
 6. Be practical: classification first (building class, jurisdiction, work type), then requirement, then compliance pathway (DtS / Performance Solution), then who is responsible.
 7. If the question is outside building legislation (e.g. tax, migration), say so briefly.
@@ -668,8 +669,10 @@ function historyMessages(history: any): { role: "user" | "assistant"; content: s
 }
 
 // ---------------------------------------------------------------- routes
-router.get("/status", (_req: Request, res: Response) => {
+router.get("/status", async (_req: Request, res: Response) => {
+  const live = await liveFeed();
   res.json({
+    live,
     ai: !!process.env.ANTHROPIC_API_KEY,
     model: MODEL,
     counts: {
@@ -838,7 +841,12 @@ router.post("/ask", async (req: Request, res: Response) => {
   }
 
   const cfg = buildAskConfig(state, question, single, panel);
-  const { system, userText, maxTokens, tools } = cfg;
+  const { system, maxTokens, tools } = cfg;
+  // Live knowledge from the Design Intelligence hub (councils, state codes, NCC edition in force, source changes, AS library).
+  const live = await liveContext(question, state.code, typeof req.body?.lga === "string" ? req.body.lga : undefined);
+  const userText = live ? `${live}
+
+${cfg.userText}` : cfg.userText;
 
   try {
     const message = await client.messages.create({
@@ -897,7 +905,12 @@ router.post("/ask-stream", async (req: Request, res: Response) => {
     return res.end();
   }
 
-  const { system, userText, maxTokens, tools } = buildAskConfig(state, question, single, panel);
+  const cfgS = buildAskConfig(state, question, single, panel);
+  const { system, maxTokens, tools } = cfgS;
+  const liveS = await liveContext(question, state.code, typeof req.body?.lga === "string" ? req.body.lga : undefined);
+  const userText = liveS ? `${liveS}
+
+${cfgS.userText}` : cfgS.userText;
   try {
     const stream = client.messages.stream({
       model: MODEL,
