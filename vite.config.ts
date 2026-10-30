@@ -2,33 +2,39 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from "vite";
-import express from "express";
-import fieldRoute from "./server/routes/field";
-import brainRoute from "./server/routes/brain";
-import reportRoute from "./server/routes/report";
-import analyseRoute from "./server/routes/analyse";
-import projectReviewRoute from "./server/routes/project-review";
+import { createApp } from "./server/app";
 
-// Exposes the field-inspector + legislation-brain APIs during `pnpm dev`
-// (prod mounts them in server/index.ts).
+// Mounts the API inside `pnpm dev`. It is the same createApp() that
+// server/index.ts and api/index.ts mount in production, deliberately: this
+// plugin used to assemble its own express app from a hand-written list of
+// routers, and anything added to server/app.ts and not to that list simply did
+// not exist in development. Billing, checkout and the Stripe webhook were all
+// in that gap.
 function fieldApiPlugin(): Plugin {
   return {
     name: "field-api",
     configureServer(server: ViteDevServer) {
-      // Vite only injects VITE_* vars into client code; the API middleware reads
-      // process.env, so surface .env/.env.local values (ANTHROPIC_API_KEY) here.
+      // Vite only injects VITE_* vars into client code; the API reads
+      // process.env, so surface the server-side .env/.env.local values here.
+      // Named one by one so a .env file cannot set anything else in the dev
+      // process — add the key here when a route starts reading a new one.
       const fileEnv = loadEnv(server.config.mode, server.config.envDir || process.cwd(), "");
-      if (!process.env.ANTHROPIC_API_KEY && fileEnv.ANTHROPIC_API_KEY) {
-        process.env.ANTHROPIC_API_KEY = fileEnv.ANTHROPIC_API_KEY;
+      for (const key of [
+        "ANTHROPIC_API_KEY",
+        // Billing: without these the API answers 503 and says which is missing.
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "STAFF_API_TOKEN",
+        "PUBLIC_BASE_URL",
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        // Project Intelligence gateway.
+        "PROJECT_REVIEW_SERVICE_URL",
+        "PROJECT_REVIEW_ACCESS_KEY",
+      ]) {
+        if (!process.env[key] && fileEnv[key]) process.env[key] = fileEnv[key];
       }
-      const app = express();
-      app.use("/api/project-review", projectReviewRoute);
-      app.use(express.json({ limit: "10mb" }));
-      app.use("/api/field", fieldRoute);
-      app.use("/api/brain", brainRoute);
-      app.use("/api/report", reportRoute);
-      app.use("/api/analyse-drawing", analyseRoute);
-      server.middlewares.use(app);
+      server.middlewares.use(createApp());
     },
   };
 }
