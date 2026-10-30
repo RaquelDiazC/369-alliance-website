@@ -8,9 +8,11 @@ import analyseRoute from "./routes/analyse.js";
 import fieldRoute from "./routes/field.js";
 import brainRoute from "./routes/brain.js";
 import reportRoute from "./routes/report.js";
+import projectReviewRoute from "./routes/project-review.js";
 
 export function createApp() {
   const app = express();
+  app.use("/api/project-review", projectReviewRoute);
   app.use(express.json({ limit: "10mb" }));
   app.use("/api/analyse-drawing", analyseRoute);
   app.use("/api/field", fieldRoute);

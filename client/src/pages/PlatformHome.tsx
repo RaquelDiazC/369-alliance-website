@@ -243,6 +243,9 @@ export default function PlatformHome() {
 
           <Reveal delay={3}>
             <div className="mt-9 flex flex-wrap items-center gap-3">
+              <Link href="/project-review" className="flex items-center gap-2 rounded-full border px-6 py-3 text-[14px] font-bold text-white transition hover:border-white" style={{ borderColor: GOLD }}>
+                Project Intelligence <ArrowRight size={17} />
+              </Link>
               <Link
                 href="/brain"
                 className="group flex items-center gap-2 rounded-full px-6 py-3 text-[14px] font-black transition hover:brightness-110"

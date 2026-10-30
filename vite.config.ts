@@ -7,6 +7,7 @@ import fieldRoute from "./server/routes/field";
 import brainRoute from "./server/routes/brain";
 import reportRoute from "./server/routes/report";
 import analyseRoute from "./server/routes/analyse";
+import projectReviewRoute from "./server/routes/project-review";
 
 // Exposes the field-inspector + legislation-brain APIs during `pnpm dev`
 // (prod mounts them in server/index.ts).
@@ -21,6 +22,7 @@ function fieldApiPlugin(): Plugin {
         process.env.ANTHROPIC_API_KEY = fileEnv.ANTHROPIC_API_KEY;
       }
       const app = express();
+      app.use("/api/project-review", projectReviewRoute);
       app.use(express.json({ limit: "10mb" }));
       app.use("/api/field", fieldRoute);
       app.use("/api/brain", brainRoute);
