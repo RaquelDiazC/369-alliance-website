@@ -6,6 +6,11 @@
  *   POST /api/checkout/session  → { url, id } for a redirect to Stripe
  *   GET  /api/checkout/config   → whether card payment is available at all
  *
+ * Both are staff-only (requireStaff): creating sessions is a side-effecting
+ * call against our Stripe account and the return URLs end up in front of a
+ * payer. When a client-facing "pay this invoice" button is added it needs its
+ * own endpoint scoped to the invoice's view_token — do not open these.
+ *
  * Stripe charges the GROSS amount: the catalogue is ex-GST, so the session
  * line item is subtotal + GST and the split is carried in metadata for the
  * invoice. Quote-only tiers (RDA-3) have no fixed price and are refused here —
@@ -15,6 +20,12 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import Stripe from "stripe";
 import { getSupabase } from "../lib/supabase.js";
+import { requireStaff } from "../lib/staff-auth.js";
+import {
+  PUBLIC_BASE_URL_ERROR,
+  resolvePublicBaseUrl,
+  safeReturnUrl,
+} from "../lib/public-url.js";
 import { INVOICE_COLUMNS, mapInvoice } from "../lib/billing.js";
 import {
   GST_RATE,
@@ -24,6 +35,7 @@ import {
 } from "../../shared/billing.js";
 
 const router = Router();
+router.use(requireStaff);
 
 let cached: Stripe | null = null;
 
@@ -34,13 +46,6 @@ function getStripe(): Stripe | null {
   if (!key) return null;
   cached = new Stripe(key);
   return cached;
-}
-
-function baseUrl(req: Request): string {
-  const envBase = process.env.PUBLIC_BASE_URL;
-  if (envBase) return envBase.replace(/\/$/, "");
-  const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
-  return `${proto}://${req.headers.host}`;
 }
 
 router.get("/config", (_req: Request, res: Response) => {
@@ -74,6 +79,21 @@ router.post("/session", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "invalid session request", message: parsed.error.message });
   }
   const { productCode, invoiceId, proposalId, email, successPath, cancelPath } = parsed.data;
+
+  // Return URLs are where a payer lands immediately after paying us, which is
+  // the most valuable moment there is for a phishing redirect. The origin
+  // comes from configuration, and a caller-supplied path has to resolve back
+  // onto that same origin — "@evil.test" and ".evil.test" both leave it.
+  const origin = resolvePublicBaseUrl(req);
+  if (!origin) return res.status(503).json({ error: PUBLIC_BASE_URL_ERROR });
+
+  const successUrl = safeReturnUrl(origin, successPath ?? "/billing/paid");
+  const cancelUrl = safeReturnUrl(origin, cancelPath ?? "/billing/cancelled");
+  if (!successUrl || !cancelUrl) {
+    return res.status(400).json({
+      error: "successPath and cancelPath must be site-relative paths on this origin",
+    });
+  }
 
   const product = productByCode(productCode);
   if (!product) return res.status(404).json({ error: `unknown product ${productCode}` });
@@ -113,11 +133,16 @@ router.post("/session", async (req: Request, res: Response) => {
   }
 
   const amountCents = subtotalCents + gstCents;
-  const origin = baseUrl(req);
+  const sessionIdSeparator = successUrl.includes("?") ? "&" : "?";
 
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      // Filtered to card: a deferred method (BECS Direct Debit, common in
+      // Australian B2B) completes the session before the money arrives. The
+      // webhook also refuses to settle anything that is not payment_status
+      // "paid", so widening this later stays safe.
+      allowed_payment_method_types: ["card"],
       client_reference_id: invoiceId ?? proposalId ?? undefined,
       customer_email: email ?? undefined,
       line_items: [
@@ -140,8 +165,8 @@ router.post("/session", async (req: Request, res: Response) => {
         subtotalCents: String(subtotalCents),
         gstCents: String(gstCents),
       },
-      success_url: `${origin}${successPath ?? "/billing/paid"}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}${cancelPath ?? "/billing/cancelled"}`,
+      success_url: `${successUrl}${sessionIdSeparator}session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl,
     });
     res.status(201).json({ id: session.id, url: session.url });
   } catch (err) {

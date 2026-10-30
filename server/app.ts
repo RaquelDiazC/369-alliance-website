@@ -8,7 +8,7 @@ import analyseRoute from "./routes/analyse.js";
 import fieldRoute from "./routes/field.js";
 import brainRoute from "./routes/brain.js";
 import reportRoute from "./routes/report.js";
-import billingRoute from "./routes/billing.js";
+import billingRoute, { publicRouter as billingPublicRoute } from "./routes/billing.js";
 import checkoutRoute from "./routes/checkout.js";
 import stripeWebhookRoute from "./routes/stripe-webhook.js";
 
@@ -23,6 +23,10 @@ export function createApp() {
   app.use("/api/field", fieldRoute);
   app.use("/api/brain", brainRoute);
   app.use("/api/report", reportRoute);
+  // Client-facing token links first: the billing router below requires a staff
+  // token for everything it serves. If these two are ever swapped the public
+  // links start demanding auth — wrong, but closed rather than open.
+  app.use("/api/billing/public", billingPublicRoute);
   app.use("/api/billing", billingRoute);
   app.use("/api/checkout", checkoutRoute);
   return app;

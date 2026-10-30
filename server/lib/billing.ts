@@ -152,53 +152,23 @@ export async function recordPayment(
  * Recompute amount_paid_cents from the invoice's payments and move the status.
  * Fully covered → paid; partially paid stays where it is (sent/overdue) so the
  * follow-up still shows; a void invoice is never resurrected.
+ *
+ * The work happens in Postgres (`settle_invoice`, see
+ * supabase/migrations/20261030140000_billing_settle_invoice.sql) because it
+ * has to be atomic: a Stripe webhook and a staff-recorded transfer arriving
+ * together must not interleave between reading the payments and writing the
+ * total. The function takes a row lock on the invoice first.
  */
 export async function settleInvoice(
   supabase: SupabaseClient,
   invoiceId: string,
 ): Promise<Invoice> {
-  const { data: paymentRows, error: paymentsError } = await supabase
-    .from("payments")
-    .select("amount_cents")
-    .eq("invoice_id", invoiceId);
-  if (paymentsError) throw new Error(paymentsError.message);
-
-  const paid = (paymentRows ?? []).reduce(
-    (sum: number, p: { amount_cents: number }) => sum + p.amount_cents,
-    0,
-  );
-
-  const { data: current, error: readError } = await supabase
-    .from("invoices")
-    .select(INVOICE_COLUMNS)
-    .eq("id", invoiceId)
+  const { data, error } = await supabase
+    .rpc("settle_invoice", { p_invoice_id: invoiceId })
     .single();
-  if (readError) throw new Error(readError.message);
-
-  const invoice = mapInvoice(current);
-  const covered = paid >= invoice.totalCents && invoice.totalCents > 0;
-  const update: Record<string, unknown> = { amount_paid_cents: paid };
-
-  if (invoice.status !== "void") {
-    if (covered) {
-      update.status = "paid";
-      update.paid_at = invoice.paidAt ?? new Date().toISOString();
-    } else if (invoice.status === "paid") {
-      // A payment was removed or corrected downward — reopen it.
-      update.status = "sent";
-      update.paid_at = null;
-    }
-  }
-
-  const { data: updated, error: updateError } = await supabase
-    .from("invoices")
-    .update(update)
-    .eq("id", invoiceId)
-    .select(INVOICE_COLUMNS)
-    .single();
-  if (updateError) throw new Error(updateError.message);
-
-  return mapInvoice(updated);
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error(`invoice ${invoiceId} not found`);
+  return mapInvoice(data);
 }
 
 /** Outstanding amount on an invoice, in cents. */

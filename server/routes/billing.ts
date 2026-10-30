@@ -3,7 +3,9 @@
  * paid for. Stripe Checkout lives in routes/checkout.ts and the settlement
  * webhook in routes/stripe-webhook.ts; both share server/lib/billing.ts.
  *
- * Staff routes (expect to sit behind the staff portal):
+ * Staff routes — all behind requireStaff (server/lib/staff-auth.ts). Every
+ * /api/* path is public on this deployment (vercel.json rewrites them all to
+ * one function), so the guard lives here rather than being assumed:
  *   GET  /api/billing/products                       → the sellable catalogue
  *   GET  /api/billing/clients                        → list clients
  *   POST /api/billing/clients                        → create a client
@@ -18,7 +20,9 @@
  *   POST /api/billing/invoices/:id/send              → mark sent, return link
  *   POST /api/billing/invoices/:id/payments          → record a payment manually
  *
- * Public routes (unguessable view_token, no auth — deliberately minimal fields):
+ * Public routes (unguessable view_token, no auth — deliberately minimal
+ * fields). Exported separately as `publicRouter` so the staff guard cannot be
+ * applied to them by accident, and mounted first in server/app.ts:
  *   GET  /api/billing/public/proposal/:token
  *   POST /api/billing/public/proposal/:token/respond → accept or decline
  *   GET  /api/billing/public/invoice/:token
@@ -30,6 +34,8 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabase } from "../lib/supabase.js";
+import { requireStaff } from "../lib/staff-auth.js";
+import { PUBLIC_BASE_URL_ERROR, resolvePublicBaseUrl } from "../lib/public-url.js";
 import {
   INVOICE_COLUMNS,
   PROPOSAL_COLUMNS,
@@ -52,7 +58,12 @@ import {
   type LineItem,
 } from "../../shared/billing.js";
 
+/** Staff-only. The guard is the first thing on this router, before any route. */
 const router = Router();
+router.use(requireStaff);
+
+/** Client-facing, resolved by unguessable token. Never guarded by requireStaff. */
+export const publicRouter = Router();
 
 /** Resolve the service-role client or answer 503 — mirrors the other routes. */
 function db(res: Response): SupabaseClient | null {
@@ -85,13 +96,6 @@ function normaliseItems(items: z.infer<typeof lineItemSchema>[]): LineItem[] {
     unitAmountCents: i.unitAmountCents,
     amountCents: lineAmount(i.quantity, i.unitAmountCents),
   }));
-}
-
-function publicBaseUrl(req: Request): string {
-  const envBase = process.env.PUBLIC_BASE_URL;
-  if (envBase) return envBase.replace(/\/$/, "");
-  const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
-  return `${proto}://${req.headers.host}`;
 }
 
 // ---------------------------------------------------------------- catalogue
@@ -250,6 +254,10 @@ router.get("/proposals/:id", async (req: Request, res: Response) => {
 router.post("/proposals/:id/send", async (req: Request, res: Response) => {
   const supabase = db(res);
   if (!supabase) return;
+  // Resolve the link origin before marking it sent — a proposal must not end
+  // up "sent" with no link to show for it.
+  const origin = resolvePublicBaseUrl(req);
+  if (!origin) return fail(res, 503, PUBLIC_BASE_URL_ERROR);
   const { data, error } = await supabase
     .from("proposals")
     .update({ status: "sent", sent_at: new Date().toISOString() })
@@ -261,7 +269,7 @@ router.post("/proposals/:id/send", async (req: Request, res: Response) => {
   if (!data) return fail(res, 409, "proposal not found or already answered");
   res.json({
     proposal: mapProposal(data),
-    link: `${publicBaseUrl(req)}/api/billing/public/proposal/${data.view_token}`,
+    link: `${origin}/api/billing/public/proposal/${data.view_token}`,
   });
 });
 
@@ -385,6 +393,8 @@ router.get("/invoices/:id", async (req: Request, res: Response) => {
 router.post("/invoices/:id/send", async (req: Request, res: Response) => {
   const supabase = db(res);
   if (!supabase) return;
+  const origin = resolvePublicBaseUrl(req);
+  if (!origin) return fail(res, 503, PUBLIC_BASE_URL_ERROR);
   const { data, error } = await supabase
     .from("invoices")
     .update({ status: "sent", sent_at: new Date().toISOString() })
@@ -396,7 +406,7 @@ router.post("/invoices/:id/send", async (req: Request, res: Response) => {
   if (!data) return fail(res, 409, "invoice not found or not sendable");
   res.json({
     invoice: mapInvoice(data),
-    link: `${publicBaseUrl(req)}/api/billing/public/invoice/${data.view_token}`,
+    link: `${origin}/api/billing/public/invoice/${data.view_token}`,
   });
 });
 
@@ -431,7 +441,7 @@ router.post("/invoices/:id/payments", async (req: Request, res: Response) => {
 // Resolved by unguessable token. Only the fields the recipient needs — no
 // client id, no notes, no other documents.
 
-router.get("/public/proposal/:token", async (req: Request, res: Response) => {
+publicRouter.get("/proposal/:token", async (req: Request, res: Response) => {
   const supabase = db(res);
   if (!supabase) return;
   try {
@@ -462,7 +472,7 @@ router.get("/public/proposal/:token", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/public/proposal/:token/respond", async (req: Request, res: Response) => {
+publicRouter.post("/proposal/:token/respond", async (req: Request, res: Response) => {
   const supabase = db(res);
   if (!supabase) return;
   const parsed = respondSchema.safeParse(req.body);
@@ -482,7 +492,7 @@ router.post("/public/proposal/:token/respond", async (req: Request, res: Respons
   }
 });
 
-router.get("/public/invoice/:token", async (req: Request, res: Response) => {
+publicRouter.get("/invoice/:token", async (req: Request, res: Response) => {
   const supabase = db(res);
   if (!supabase) return;
   const { data, error } = await supabase

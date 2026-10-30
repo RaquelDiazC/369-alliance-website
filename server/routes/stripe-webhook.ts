@@ -11,6 +11,11 @@
  * Idempotency is the event id, held by a unique index on
  * payments.stripe_event_id — Stripe retries on any non-2xx and replays events,
  * and a replay must not take a second payment.
+ *
+ * Settling requires `payment_status === "paid"` and AUD. A session completes
+ * before the money arrives for deferred methods (BECS Direct Debit and the
+ * like), so "completed" alone is not proof of payment —
+ * checkout.session.async_payment_succeeded is what settles those.
  */
 import { Router, type Request, type Response } from "express";
 import express from "express";
@@ -53,7 +58,23 @@ router.post(
       return res.status(400).json({ error: "signature verification failed", message: message.slice(0, 200) });
     }
 
-    if (event.type !== "checkout.session.completed") {
+    const settleable =
+      event.type === "checkout.session.completed" ||
+      event.type === "checkout.session.async_payment_succeeded";
+
+    if (event.type === "checkout.session.async_payment_failed") {
+      // The deferred payment bounced. The invoice was never settled, so there
+      // is nothing to undo — just acknowledge and let the follow-up happen.
+      const failed = event.data.object as Stripe.Checkout.Session;
+      return res.json({
+        received: true,
+        settled: false,
+        reason: "async payment failed",
+        session: failed.id,
+      });
+    }
+
+    if (!settleable) {
       // Acknowledge everything else so Stripe stops resending it.
       return res.json({ received: true, ignored: event.type });
     }
@@ -61,6 +82,29 @@ router.post(
     const session = event.data.object as Stripe.Checkout.Session;
     const invoiceId = session.metadata?.invoiceId || session.client_reference_id || "";
     const amountCents = session.amount_total ?? 0;
+
+    // "completed" fires for a deferred method before the funds arrive; only
+    // payment_status proves we have the money.
+    if (session.payment_status !== "paid") {
+      return res.json({
+        received: true,
+        settled: false,
+        reason: `payment_status is ${session.payment_status}`,
+        session: session.id,
+      });
+    }
+
+    // The ledger is AUD cents. Recording another currency's minor units as AUD
+    // would quietly corrupt it, so refuse and leave the invoice open for
+    // someone to look at.
+    if (session.currency && session.currency.toLowerCase() !== "aud") {
+      return res.json({
+        received: true,
+        settled: false,
+        reason: `unexpected currency ${session.currency}`,
+        session: session.id,
+      });
+    }
 
     if (!invoiceId || amountCents <= 0) {
       // Nothing to settle (e.g. a checkout started without an invoice). This
