@@ -8,13 +8,26 @@ import analyseRoute from "./routes/analyse.js";
 import fieldRoute from "./routes/field.js";
 import brainRoute from "./routes/brain.js";
 import reportRoute from "./routes/report.js";
+import billingRoute, { publicRouter as billingPublicRoute } from "./routes/billing.js";
+import checkoutRoute from "./routes/checkout.js";
+import stripeWebhookRoute from "./routes/stripe-webhook.js";
 
 export function createApp() {
   const app = express();
+  // Stripe verifies the signature against the exact bytes it sent, so the
+  // webhook has to be mounted ahead of express.json() — a parsed body fails
+  // verification every time.
+  app.use("/api/stripe", stripeWebhookRoute);
   app.use(express.json({ limit: "10mb" }));
   app.use("/api/analyse-drawing", analyseRoute);
   app.use("/api/field", fieldRoute);
   app.use("/api/brain", brainRoute);
   app.use("/api/report", reportRoute);
+  // Client-facing token links first: the billing router below requires a staff
+  // token for everything it serves. If these two are ever swapped the public
+  // links start demanding auth — wrong, but closed rather than open.
+  app.use("/api/billing/public", billingPublicRoute);
+  app.use("/api/billing", billingRoute);
+  app.use("/api/checkout", checkoutRoute);
   return app;
 }
