@@ -22,9 +22,16 @@ Missing credentials never crash the API: the billing routes answer
 Local development reads `.env` / `.env.local` (see the `start` script). On
 Vercel, set all four in Project → Settings → Environment Variables.
 
+`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are the same names the existing
+`supabase/functions/review-admin` edge function already reads, so a deployment
+that has those set is already half configured. Note that the course review
+platform points its browser client at `VITE_REVIEW_SUPABASE_URL`, which may or
+may not be the same project — decide whether billing shares that project or
+gets its own before running the migration.
+
 ## Run the migration
 
-The schema is one file: `supabase/migrations/0001_billing.sql`. It is
+The schema is one file: `supabase/migrations/20261030120000_billing.sql`. It is
 idempotent (`create table if not exists`, `on conflict do nothing`), so it is
 safe to re-run.
 

@@ -7,7 +7,7 @@
  * bank transfer. Catalogue prices EXCLUDE GST; GST is added per document and
  * the rate is stored on the document so a historic invoice never moves.
  *
- * The catalogue below mirrors the seed in supabase/migrations/0001_billing.sql
+ * The catalogue below mirrors the seed in supabase/migrations/20261030120000_billing.sql
  * — change both together.
  */
 
