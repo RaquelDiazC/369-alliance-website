@@ -8,16 +8,19 @@ import analyseRoute from "./routes/analyse.js";
 import fieldRoute from "./routes/field.js";
 import brainRoute from "./routes/brain.js";
 import reportRoute from "./routes/report.js";
+import projectReviewRoute from "./routes/project-review.js";
 import billingRoute, { publicRouter as billingPublicRoute } from "./routes/billing.js";
 import checkoutRoute from "./routes/checkout.js";
 import stripeWebhookRoute from "./routes/stripe-webhook.js";
 
 export function createApp() {
   const app = express();
-  // Stripe verifies the signature against the exact bytes it sent, so the
-  // webhook has to be mounted ahead of express.json() — a parsed body fails
-  // verification every time.
+  // Two routers go ahead of express.json(), for opposite reasons. Stripe
+  // verifies the signature against the exact bytes it sent, so a parsed body
+  // fails verification every time; project-review parses its own JSON at 45 mb,
+  // so the payloads that screen sends do not raise the limit for every route.
   app.use("/api/stripe", stripeWebhookRoute);
+  app.use("/api/project-review", projectReviewRoute);
   app.use(express.json({ limit: "10mb" }));
   app.use("/api/analyse-drawing", analyseRoute);
   app.use("/api/field", fieldRoute);

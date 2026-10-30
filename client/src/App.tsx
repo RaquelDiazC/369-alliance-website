@@ -21,6 +21,7 @@ import LegislationBrain from "./pages/LegislationBrain";
 import ReportStudio from "./pages/ReportStudio";
 import TrainingPlatform from "./pages/TrainingPlatform";
 import PlatformHome from "./pages/PlatformHome";
+import ProjectReview from "./pages/ProjectReview";
 import ReviewPlatform from "./pages/review/ReviewPlatform";
 
 // Marketing website pages
@@ -53,6 +54,7 @@ function Router() {
       <Route path="/" component={PLATFORM_ONLY ? PlatformHome : WebsiteHome} />
       {/* Product-only front door — courses, Brain and DBP drawings audit */}
       <Route path="/home" component={PlatformHome} />
+      <Route path="/project-review" component={ProjectReview} />
       <Route path="/system" component={LandingPage} />
       <Route path="/adm" component={AdmLanding} />
       <Route path="/action-manager" component={ActionManager} />
