@@ -1,4 +1,5 @@
 import { LIBRARY } from "./_lib";
+import { precedentCount } from "./_precedents";
 
 export default function handler(_req: any, res: any) {
   res.status(200).json({
@@ -6,5 +7,6 @@ export default function handler(_req: any, res: any) {
     codeRequired: !!process.env.FIELD_ACCESS_CODE,
     items: Object.keys(LIBRARY).length,
     active: Object.values(LIBRARY).filter(e => e.st === "active").length,
+    precedents: precedentCount(),
   });
 }
